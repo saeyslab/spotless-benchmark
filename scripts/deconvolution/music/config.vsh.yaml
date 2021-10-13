@@ -1,0 +1,48 @@
+functionality:
+  name: music
+  description: Run the MuSiC deconvolution algorithm.
+  version: "0.2.0"
+  arguments:                     
+  - type: file
+    name: --sc_input
+    description: input single-cell reference (rds)
+    required: true
+    must_exist: true
+  - type: file
+    name: --sp_input
+    description: input spatial data to be deconvolved
+    required: true
+    must_exist: true
+  - type: string
+    name: --annot
+    description: name of the cell type annotation column
+    default: "celltype"
+  - type: string
+    name: --sampleID
+    description: name of the sample annotation column
+    default: "none"
+  - type: file
+    name: --output
+    description: path of the output tsv file that will contain the proportions
+    default: "proportions.tsv"
+    direction: output
+  resources:
+  - type: r_script
+    path: script.R
+  tests:
+  - type: r_script
+    path: test.R
+  - path: /mnt/d/spade-benchmark/unit-test/test_sc_data.rds
+  - path: /mnt/d/spade-benchmark/unit-test/test_sp_data.rds
+platforms:
+  - type: native
+  - type: docker
+    # image: r-base:3.6.3
+    image: satijalab/seurat:3.2.3
+    setup:
+      - type: r
+        github:
+          - xuranw/MuSiC
+          - renozao/xbioc
+        #cran:
+        #  - Seurat
