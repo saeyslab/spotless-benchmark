@@ -1,0 +1,15 @@
+test_sc_data
+dimensions: 26252 genes x 1404 cells
+original: allen_cortex_dwn_original.rds data (D:/Work (Yr 2 Sem 1)/Thesis/rds)
+remarks: filtered out genes with less than 10 counts
+> keep_genes <- Matrix::rowSums(Seurat::GetAssayData(seurat_obj_scRNA) > 0) >= 10
+> filtered_counts <- counts[keep_genes, ]
+
+test_sp_data
+dimensions: 26252 genes x 16 spots
+original: test_sc_data
+remarks:
+> set.seed(10)
+> synthvisium::generate_synthetic_visium(seurat_obj = seurat_obj_scrna, dataset_type = "artificial_uniform_distinct",
+                                                     clust_var = "subclass" , n_regions = 1,
+                                                     n_spots_min = 10, n_spots_max = 50, visium_mean = 20000, visium_sd = 5000)
