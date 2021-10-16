@@ -7,7 +7,6 @@ par <- list(
 )
 ## VIASH END
 
-# Read and preprocess single-cell RNA data
 cat("Reading input scRNA-seq reference...")
 seurat_obj_scRNA <- readRDS(par$sc_input)
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
@@ -17,7 +16,6 @@ cat("Preprocessing input scRNA-seq reference...\n")
 seurat_obj_scRNA <- Seurat::SCTransform(seurat_obj_scRNA, verbose = FALSE)
 Seurat::Idents(object = seurat_obj_scRNA) <- seurat_obj_scRNA[[par$annot, drop=TRUE]]
 
-# Compute marker genes
 cat("Computing marker genes...\n")
 cluster_markers_all <- Seurat::FindAllMarkers(object = seurat_obj_scRNA,
                                               assay = "SCT", slot = "data",
@@ -25,7 +23,6 @@ cluster_markers_all <- Seurat::FindAllMarkers(object = seurat_obj_scRNA,
                                               only.pos = TRUE,
                                               logfc.threshold = 1, min.pct = 0.9) # To speed things up
 
-# Run SPOTlight
 cat("Reading input spatial data...\n")
 set.seed(123)
 synthetic_visium_data <- readRDS(par$sp_input)

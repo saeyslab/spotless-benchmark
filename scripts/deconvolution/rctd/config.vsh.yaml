@@ -1,7 +1,7 @@
 functionality:
-  name: music
-  description: Run the MuSiC deconvolution algorithm.
-  version: "0.2.0"
+  name: rctd
+  description: Run the RCTD deconvolution algorithm.
+  version: "1.2.0"
   arguments:                     
   - type: file
     name: --sc_input
@@ -17,10 +17,6 @@ functionality:
     name: --annot
     description: name of the cell type annotation column
     default: "celltype"
-  - type: string
-    name: --sampleID
-    description: name of the sample annotation column
-    default: "none"
   - type: file
     name: --output
     description: path of the output tsv file that will contain the proportions
@@ -40,6 +36,7 @@ platforms:
     image: satijalab/seurat:3.2.3
     setup:
       - type: r
+        cran:
+          - Matrix
         github:
-          - xuranw/MuSiC
-          - renozao/xbioc
+          - dmcable/RCTD

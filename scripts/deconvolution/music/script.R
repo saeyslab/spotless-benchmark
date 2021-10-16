@@ -12,7 +12,6 @@ par <- list(
 )
 ## VIASH END
 
-# Read and preprocess single-cell RNA data
 cat("Reading input scRNA-seq reference...")
 seurat_obj_scRNA <- readRDS(par$sc_input)
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
@@ -25,7 +24,6 @@ if (par$sampleID == "none" || ! par$sampleID %in% colnames(seurat_obj_scRNA@meta
   sampleIDs <- seurat_obj_scRNA[[par$sampleID, drop=TRUE]]
 }
 
-# Convert to ExpressionSet object
 cat("Converting to ExpressionSet object...\n")
 sc.pdata <- new("AnnotatedDataFrame",
                 data = data.frame(
@@ -34,7 +32,6 @@ sc.pdata <- new("AnnotatedDataFrame",
 sc.data <- as.matrix(Seurat::GetAssayData(seurat_obj_scRNA))
 eset_obj_scRNA <- Biobase::ExpressionSet(assayData=sc.data, phenoData=sc.pdata)
 
-# Run MuSiC
 cat("Reading input spatial data...\n")
 synthetic_visium_data <- readRDS(par$sp_input)
 
