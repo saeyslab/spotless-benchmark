@@ -1,61 +1,69 @@
-// Which methods to run
-params.methods = ["music", "rctd", "spotlight"]
-methods_ch = Channel.value(params.methods)
-
+nextflow.enable.dsl=2
+params.outdir = "/mnt/d/spade-benchmark/deconv_proportions"
 process runMusic {
     container 'csangara/spade_music:latest'
-
-    input:
-    val methods from methods_ch
+    publishDir params.outdir, mode: 'copy'
 
     output:
-    file proportions
-
-    when:
-    methods.contains("music")
+        file 'proportions_music'
 
     script:
-    """
-    Rscript ../../deconvolution/music/script_nf.R
-    """
+        """
+        Rscript ../../deconvolution/music/script_nf.R
+        """
 
 }
 
 process runSpotlight {
     container 'csangara/spade_spotlight:latest'
-
-    input:
-    val methods from methods_ch
+    publishDir params.outdir, mode: 'copy'
 
     output:
-    file proportions
-
-    when:
-    methods.contains("spotlight")
+        file 'proportions_spotlight'
 
     script:
-    """
-    Rscript ../../deconvolution/spotlight/script_nf.R
-    """
+        """
+        Rscript ../../deconvolution/spotlight/script_nf.R
+        """
 
 }
 
 process runRCTD {
     container 'csangara/spade_rctd:latest'
-
-    input:
-    val methods from methods_ch
+    publishDir params.outdir, mode: 'copy'
 
     output:
-    file proportions
-
-    when:
-    methods.contains("rctd")
+        file 'proportions_rctd'
 
     script:
-    """
-    Rscript ../../deconvolution/rctd/script_nf.R
-    """
+        """
+        Rscript ../../deconvolution/rctd/script_nf.R
+        """
 
 }
 
+params.methods = "music,rctd,spotlight"
+
+workflow runMethods {
+    // String matching to check which method to run
+    main:
+        if( params.methods =~ /music/ ){
+            runMusic()
+        }
+
+        if ( params.methods =~ /rctd/ ){
+            runRCTD()
+        }
+        
+        if ( params.methods =~ /spotlight/ ){
+            runSpotlight()
+        }
+    
+}
+
+workflow {
+    main:
+        runMethods()
+        propfiles_ch = Channel.fromPath("${params.outdir}/proportions_*")
+        propfiles_ch.view()
+}
