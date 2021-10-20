@@ -4,21 +4,10 @@ library(Seurat)
 library(MuSiC)
 library(xbioc, quietly=TRUE)
 
-args = R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
-
-# DEFAULT PARAMETERS
-par <- list(
-  sc_input = "/mnt/d/spade-benchmark/unit-test/test_sc_data.rds",
-  sp_input = "/mnt/d/spade-benchmark/unit-test/test_sp_data.rds",
-  annot = "subclass",
-  output = "proportions.tsv",
-  sampleID = "none"
-)
-
-par[names(args)] <- args
+par = R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 
 ## START ##
-cat("Reading input scRNA-seq reference...")
+cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
 seurat_obj_scRNA <- readRDS(par$sc_input)
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
 cat("Found ", ncelltypes, "cell types in the reference.\n")
@@ -35,10 +24,10 @@ sc.pdata <- new("AnnotatedDataFrame",
                 data = data.frame(
                 celltype = seurat_obj_scRNA[[par$annot, drop=TRUE]],
                 samples = sampleIDs))
-sc.data <- as.matrix(Seurat::GetAssayData(seurat_obj_scRNA))
+sc.data <- as.matrix(GetAssayData(seurat_obj_scRNA, slot = "counts"))
 eset_obj_scRNA <- Biobase::ExpressionSet(assayData=sc.data, phenoData=sc.pdata)
 
-cat("Reading input spatial data...\n")
+cat("Reading input spatial data from", par$sp_input, "\n")
 synthetic_visium_data <- readRDS(par$sp_input)
 
 cat("Converting spatial data to ExpressionSet object...\n")
@@ -59,4 +48,4 @@ eset_obj_visium <- Biobase::ExpressionSet(assayData=as.matrix(synthetic_visium_d
 # deconv_matrix <- deconv_matrix[,sort(colnames(deconv_matrix), method="shell")]
 
 # write.table(deconv_matrix, file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
-write.table(matrix("hello world"), file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
+write.table(matrix("hello world, this is music"), file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
