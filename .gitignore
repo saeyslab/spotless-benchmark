@@ -1,3 +1,4 @@
+#### R ####
 # History files
 .Rhistory
 .Rapp.history
@@ -37,3 +38,11 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Data
+*.rds
+*.tsv
+
+#### NEXTFLOW ####
+.cache/*
+.nextflow*
