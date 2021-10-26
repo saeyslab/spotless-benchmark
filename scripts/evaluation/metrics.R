@@ -27,17 +27,18 @@ getConfusionMatrix <- function(known_props, test_props){
   return(list(tp=tp, tn=tn, fn=fn, fp=fp))
 }
 
-args = R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 
 # DEFAULT PARAMETERS
-par <- list(
-  # props_file = "/mnt/d/spade-benchmark/proportions_music",
-  props_file = "/mnt/d/spade-benchmark/scripts/deconvolution/music/proportions.tsv",
-  sp_input = "/mnt/d/spade-benchmark/unit-test/test_sp_data.rds",
-  sp_type = "synthvisium"
-)
-
-par[names(args)] <- args
+# par <- list(
+#   # props_file = "/mnt/d/spade-benchmark/proportions_music",
+#   props_file = "/mnt/d/spade-benchmark/scripts/deconvolution/music/proportions.tsv",
+#   sp_input = "/mnt/d/spade-benchmark/unit-test/test_sp_data.rds",
+#   sp_type = "synthvisium",
+#   output = "tempMetrics"
+# )
+# par$output <- args$output
+# par[names(args)] <- args
 
 # Load reference data
 if (par$sp_type == "synthvisium"){
@@ -82,4 +83,4 @@ metrics <- data.frame("corr"=corr_spots, "RMSE"=RMSE,
                       "accuracy"=accuracy, "sensitivity"=sensitivity,
                       "specificity"=specificity, "precision"=precision, "F1"=F1,
                       "prc"=prc)
-write.table(metrics, file="metrics", row.names=FALSE, col.names=FALSE)
+write.table(metrics, file=par$output, row.names=FALSE)
