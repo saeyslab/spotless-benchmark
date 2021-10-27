@@ -24,9 +24,10 @@ process runMusic {
         output = "${params.output}_music${params.output_suffix}"
 
         """
-        run_music.R \
-            --sc_input $params.sc_input --sp_input $params.sp_input \
-            --annot $params.annot --output $output --sampleID $params.sampleID
+        #run_music.R \
+        #    --sc_input $params.sc_input --sp_input $params.sp_input \
+        #    --annot $params.annot --output $output --sampleID $params.sampleID
+        echo 'test music' > $output
         """
 
 }
