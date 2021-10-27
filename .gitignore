@@ -46,3 +46,6 @@ vignettes/*.pdf
 #### NEXTFLOW ####
 .cache/*
 .nextflow*
+
+#### SINGULARITY ###
+*.sif
