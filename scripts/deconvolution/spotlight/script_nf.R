@@ -10,10 +10,10 @@ seurat_obj_scRNA <- readRDS(par$sc_input)
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
 cat("Found", ncelltypes, "cell types in the reference.\n")
 
-if (DefaultAssay(seurat_obj_scRNA) != "SCT") {
-    cat("Preprocessing input scRNA-seq reference...\n")
-    seurat_obj_scRNA <- SCTransform(seurat_obj_scRNA, verbose = FALSE)
-}
+# if (DefaultAssay(seurat_obj_scRNA) != "SCT") {
+#     cat("Preprocessing input scRNA-seq reference...\n")
+#     seurat_obj_scRNA <- SCTransform(seurat_obj_scRNA, verbose = FALSE)
+# }
 # Idents(object = seurat_obj_scRNA) <- seurat_obj_scRNA[[par$annot, drop=TRUE]]
 
 # cat("Computing marker genes...\n")

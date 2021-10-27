@@ -28,7 +28,7 @@ spatialRNA_obj_visium <- RCTD:::SpatialRNA(counts = synthetic_visium_data$counts
 
 # cat("Running deconvolution tool...\n")
 # start_time <- Sys.time()
-# RCTD_deconv <- create.RCTD(spatialRNA_obj_visium, reference_obj, max_cores = 4, CELL_MIN_INSTANCE = 5)
+# RCTD_deconv <- create.RCTD(spatialRNA_obj_visium, reference_obj, max_cores = 8, CELL_MIN_INSTANCE = 5)
 # RCTD_deconv <- run.RCTD(RCTD_deconv, doublet_mode = "full")
 # end_time <- Sys.time()
 # cat("Runtime: ", round((end_time-start_time)[[1]], 2), "s\n", sep="")
