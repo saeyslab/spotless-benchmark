@@ -24,7 +24,7 @@ process runMusic {
         output = "${params.output}_music${params.output_suffix}"
 
         """
-        Rscript /mnt/d/spade-benchmark/scripts/deconvolution/music/script_nf.R \
+        Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/music/script_nf.R \
             --sc_input $params.sc_input --sp_input $params.sp_input \
             --annot $params.annot --output $output --sampleID $params.sampleID
         """
@@ -45,7 +45,7 @@ process runSpotlight {
         output = "${params.output}_spotlight${params.output_suffix}"
 
         """
-        Rscript /mnt/d/spade-benchmark/scripts/deconvolution/spotlight/script_nf.R \
+        Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/spotlight/script_nf.R \
             --sc_input $params.sc_input --sp_input $params.sp_input \
             --annot $params.annot --output $output
         """
@@ -65,7 +65,7 @@ process runRCTD {
     script:
         output = "${params.output}_rctd${params.output_suffix}"
         """
-        Rscript /mnt/d/spade-benchmark/scripts/deconvolution/rctd/script_nf.R \
+        Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/rctd/script_nf.R \
             --sc_input $params.sc_input --sp_input $params.sp_input \
             --annot $params.annot --output $output
         """
@@ -86,7 +86,7 @@ process computeMetrics {
         """
         echo $method_name
         echo $props_file
-        # Rscript /mnt/d/spade-benchmark/scripts/evaluation/metrics.R \
+        # Rscript $params.rootdir/spade-benchmark/scripts/evaluation/metrics.R \
         # --props_file $props_file --sp_input $params.sp_input --sp_type $params.sp_type \
         # --output $metrics_file
         echo 'this is a test' > $metrics_file
