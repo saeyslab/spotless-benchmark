@@ -125,7 +125,7 @@ workflow runMethods {
     // String matching to check which method to run
     main:
         // In input is all, run all methods
-        all_methods = "music,rctd,spotlight"
+        all_methods = "music,rctd,spotlight,stereoscope"
         methods = ( params.methods ==~ /all/ ? all_methods : params.methods )
         if ( methods =~ /music/ ){ runMusic() }
         if ( methods =~ /rctd/ ){ runRCTD() }
