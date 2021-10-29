@@ -88,7 +88,7 @@ process fitStereoscopeModel {
     output:
         tuple val('stereoscope'), path("$output")
     script:
-        output = "${params.output}_stereoscope${params.output_suffix}"
+        output = "${params.output}_stereoscope${params.output_suffix}.preformat"
         sp_file_basename = file(sp_input).getSimpleName()
 
         """

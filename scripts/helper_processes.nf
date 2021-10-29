@@ -22,7 +22,7 @@ process formatTSVFile {
     output:
         tuple val(method_name), path (new_tsv_file)
     script:
-        new_tsv_file = file(tsv_file).getName()
+        new_tsv_file = file(tsv_file).getSimpleName()
         """
         #!/usr/bin/env Rscript
         deconv_matrix <- read.table("$tsv_file", sep="\t", header=TRUE)
