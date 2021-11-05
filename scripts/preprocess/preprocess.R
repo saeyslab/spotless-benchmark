@@ -7,7 +7,7 @@ path <- "D:/spade-benchmark/data/seqFISH_eng2019/"
 cortex_annot <- read.csv(paste0(path, "cortex_svz_cell_type_annotations.csv"))
 cortex_cluster <- read.csv(paste0(path, "cortex_svz_cluster_names.csv")) %>%
   `colnames<-`(c("louvain", "celltype"))
-cortex_counts <- read.csv(paste0(path, "cortex_svz_counts.csv")) %>% row
+cortex_counts <- read.csv(paste0(path, "cortex_svz_counts.csv")) %>% `rownames<-`(cortex_annot$index)
 
 # Coordinates are in units of one pixel (103 nm per pixel or 0.103 micron per pixel)
 # Each camera FOV is 2,000 pixels * 0.103 micron/pixel = 206 micron
@@ -18,7 +18,6 @@ cortex_annot_merge <- merge(cortex_annot, cortex_cluster, by="louvain") %>%
   relocate(index) %>% arrange(index)
 cortex_metadata <- cortex_annot_merge %>% add_column(cortex_coords[c("Field.of.View",
                                                                      "X", "Y")],)
-
 cortex_counts_sub <- cortex_counts[cortex_metadata$Field.of.View==0,]
 cortex_meta_sub <- cortex_metadata[cortex_metadata$Field.of.View==0,]
 p1 <- ggplot(data=cortex_meta_sub, aes(x=X, y=Y, color=factor(celltype))) + geom_point(size=3) +
@@ -65,13 +64,32 @@ for (xi in 1:n_spots){
     i = i + 1
   }
 }
+# Overlay cells with spots
+p1 + geom_path(data=spot_vis, inherit.aes=FALSE, aes(x,y, group=index))
 
-test <- cortex_counts_sub %>% add_column(index=cortex_meta_sub$index) %>% filter(index %in% cells_in_spots$index) %>%
+spot_counts <- data.frame(cortex_counts_sub) %>% add_column(index=cortex_meta_sub$index) %>%
+  filter(index %in% cells_in_spots$index) %>%
   column_to_rownames("index") %>% group_by(cells_in_spots$spot_no) %>%
   summarise(across(everything(), sum)) %>% column_to_rownames(var="cells_in_spots$spot_no")
 
-#geom_path will do open circles, geom_polygon will do filled circles
-p1 + geom_path(data=spot_vis, inherit.aes=FALSE, aes(x,y, group=index))
-
-
 ggplot(data=as.data.frame(t(test[1,-1])), aes(x=V1)) + geom_density()
+
+library(Seurat)
+library(Matrix)
+seurat_obj <- CreateSeuratObject(t(spot_counts))
+seurat_obj[["slice1"]] <- "test"
+
+brain <- SeuratData::LoadData("stxBrain", type = "anterior1")
+brain$slice
+brain@images$anterior1@coordinates
+
+synthvisium_data <- readRDS("D:/spade-benchmark/unit-test/test_sp_data.rds")
+spot_counts_sparse <- as(t(spot_counts), "dgCMatrix")
+# spot_composition <- 
+
+ncelltypes <- length(unique(cells_in_spots$celltype))
+spot_composition <- cells_in_spots %>% count(spot_no, celltype) %>%
+  tidyr::pivot_wider(names_from=celltype, values_from=n, values_fill=0) %>%
+  relocate(spot_no, .after = last_col())
+relative_spot_composition <- spot_composition/rowSums(spot_composition)
+relative_spot_composition$spot_no <- spot_composition$spot_no
