@@ -23,8 +23,8 @@ get_spot_center <- function(start, spot_diameter, cc_distance, k){
 #### CHANGEABLE PARAMS ####
 path <- "D:/spade-benchmark/data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
-dataset <- "ob" # cortex_svz or ob
-fov_no <- 0 # 0-6
+dataset <- "cortex_svz" # cortex_svz or ob
+fov_no <- 2 # 0-6
 
 #### READ IN FILE ####
 annot <- read.csv(paste0(path, dataset, "_cell_type_annotations.csv"))
@@ -120,7 +120,8 @@ for (fov_no in 0:6){
   
   ## 4. SPOT COORDINATES (spots x 2) ##
   spot_coordinates <- gtools::permutations(n=n_spots,r=2,repeats.allowed=T) %>%
-    get_spot_center(start, spot_diameter, cc_distance, .) %>% `colnames<-`(c("x", "y"))
+    get_spot_center(start, spot_diameter, cc_distance, .) %>% `colnames<-`(c("x", "y")) %>%
+    data.frame %>% slice(spot_composition$spot_no) %>% `rownames<-`(spot_composition$spot_no)
   
   ## 5. DATASET PROPERTIES ##
   
@@ -144,12 +145,10 @@ for (fov_no in 0:6){
   # Save plot and add additional information on cells, celltypes and counts
   plot_table <- cells_in_spots %>% group_by(spot_no) %>%
     summarise(total_cells=n(), ncelltypes=length(unique(celltype))) %>%
-    add_column(total_counts=rowSums(spot_counts)) %>% select(-spot_no)
+    add_column(total_counts=rowSums(spot_counts)) %>% column_to_rownames("spot_no")
   p_final <- grid.arrange(p + coord_fixed() + ggtitle(filename) + scale_y_reverse(),
                           tableGrob(plot_table), widths=c(2,1))
   ggsave(paste0("D:/spade-benchmark/data/gold_standard/", filename, ".jpeg"),
          p_final, width = 3000, height = 1600, units="px")
 }
-
-# CHECK Eng2019_ob_fov1 IF COORDINATES ARE CORRECT!
 
