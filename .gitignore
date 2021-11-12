@@ -46,6 +46,12 @@ vignettes/*.pdf
 #### NEXTFLOW ####
 .cache/*
 .nextflow*
+*/work/*
 
 #### SINGULARITY ###
 *.sif
+
+#### MISC ####
+AdRoit*
+data/*
+deconv_proportions/*
