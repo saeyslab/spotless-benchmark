@@ -1,9 +1,15 @@
 #### PROCESS SEQFISH+ DATA ####
+# Count data: https://github.com/CaiGroup/seqFISH-PLUS/raw/master/sourcedata.zip
+# Annotations: https://github.com/CaiGroup/seqFISH-PLUS/raw/master/celltype_annotations.zip
+# Cluster annotations: https://static-content.springer.com/esm/art%3A10.1038%2Fs41586-019-1049-y/MediaObjects/41586_2019_1049_MOESM3_ESM.xlsx
+# Cluster annotations were first modified in excel so there are only two columns - "louvain" and "celltype"
+
 library(dplyr)
 library(tibble)
 library(ggplot2)
 library(Matrix)
 library(gridExtra)
+library(stringr)
 
 #### HELPER FUNCTIONS ####
 # Returns data frame of circle points to visualize with ggplot
@@ -20,10 +26,17 @@ get_spot_center <- function(start, spot_diameter, cc_distance, k){
   return (start+(spot_diameter/2)+(cc_distance*(k-1)))
 }
 
+get_coarse_annot <- function(celltype){
+  conditions <- c(grepl("Excitatory layer", celltype), grepl("Interneuron", celltype))
+  replacements <- c('Excitatory neurons', 'Interneurons')
+  if (all(!conditions)) { return (celltype) }
+  else { return (replacements[which(conditions)] )}
+}
+
 #### CHANGEABLE PARAMS ####
 path <- "D:/spade-benchmark/data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
-dataset <- "cortex_svz" # cortex_svz or ob
+dataset <- "ob" # cortex_svz or ob
 fov_no <- 2 # 0-6
 
 #### READ IN FILE ####
@@ -36,14 +49,26 @@ coords <- read.csv(paste0(path, dataset, "_cellcentroids.csv"))
 # Combine metadata information: cell no., louvain cluster & corresponding cell type,
 # field of view, and x- and y-coordinates
 metadata <- merge(annot, cluster, by="louvain") %>% 
-            relocate(index) %>% arrange(index) %>%
-            add_column(coords[c("Field.of.View", "X", "Y")],)
+            relocate(index) %>% arrange(index) %>% column_to_rownames("index") %>% 
+            add_column(coords[c("Field.of.View", "X", "Y")],) %>%
+            mutate(celltype = R.utils::capitalize(celltype)) %>%
+            mutate(celltype = str_replace(celltype, "Neuroblast$", "Neuroblasts")) %>%
+            mutate(celltype = str_replace(celltype, "Interneuron$", "Interneurons")) %>%
+            mutate(celltype = str_trim(celltype)) %>%
+            mutate(celltype = str_replace(celltype, "Excitatory 5", "Excitatory layer 5")) %>%
+            mutate(celltype_coarse = sapply(celltype, get_coarse_annot)) # Group excitatory neurons together, and interneurons together
+# table(metadata$celltype)
 
 if (dataset == "ob"){
   metadata$Region <- "Olfactory Bulb"
 } else {
   metadata$Region <- coords$Region
 }
+
+# library(Seurat)
+# seurat_obj <- CreateSeuratObject(counts=t(counts), meta.data=metadata) %>% ScaleData() %>%
+#   FindVariableFeatures() %>% RunPCA() %>%  RunUMAP(dims = 1:30)
+# DimPlot(seurat_obj, reduction = "umap", group.by="celltype_coarse", label=TRUE)
 
 # Coordinates are in units of one pixel (=0.103 microns)
 # Each camera FOV is 2,000 pixels * 0.103 micron/pixel = 206 micron
@@ -60,8 +85,8 @@ start <- (fov_size-total_spot_size)/2
 
 # Subset only needed field of view
 for (fov_no in 0:6){
-  counts_subset <- counts[metadata$Field.of.View==fov_no,]
-  meta_subset <- metadata[metadata$Field.of.View==fov_no,]
+  counts_subset <- counts[metadata$Field.of.View==fov_no & metadata$celltype != "Unannotated",]
+  meta_subset <- metadata[metadata$Field.of.View==fov_no & metadata$celltype != "Unannotated",]
   
   # Loop over each spot to collect cells!
   i = 1
@@ -78,7 +103,7 @@ for (fov_no in 0:6){
       spot_vis <- rbind(spot_vis, temp)
       
       # Filter to include only cells that are inside the spot
-      temp <- meta_subset %>%
+      temp <- meta_subset %>% rownames_to_column(var="index") %>%
               filter((X-spot_center_x)**2 + (Y-spot_center_y)**2 <=
                     (spot_diameter/2)**2) %>%
               add_column(spot_no=i)
@@ -101,7 +126,7 @@ for (fov_no in 0:6){
   
   ## 1. COUNT MATRIX (genes x spots) ##
   # Sum up counts across all cells belonging to the same spot
-  spot_counts <- data.frame(counts_subset) %>% add_column(index=meta_subset$index) %>%
+  spot_counts <- data.frame(counts_subset) %>% add_column(index=rownames(meta_subset)) %>%
     filter(index %in% cells_in_spots$index) %>%
     column_to_rownames("index") %>% group_by(cells_in_spots$spot_no) %>%
     summarise(across(everything(), sum)) %>% column_to_rownames(var="cells_in_spots$spot_no")
@@ -151,4 +176,6 @@ for (fov_no in 0:6){
   ggsave(paste0("D:/spade-benchmark/data/gold_standard/", filename, ".jpeg"),
          p_final, width = 3000, height = 1600, units="px")
 }
+
+
 
