@@ -75,7 +75,7 @@ process buildStereoscopeModel {
         source activate stereoscope
         export LD_LIBRARY_PATH=/opt/conda/envs/stereoscope/lib
         stereoscope run --sc_cnt $sc_input --label_colname $params.annot \
-        -n 1000 -o \$PWD -sce $params.epoch
+        -n 1000 -o \$PWD -sce $params.epoch_build
         """
 }
 process fitStereoscopeModel {
@@ -96,7 +96,7 @@ process fitStereoscopeModel {
         source activate stereoscope
         export LD_LIBRARY_PATH=/opt/conda/envs/stereoscope/lib
         stereoscope run --sc_fit $r_file $logits_file \
-        --st_cnt $sp_input -o \$PWD -n 1000 -ste $params.epoch
+        --st_cnt $sp_input -o \$PWD -n 1000 -ste $params.epoch_fit
         mv $sp_file_basename/W*.tsv $output
         """
 
@@ -116,6 +116,62 @@ workflow runStereoscope {
                             buildStereoscopeModel.out.r_file,
                             buildStereoscopeModel.out.logits_file)
         formatTSVFile(fitStereoscopeModel.out)
+    emit:
+        formatTSVFile.out
+    
+}
+
+process buildCell2locationModel {
+    container 'csangara/spade_cell2location:latest'
+    echo true
+
+    input:
+        path (sc_input)
+    output:
+        path "sc.h5ad", emit: model
+
+    script:
+        sample_id_arg = ( params.sampleID ==~ /none/ ? "" : "-s $params.sampleID" )
+        """
+        echo "Building cell2location model..."
+        source activate cell2loc_env
+        export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
+        python $params.rootdir/spade-benchmark/scripts/deconvolution/cell2location/build_model.py \
+            $sc_input $params.cuda_device -a $params.annot $sample_id_arg -o \$PWD 
+        """
+
+}
+
+process fitCell2locationModel {
+    container 'csangara/spade_cell2location:latest'
+    echo true
+
+    input:
+        path (sp_input)
+        path (model)
+    output:
+        tuple val('cell2location'), path("$output")
+    script:
+        output = "${params.output}_cell2location${params.output_suffix}.preformat"
+
+        """
+        echo "Model file $model, fitting cell2location model..."
+        source activate cell2loc_env
+        export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
+
+        python $params.rootdir/spade-benchmark/scripts/deconvolution/cell2location/fit_model.py \
+            $sp_input $model $params.cuda_device -o \$PWD
+        # mv proportions.tsv $output
+        
+        """
+}
+
+workflow runCell2location {
+    main:
+        buildCell2locationModel(convert_sc(params.sc_input, "seurat"))
+        fitCell2locationModel(convert_sp(params.sp_input, "synthvisium"),
+                            buildCell2locationModel.out.model)
+        formatTSVFile(fitCell2locationModel.out)
     emit:
         formatTSVFile.out
     
