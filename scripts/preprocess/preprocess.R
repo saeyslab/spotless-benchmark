@@ -65,9 +65,12 @@ if (dataset == "ob"){
   metadata$Region <- coords$Region
 }
 
-# library(Seurat)
-# seurat_obj <- CreateSeuratObject(counts=t(counts), meta.data=metadata) %>% ScaleData() %>%
-#   FindVariableFeatures() %>% RunPCA() %>%  RunUMAP(dims = 1:30)
+library(Seurat)
+seurat_obj <- CreateSeuratObject(counts=t(counts[metadata$celltype != "Unannotated",]),
+                                 meta.data=metadata[metadata$celltype != "Unannotated",])
+saveRDS(seurat_obj, paste0("D:/spade-benchmark/data/gold_standard/reference/reference_", dataset, ".rds"))
+# seurat_obj <- seurat_obj %>% ScaleData() %>% FindVariableFeatures() %>%
+#   RunPCA() %>%  RunUMAP(dims = 1:30)
 # DimPlot(seurat_obj, reduction = "umap", group.by="celltype_coarse", label=TRUE)
 
 # Coordinates are in units of one pixel (=0.103 microns)
