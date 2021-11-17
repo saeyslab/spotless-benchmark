@@ -1,0 +1,3 @@
+sp_input: "/mnt/d/spade-benchmark/data/gold_standard_1/Eng2019_cortex_svz*.rds"
+sc_input: "/mnt/d/spade-benchmark/data/gold_standard_1/reference/reference_cortex_svz.rds"
+  
