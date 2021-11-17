@@ -1,4 +1,4 @@
-# Build Seurat-Disk
+# Build SeuratDisk with old Seurat version
 FROM csangara/seurat:3.2.3
 RUN R -e "install.packages(c('remotes', 'R.utils', 'hdf5r')); \
     install.packages('https://cran.r-project.org/src/contrib/Archive/SeuratObject/SeuratObject_4.0.0.tar.gz', repo=NULL, type='source')"
