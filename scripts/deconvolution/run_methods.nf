@@ -77,13 +77,14 @@ process buildStereoscopeModel {
         path "logits*.tsv", emit: logits_file
 
     script:
+        epochs = ( params.epoch_build ==~ /default/ ? "" : "-sce $params.epoch_build")
 
         """
         echo "Received $sc_input, now building stereoscope model..."
         source activate stereoscope
         export LD_LIBRARY_PATH=/opt/conda/envs/stereoscope/lib
         stereoscope run --sc_cnt $sc_input --label_colname $params.annot \
-        -n 1000 -o \$PWD -sce $params.epoch_build
+        -n 5000 $epochs -o \$PWD
         """
 }
 process fitStereoscopeModel {
@@ -98,13 +99,14 @@ process fitStereoscopeModel {
     script:
         output = "${params.output}_stereoscope${params.output_suffix}.preformat"
         sp_file_basename = file(sp_input).getSimpleName()
+        epochs = ( params.epoch_fit ==~ /default/ ? "" : "-ste $params.epoch_fit")
 
         """
         echo "Model files $r_file and $logits_file, fitting stereoscope model..."
         source activate stereoscope
         export LD_LIBRARY_PATH=/opt/conda/envs/stereoscope/lib
         stereoscope run --sc_fit $r_file $logits_file \
-        --st_cnt $sp_input -o \$PWD -n 1000 -ste $params.epoch_fit
+        --st_cnt $sp_input -n 5000 $epochs -o \$PWD
         mv $sp_file_basename/W*.tsv $output
         """
 }
@@ -112,7 +114,8 @@ process fitStereoscopeModel {
 
 workflow runStereoscope {
     take:
-        pair_input_ch
+        sc_input
+        sp_input
     main:
         /*
         def modeldir = new File("$params.modeldir/stereoscope${params.output_suffix}")
@@ -120,20 +123,10 @@ workflow runStereoscope {
         if (!modeldir.exists()){
             buildStereoscopeModel(convertRDStoH5AD(params.sc_input))
         }
-        
-        buildStereoscopeModel(convert_sc(params.sc_input, "seurat"))
-        fitStereoscopeModel(convert_sp(params.sp_input, "synthvisium"),
-                            buildStereoscopeModel.out.r_file,
-                            buildStereoscopeModel.out.logits_file)
-        formatTSVFile(fitStereoscopeModel.out)
         */
-        pair_input_ch.multiMap { sc_file, sp_file ->
-                                sc_input: sc_file
-                                sp_input: sp_file
-                                }.set{ input }
 
-        buildStereoscopeModel(input.sc_input)
-        fitStereoscopeModel(input.sp_input,
+        buildStereoscopeModel(sc_input)
+        fitStereoscopeModel(sp_input,
                             buildStereoscopeModel.out.r_file,
                             buildStereoscopeModel.out.logits_file)
         formatTSVFile(fitStereoscopeModel.out)
@@ -154,12 +147,13 @@ process buildCell2locationModel {
 
     script:
         sample_id_arg = ( params.sampleID ==~ /none/ ? "" : "-s $params.sampleID" )
+        epochs = ( params.epoch_build ==~ /default/ ? "" : "-e $params.epoch_build")
         """
         echo "Building cell2location model..."
         source activate cell2loc_env
         export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
         python $params.rootdir/spade-benchmark/scripts/deconvolution/cell2location/build_model.py \
-            $sc_input $params.cuda_device -a $params.annot $sample_id_arg -o \$PWD -e $params.epoch_build
+            $sc_input $params.cuda_device -a $params.annot $sample_id_arg $epochs -o \$PWD 
         """
 
 }
@@ -175,6 +169,7 @@ process fitCell2locationModel {
         tuple val('cell2location'), path("$output")
     script:
         output = "${params.output}_cell2location${params.output_suffix}.preformat"
+        epochs = ( params.epoch_fit ==~ /default/ ? "" : "-e $params.epoch_fit")
 
         """
         echo "Model file $model, fitting cell2location model..."
@@ -182,7 +177,7 @@ process fitCell2locationModel {
         export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
 
         python $params.rootdir/spade-benchmark/scripts/deconvolution/cell2location/fit_model.py \
-            $sp_input $model $params.cuda_device -o \$PWD -e $params.epoch_fit
+            $sp_input $model $params.cuda_device $epochs -o \$PWD 
         mv proportions.tsv $output
         
         """
@@ -190,15 +185,11 @@ process fitCell2locationModel {
 
 workflow runCell2location {
     take:
-        pair_input_ch
+        sc_input
+        sp_input
     main:
-        pair_input_ch.multiMap { sc_file, sp_file ->
-                                sc_input: sc_file
-                                sp_input: sp_file
-                                }.set{ input }
-
-        buildCell2locationModel(input.sc_input)
-        fitCell2locationModel(input.sp_input,
+        buildCell2locationModel(sc_input)
+        fitCell2locationModel(sp_input,
                             buildCell2locationModel.out.model)
         formatTSVFile(fitCell2locationModel.out)
     emit:
@@ -214,8 +205,9 @@ workflow runMethods {
         // String matching to check which method to run
         all_methods = "music,rctd,spotlight,stereoscope,cell2location"
         methods = ( params.methods ==~ /all/ ? all_methods : params.methods )
-        output_ch = Channel.empty()
+        output_ch = Channel.empty() // collect output channels
 
+        // R methods
         if ( methods =~ /music/ ){
             runMusic(pair_input_ch)
             output_ch = output_ch.mix(runMusic.out)
@@ -230,15 +222,29 @@ workflow runMethods {
             runSpotlight(pair_input_ch)
             output_ch = output_ch.mix(runSpotlight.out)
         }
+        // Python methods
+        // First check if there are python methods in the input params
+        python_methods = ["stereoscope","cell2location"]
+        methods_list = Arrays.asList(methods.split(','))
+        if ( !methods_list.disjoint(python_methods) ){
 
-        if ( methods =~ /stereoscope/ ) {
-            runStereoscope(pair_input_ch)
-            output_ch = output_ch.mix(runStereoscope.out)
-        }
+            // Separate pair of inputs into their own channels, then convert
+            input = pair_input_ch.multiMap { sc_file, sp_file ->
+                                sc_input: sc_file
+                                sp_input: sp_file}
 
-        if ( methods =~ /cell2location/ ) {
-            runCell2location(pair_input_ch)
-            output_ch = output_ch.mix(runCell2location.out)
+            sc_input_h5ad = convert_sc(input.sc_input, params.sc_type)
+            sp_input_h5ad = convert_sp(input.sp_input, params.sp_type)
+
+            if ( methods =~ /stereoscope/ ) {
+                runStereoscope(sc_input_h5ad, sp_input_h5ad)
+                output_ch = output_ch.mix(runStereoscope.out)
+            }
+
+            if ( methods =~ /cell2location/ ) {
+                runCell2location(sc_input_h5ad, sp_input_h5ad)
+                output_ch = output_ch.mix(runCell2location.out)
+            }
         }
 
     emit:
