@@ -85,22 +85,29 @@ def main():
                         # multiplicative technical effects (platform, 3' vs 5', donor effect)
                         categorical_covariate_keys=args.tech_column)
     
-    # # Run the model - use all data for training (validation not implemented yet, train_size=1)
-    # from cell2location.models import RegressionModel
-    # mod = RegressionModel(adata_scrna_raw) 
-    # mod.train(max_epochs=args.epochs, batch_size=2500, train_size=1, lr=0.002, use_gpu=cuda_device.isdigit())
+    # Run the model - use all data for training (validation not implemented yet, train_size=1)
+    from cell2location.models import RegressionModel
+    mod = RegressionModel(adata_scrna_raw) 
+    mod.train(max_epochs=args.epochs, batch_size=2500, train_size=1, lr=0.002, use_gpu=cuda_device.isdigit())
 
-    # # Export the estimated cell abundance (summary of the posterior distribution).
-    # adata_scrna_raw = mod.export_posterior(
-    #     adata_scrna_raw, sample_kwargs={'num_samples': 1000, 'batch_size': 2500, 'use_gpu': cuda_device.isdigit()}
-    # )
+    # Export the estimated cell abundance (summary of the posterior distribution).
+    adata_scrna_raw = mod.export_posterior(
+        adata_scrna_raw, sample_kwargs={'num_samples': 1000, 'batch_size': 2500, 'use_gpu': cuda_device.isdigit()}
+    )
 
-    # # Save model and anndata object with results
-    # mod.save(output_folder, overwrite=True)
-    # adata_scrna_raw.write(output_folder + '/sc.h5ad')
+    # Save model and anndata object with results
+    mod.save(output_folder, overwrite=True)
 
-    with open(output_folder + '/sc.h5ad', "w") as f:
-        print("hello world", file=f)
+    try:
+        adata_scrna_raw.write(output_folder + '/sc.h5ad')
+    except ValueError:
+        print("There seems to be an issue with the conversion. Renaming columns...")
+        os.remove(output_folder + '/sc.h5ad')
+        adata_scrna_raw.__dict__['_raw'].__dict__['_var'] = adata_scrna_raw.__dict__['_raw'].__dict__['_var'].rename(columns={'_index': 'features'})
+        adata_scrna_raw.write(output_folder + '/sc.h5ad')
+
+    # with open(output_folder + '/sc.h5ad', "w") as f:
+    #    print("hello world", file=f)
 
 
 if __name__ == '__main__':
