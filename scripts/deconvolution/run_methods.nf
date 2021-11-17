@@ -7,15 +7,17 @@ process runMusic {
     container 'csangara/spade_music:latest'
     publishDir params.outdir, mode: 'copy'
 
+    input:
+        tuple path (sc_input), path (sp_input)
     output:
         tuple val('music'), path("$output")
-
+    
     script:
         output = "${params.output}_music${params.output_suffix}"
 
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/music/script_nf.R \
-            --sc_input $params.sc_input --sp_input $params.sp_input \
+            --sc_input $sc_input --sp_input $sp_input \
             --annot $params.annot --output $output --sampleID $params.sampleID
         """
 
@@ -26,15 +28,18 @@ process runSpotlight {
     container 'csangara/spade_spotlight:latest'
     publishDir params.outdir, mode: 'copy'
 
+    input:
+        tuple path (sc_input), path (sp_input)
+
     output:
-        tuple val('spotlight'), path("$output")
+        tuple val('spotlight'), path("$output"), emit: props_file, optional: true
 
     script:
         output = "${params.output}_spotlight${params.output_suffix}"
 
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/spotlight/script_nf.R \
-            --sc_input $params.sc_input --sp_input $params.sp_input \
+            --sc_input $sc_input --sp_input $sp_input \
             --annot $params.annot --output $output
         """
 
@@ -45,6 +50,9 @@ process runRCTD {
     container 'csangara/spade_rctd:latest'
     publishDir params.outdir, mode: 'copy'
 
+    input:
+        tuple path (sc_input), path (sp_input)
+
     output:
         tuple val('rctd'), path("$output")
 
@@ -52,7 +60,7 @@ process runRCTD {
         output = "${params.output}_rctd${params.output_suffix}"
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/rctd/script_nf.R \
-            --sc_input $params.sc_input --sp_input $params.sp_input \
+            --sc_input $sc_input --sp_input $sp_input \
             --annot $params.annot --output $output
         """
 
@@ -99,9 +107,12 @@ process fitStereoscopeModel {
         --st_cnt $sp_input -o \$PWD -n 1000 -ste $params.epoch_fit
         mv $sp_file_basename/W*.tsv $output
         """
-
 }
+
+
 workflow runStereoscope {
+    take:
+        pair_input_ch
     main:
         /*
         def modeldir = new File("$params.modeldir/stereoscope${params.output_suffix}")
@@ -109,13 +120,24 @@ workflow runStereoscope {
         if (!modeldir.exists()){
             buildStereoscopeModel(convertRDStoH5AD(params.sc_input))
         }
-        */
-
+        
         buildStereoscopeModel(convert_sc(params.sc_input, "seurat"))
         fitStereoscopeModel(convert_sp(params.sp_input, "synthvisium"),
                             buildStereoscopeModel.out.r_file,
                             buildStereoscopeModel.out.logits_file)
         formatTSVFile(fitStereoscopeModel.out)
+        */
+        pair_input_ch.multiMap { sc_file, sp_file ->
+                                sc_input: sc_file
+                                sp_input: sp_file
+                                }.set{ input }
+
+        buildStereoscopeModel(input.sc_input)
+        fitStereoscopeModel(input.sp_input,
+                            buildStereoscopeModel.out.r_file,
+                            buildStereoscopeModel.out.logits_file)
+        formatTSVFile(fitStereoscopeModel.out)
+
     emit:
         formatTSVFile.out
     
@@ -137,7 +159,7 @@ process buildCell2locationModel {
         source activate cell2loc_env
         export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
         python $params.rootdir/spade-benchmark/scripts/deconvolution/cell2location/build_model.py \
-            $sc_input $params.cuda_device -a $params.annot $sample_id_arg -o \$PWD 
+            $sc_input $params.cuda_device -a $params.annot $sample_id_arg -o \$PWD -e $params.epoch_build
         """
 
 }
@@ -160,16 +182,23 @@ process fitCell2locationModel {
         export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
 
         python $params.rootdir/spade-benchmark/scripts/deconvolution/cell2location/fit_model.py \
-            $sp_input $model $params.cuda_device -o \$PWD
-        # mv proportions.tsv $output
+            $sp_input $model $params.cuda_device -o \$PWD -e $params.epoch_fit
+        mv proportions.tsv $output
         
         """
 }
 
 workflow runCell2location {
+    take:
+        pair_input_ch
     main:
-        buildCell2locationModel(convert_sc(params.sc_input, "seurat"))
-        fitCell2locationModel(convert_sp(params.sp_input, "synthvisium"),
+        pair_input_ch.multiMap { sc_file, sp_file ->
+                                sc_input: sc_file
+                                sp_input: sp_file
+                                }.set{ input }
+
+        buildCell2locationModel(input.sc_input)
+        fitCell2locationModel(input.sp_input,
                             buildCell2locationModel.out.model)
         formatTSVFile(fitCell2locationModel.out)
     emit:
@@ -178,18 +207,41 @@ workflow runCell2location {
 }
 
 workflow runMethods {
-    // String matching to check which method to run
+    take:
+        pair_input_ch
+
     main:
-        // In input is all, run all methods
-        all_methods = "music,rctd,spotlight,stereoscope"
+        // String matching to check which method to run
+        all_methods = "music,rctd,spotlight,stereoscope,cell2location"
         methods = ( params.methods ==~ /all/ ? all_methods : params.methods )
-        if ( methods =~ /music/ ){ runMusic() }
-        if ( methods =~ /rctd/ ){ runRCTD() }
-        if ( methods =~ /spotlight/ ){ runSpotlight() }
-        if ( methods =~ /stereoscope/ ) { runStereoscope() }
+        output_ch = Channel.empty()
+
+        if ( methods =~ /music/ ){
+            runMusic(pair_input_ch)
+            output_ch = output_ch.mix(runMusic.out)
+        }
+
+        if ( methods =~ /rctd/ ){
+            runRCTD(pair_input_ch)
+            output_ch = output_ch.mix(runRCTD.out)
+        }
+        
+        if ( methods =~ /spotlight/ ){
+            runSpotlight(pair_input_ch)
+            output_ch = output_ch.mix(runSpotlight.out)
+        }
+
+        if ( methods =~ /stereoscope/ ) {
+            runStereoscope(pair_input_ch)
+            output_ch = output_ch.mix(runStereoscope.out)
+        }
+
+        if ( methods =~ /cell2location/ ) {
+            runCell2location(pair_input_ch)
+            output_ch = output_ch.mix(runCell2location.out)
+        }
 
     emit:
-        runMusic.out.mix(runRCTD.out, runSpotlight.out, runStereoscope.out)
-        
+        output_ch
 }
 
