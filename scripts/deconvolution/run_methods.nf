@@ -33,7 +33,7 @@ process runSpotlight {
         tuple path (sc_input), path (sp_input)
 
     output:
-        tuple val('spotlight'), path("$output"), emit: props_file
+        tuple val('spotlight'), path("$output")
 
     script:
         output_suffix = file(sp_input).getSimpleName()
@@ -76,8 +76,7 @@ process buildStereoscopeModel {
     input:
         path (sc_input)
     output:
-        path "R*.tsv", emit: r_file
-        path "logits*.tsv", emit: logits_file
+        tuple path ("R*.tsv"), path ("logits*.tsv")
 
     script:
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-sce $params.epoch_build")
@@ -91,14 +90,13 @@ process buildStereoscopeModel {
         """
 }
 process fitStereoscopeModel {
-    tag "$output_suffix"
+    tag "$sp_file_basename"
     container 'csangara/spade_stereoscope:latest'
     echo true
 
     input:
         path (sp_input)
-        path (r_file)
-        path (logits_file)
+        tuple path (r_file), path (logits_file)
     output:
         tuple val('stereoscope'), path("$output")
     script:
@@ -116,31 +114,6 @@ process fitStereoscopeModel {
         """
 }
 
-
-workflow runStereoscope {
-    take:
-        sc_input
-        sp_input
-    main:
-        /*
-        def modeldir = new File("$params.modeldir/stereoscope${params.output_suffix}")
-
-        if (!modeldir.exists()){
-            buildStereoscopeModel(convertRDStoH5AD(params.sc_input))
-        }
-        */
-
-        buildStereoscopeModel(sc_input)
-        fitStereoscopeModel(sp_input,
-                            buildStereoscopeModel.out.r_file,
-                            buildStereoscopeModel.out.logits_file)
-        formatTSVFile(fitStereoscopeModel.out)
-
-    emit:
-        formatTSVFile.out
-    
-}
-
 process buildCell2locationModel {
     container 'csangara/spade_cell2location:latest'
     echo true
@@ -148,7 +121,7 @@ process buildCell2locationModel {
     input:
         path (sc_input)
     output:
-        path "sc.h5ad", emit: model
+        path "sc.h5ad"
 
     script:
         sample_id_arg = ( params.sampleID ==~ /none/ ? "" : "-s $params.sampleID" )
@@ -190,20 +163,6 @@ process fitCell2locationModel {
         """
 }
 
-workflow runCell2location {
-    take:
-        sc_input
-        sp_input
-    main:
-        buildCell2locationModel(sc_input)
-        fitCell2locationModel(sp_input,
-                            buildCell2locationModel.out.model)
-        formatTSVFile(fitCell2locationModel.out)
-    emit:
-        formatTSVFile.out
-    
-}
-
 workflow runMethods {
     take:
         sc_input_ch
@@ -233,31 +192,44 @@ workflow runMethods {
         }
         // Python methods
         // First check if there are python methods in the input params
+        // before performing conversion of data to h5ad
         python_methods = ["stereoscope","cell2location"]
         methods_list = Arrays.asList(methods.split(','))
         if ( !methods_list.disjoint(python_methods) ){
-
-            // Separate pair of inputs into their own channels, then convert
-            // input = pair_input_ch.multiMap { sc_file, sp_file ->
-            //                    sc_input: sc_file
-            //                    sp_input: sp_file}
 
             sc_input_h5ad = convert_sc(sc_input_ch, params.sc_type)
             sp_input_h5ad = convert_sp(sp_input_ch, params.sp_type)
 
             if ( methods =~ /stereoscope/ ) {
                 buildStereoscopeModel(sc_input_h5ad)
-                fitStereoscopeModel(sp_input_h5ad,
-                                    buildStereoscopeModel.out.r_file,
-                                    buildStereoscopeModel.out.logits_file)
-                formatStereoscope(fitStereoscopeModel.out)
-                // runStereoscope(sc_input_h5ad, sp_input_h5ad)
+
+                // Repeat model output for each spatial file
+                buildStereoscopeModel.out.combine(sp_input_h5ad)
+                .multiMap { r_file, logits_file, sp_file ->
+                            model: tuple r_file, logits_file
+                            sp_input_h5ad: sp_file }
+                .set{ stereo_combined_ch }
+
+                fitStereoscopeModel(stereo_combined_ch.sp_input_h5ad,
+                                    stereo_combined_ch.model)
+                formatStereoscope(fitStereoscopeModel.out) 
                 output_ch = output_ch.mix(formatStereoscope.out)
             }
 
             if ( methods =~ /cell2location/ ) {
-                runCell2location(sc_input_h5ad, sp_input_h5ad)
-                output_ch = output_ch.mix(runCell2location.out)
+                buildCell2locationModel(sc_input_h5ad)
+
+                // Repeat model output for each spatial file
+                buildCell2locationModel.out.combine(sp_input_h5ad)
+                .multiMap { model_sc_file, sp_file ->
+                            model: model_sc_file
+                            sp_input_h5ad: sp_file }
+                .set{ c2l_combined_ch }
+
+                fitCell2locationModel(c2l_combined_ch.sp_input_h5ad,
+                                      c2l_combined_ch.model)
+                formatC2L(fitCell2locationModel.out)
+                output_ch = output_ch.mix(formatC2L.out)
             }
         }
 
