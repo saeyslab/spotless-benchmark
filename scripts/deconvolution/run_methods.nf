@@ -1,9 +1,9 @@
 nextflow.enable.dsl=2
 include { convertRDStoH5AD as convert_sc ; convertRDStoH5AD as convert_sp } from '../helper_processes'
-include { formatTSVFile } from '../helper_processes'
+include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L } from '../helper_processes'
 
 process runMusic {
-    tag "$params.output_suffix"
+    tag "$output_suffix"
     container 'csangara/spade_music:latest'
     publishDir params.outdir, mode: 'copy'
 
@@ -13,7 +13,8 @@ process runMusic {
         tuple val('music'), path("$output")
     
     script:
-        output = "${params.output}_music${params.output_suffix}"
+        output_suffix = file(sp_input).getSimpleName()
+        output = "${params.output}_music_${output_suffix}"
 
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/music/script_nf.R \
@@ -24,7 +25,7 @@ process runMusic {
 }
 
 process runSpotlight {
-    tag "$params.output_suffix"
+    tag "$output_suffix"
     container 'csangara/spade_spotlight:latest'
     publishDir params.outdir, mode: 'copy'
 
@@ -32,10 +33,11 @@ process runSpotlight {
         tuple path (sc_input), path (sp_input)
 
     output:
-        tuple val('spotlight'), path("$output"), emit: props_file, optional: true
+        tuple val('spotlight'), path("$output"), emit: props_file
 
     script:
-        output = "${params.output}_spotlight${params.output_suffix}"
+        output_suffix = file(sp_input).getSimpleName()
+        output = "${params.output}_spotlight_${output_suffix}"
 
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/spotlight/script_nf.R \
@@ -46,7 +48,7 @@ process runSpotlight {
 }
 
 process runRCTD {
-    tag "$params.output_suffix"
+    tag "$output_suffix"
     container 'csangara/spade_rctd:latest'
     publishDir params.outdir, mode: 'copy'
 
@@ -57,7 +59,8 @@ process runRCTD {
         tuple val('rctd'), path("$output")
 
     script:
-        output = "${params.output}_rctd${params.output_suffix}"
+        output_suffix = file(sp_input).getSimpleName()
+        output = "${params.output}_rctd_${output_suffix}"
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/rctd/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
@@ -88,8 +91,10 @@ process buildStereoscopeModel {
         """
 }
 process fitStereoscopeModel {
+    tag "$output_suffix"
     container 'csangara/spade_stereoscope:latest'
     echo true
+
     input:
         path (sp_input)
         path (r_file)
@@ -97,8 +102,8 @@ process fitStereoscopeModel {
     output:
         tuple val('stereoscope'), path("$output")
     script:
-        output = "${params.output}_stereoscope${params.output_suffix}.preformat"
         sp_file_basename = file(sp_input).getSimpleName()
+        output = "${params.output}_stereoscope_${sp_file_basename}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-ste $params.epoch_fit")
 
         """
@@ -159,6 +164,7 @@ process buildCell2locationModel {
 }
 
 process fitCell2locationModel {
+    tag "$output_suffix"
     container 'csangara/spade_cell2location:latest'
     echo true
 
@@ -168,7 +174,8 @@ process fitCell2locationModel {
     output:
         tuple val('cell2location'), path("$output")
     script:
-        output = "${params.output}_cell2location${params.output_suffix}.preformat"
+        output_suffix = file(sp_input).getSimpleName()
+        output = "${params.output}_cell2location_${output_suffix}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-e $params.epoch_fit")
 
         """
@@ -199,7 +206,8 @@ workflow runCell2location {
 
 workflow runMethods {
     take:
-        pair_input_ch
+        sc_input_ch
+        sp_input_ch
 
     main:
         // String matching to check which method to run
@@ -208,6 +216,7 @@ workflow runMethods {
         output_ch = Channel.empty() // collect output channels
 
         // R methods
+        pair_input_ch = sc_input_ch.combine(sp_input_ch)
         if ( methods =~ /music/ ){
             runMusic(pair_input_ch)
             output_ch = output_ch.mix(runMusic.out)
@@ -229,16 +238,21 @@ workflow runMethods {
         if ( !methods_list.disjoint(python_methods) ){
 
             // Separate pair of inputs into their own channels, then convert
-            input = pair_input_ch.multiMap { sc_file, sp_file ->
-                                sc_input: sc_file
-                                sp_input: sp_file}
+            // input = pair_input_ch.multiMap { sc_file, sp_file ->
+            //                    sc_input: sc_file
+            //                    sp_input: sp_file}
 
-            sc_input_h5ad = convert_sc(input.sc_input, params.sc_type)
-            sp_input_h5ad = convert_sp(input.sp_input, params.sp_type)
+            sc_input_h5ad = convert_sc(sc_input_ch, params.sc_type)
+            sp_input_h5ad = convert_sp(sp_input_ch, params.sp_type)
 
             if ( methods =~ /stereoscope/ ) {
-                runStereoscope(sc_input_h5ad, sp_input_h5ad)
-                output_ch = output_ch.mix(runStereoscope.out)
+                buildStereoscopeModel(sc_input_h5ad)
+                fitStereoscopeModel(sp_input_h5ad,
+                                    buildStereoscopeModel.out.r_file,
+                                    buildStereoscopeModel.out.logits_file)
+                formatStereoscope(fitStereoscopeModel.out)
+                // runStereoscope(sc_input_h5ad, sp_input_h5ad)
+                output_ch = output_ch.mix(formatStereoscope.out)
             }
 
             if ( methods =~ /cell2location/ ) {
