@@ -5,7 +5,7 @@ include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L } from 
 process runMusic {
     tag "$output_suffix"
     container 'csangara/spade_music:latest'
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.outdir_props, mode: 'copy'
 
     input:
         tuple path (sc_input), path (sp_input)
@@ -14,7 +14,7 @@ process runMusic {
     
     script:
         output_suffix = file(sp_input).getSimpleName()
-        output = "${params.output}_music_${output_suffix}"
+        output = "proportions_music_${output_suffix}"
 
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/music/script_nf.R \
@@ -27,7 +27,7 @@ process runMusic {
 process runSpotlight {
     tag "$output_suffix"
     container 'csangara/spade_spotlight:latest'
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.outdir_props, mode: 'copy'
 
     input:
         tuple path (sc_input), path (sp_input)
@@ -37,7 +37,7 @@ process runSpotlight {
 
     script:
         output_suffix = file(sp_input).getSimpleName()
-        output = "${params.output}_spotlight_${output_suffix}"
+        output = "proportions_spotlight_${output_suffix}"
 
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/spotlight/script_nf.R \
@@ -50,7 +50,7 @@ process runSpotlight {
 process runRCTD {
     tag "$output_suffix"
     container 'csangara/spade_rctd:latest'
-    publishDir params.outdir, mode: 'copy'
+    publishDir params.outdir_props, mode: 'copy'
 
     input:
         tuple path (sc_input), path (sp_input)
@@ -60,7 +60,7 @@ process runRCTD {
 
     script:
         output_suffix = file(sp_input).getSimpleName()
-        output = "${params.output}_rctd_${output_suffix}"
+        output = "proportions_rctd_${output_suffix}"
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/rctd/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
@@ -101,7 +101,7 @@ process fitStereoscopeModel {
         tuple val('stereoscope'), path("$output")
     script:
         sp_file_basename = file(sp_input).getSimpleName()
-        output = "${params.output}_stereoscope_${sp_file_basename}.preformat"
+        output = "proportions_stereoscope_${sp_file_basename}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-ste $params.epoch_fit")
 
         """
@@ -148,7 +148,7 @@ process fitCell2locationModel {
         tuple val('cell2location'), path("$output")
     script:
         output_suffix = file(sp_input).getSimpleName()
-        output = "${params.output}_cell2location_${output_suffix}.preformat"
+        output = "proportions_cell2location_${output_suffix}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-e $params.epoch_fit")
 
         """

@@ -1,5 +1,6 @@
 process computeMetrics {
     container 'csangara/spade_eval:latest'
+    publishDir params.outdir_metrics, mode: 'copy'
     echo true
     input:
         tuple val (method_name), path (props_file)
