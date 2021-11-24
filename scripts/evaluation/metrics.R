@@ -42,10 +42,16 @@ if (par$sp_type == "synthvisium"){
 # Remove all spaces and dots from cell names, sort them
 known_props <- ground_truth_data$relative_spot_composition[,1:ncells]
 colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
-known_props <- known_props[,sort(colnames(known_props), method="shell")]
 
 # Load deconvolution results
 deconv_matrix <- read.table(par$props_file, sep="\t", header=TRUE)
+
+# Match columns of known and deconv results
+columns_to_add <- colnames(deconv_matrix)[!colnames(deconv_matrix) %in% colnames(known_props)]
+known_props <- cbind(known_props,
+                     matrix(0, nrow=nrow(known_props), ncol=length(columns_to_add),
+                            dimnames = list(rownames(known_props), columns_to_add)))
+known_props <- known_props[,sort(colnames(known_props), method="shell")]
 
 # Correlation and RMSE
 corr_spots <- mean(diag(cor(t(known_props), t(deconv_matrix))))
