@@ -29,27 +29,20 @@ getConfusionMatrix <- function(known_props, test_props){
 
 par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 
-# DEFAULT PARAMETERS
-# par <- list(
-#   # props_file = "/mnt/d/spade-benchmark/proportions_music",
-#   props_file = "/mnt/d/spade-benchmark/scripts/deconvolution/music/proportions.tsv",
-#   sp_input = "/mnt/d/spade-benchmark/unit-test/test_sp_data.rds",
-#   sp_type = "synthvisium",
-#   output = "tempMetrics"
-# )
-# par$output <- args$output
-# par[names(args)] <- args
-
 # Load reference data
-if (par$sp_type == "synthvisium"){
-  synthetic_visium_data <- readRDS(par$sp_input)
-  ncells <- length(colnames(synthetic_visium_data$spot_composition))-2
-  
-  # Remove all spaces and dots from cell names, sort them
-  known_props <- synthetic_visium_data$relative_spot_composition[,1:ncells]
-  colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
-  known_props <- known_props[,sort(colnames(known_props), method="shell")]
+ground_truth_data <- readRDS(par$sp_input)
+ncells <- ncol(ground_truth_data$spot_composition)
+
+if (par$sp_type == "synthvisium"){ 
+  ncells <- ncells - 2
+} else {
+  ncells <- ncells - 1
 }
+
+# Remove all spaces and dots from cell names, sort them
+known_props <- ground_truth_data$relative_spot_composition[,1:ncells]
+colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
+known_props <- known_props[,sort(colnames(known_props), method="shell")]
 
 # Load deconvolution results
 deconv_matrix <- read.table(par$props_file, sep="\t", header=TRUE)
