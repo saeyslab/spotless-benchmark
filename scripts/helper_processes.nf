@@ -1,3 +1,5 @@
+nextflow.enable.dsl=2
+
 process convertRDStoH5AD {
     container 'csangara/seuratdisk:latest'
 
@@ -16,7 +18,10 @@ process convertRDStoH5AD {
         """
 }
 
+
 process formatTSVFile {
+    publishDir params.outdir, mode: 'copy'
+
     input:
         tuple val(method_name), path (tsv_file)
     output:
