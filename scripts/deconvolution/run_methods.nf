@@ -3,7 +3,7 @@ include { convertRDStoH5AD as convert_sc ; convertRDStoH5AD as convert_sp } from
 include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L } from '../helper_processes'
 
 process runMusic {
-    tag "$output_suffix"
+    tag "music_$output_suffix"
     container 'csangara/spade_music:latest'
     publishDir params.outdir_props, mode: 'copy'
 
@@ -25,7 +25,7 @@ process runMusic {
 }
 
 process runSpotlight {
-    tag "$output_suffix"
+    tag "spotlight_$output_suffix"
     container 'csangara/spade_spotlight:latest'
     publishDir params.outdir_props, mode: 'copy'
 
@@ -48,7 +48,7 @@ process runSpotlight {
 }
 
 process runRCTD {
-    tag "$output_suffix"
+    tag "rctd_$output_suffix"
     container 'csangara/spade_rctd:latest'
     publishDir params.outdir_props, mode: 'copy'
 
@@ -70,6 +70,7 @@ process runRCTD {
 }
 
 process buildStereoscopeModel {
+    tag 'stereo_build'
     container 'csangara/spade_stereoscope:latest'
     echo true
 
@@ -90,7 +91,7 @@ process buildStereoscopeModel {
         """
 }
 process fitStereoscopeModel {
-    tag "$sp_file_basename"
+    tag "stereo_$sp_file_basename"
     container 'csangara/spade_stereoscope:latest'
     echo true
 
@@ -115,6 +116,7 @@ process fitStereoscopeModel {
 }
 
 process buildCell2locationModel {
+    tag 'c2l_build'
     container 'csangara/spade_cell2location:latest'
     echo true
 
@@ -137,7 +139,7 @@ process buildCell2locationModel {
 }
 
 process fitCell2locationModel {
-    tag "$output_suffix"
+    tag "c2l_$output_suffix"
     container 'csangara/spade_cell2location:latest'
     echo true
 
