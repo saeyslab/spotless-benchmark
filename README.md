@@ -34,11 +34,11 @@ nextflow run main.nf -profile <profile_name> --mode run_pipeline --pipeline bron
 ```
 
 ## Running the pipeline on your own dataset
-Run the pipeline with the `run_own_dataset` mode. At the minimum you would need to provide a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
+Run the pipeline with the `run_dataset` mode. At the minimum you would need to provide a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
 
 ```
-nextflow run main.nf -profile <profile_name> --mode run_own_dataset --sc_input data/gold_standard_1/*.rds --sp_input data/reference/gold_standard_1.rds --sp_type seqFISH
-nextflow run main.nf -profile <profile_name> --mode run_own_dataset --sc_input data/bronze_standard_1-1/*.rds --sp_input data/reference/bronze_standard_1.rds
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input data/gold_standard_1/*.rds --sp_input data/reference/gold_standard_1.rds --sp_type seqFISH
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input data/bronze_standard_1-1/*.rds --sp_input data/reference/bronze_standard_1.rds
 ```
 
 ### Generating synthvisium data
