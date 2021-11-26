@@ -23,14 +23,14 @@ cd spade-benchmark
 wget <link>
 tar -xf standards.tar.gz -C data/
 ```
-To run the pipeline on a dataset:
+Then run the pipeline with the `run_standard` mode.
 ```
-nextflow run main.nf -profile <profile_name> --mode run_pipeline --pipeline <pipeline_name> -c data/pipeline.config
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard <standard_name> -c data/standard.config
 ```
-All folder names (except `reference`) can be used as the pipeline_name. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex bronze standard, you would do
+All folder names (except `reference`) can be used as the standard_name. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex bronze standard, you would do
 ```
-nextflow run main.nf -profile <profile_name> --mode run_pipeline --pipeline gold_standard_1 -c data/pipeline.config
-nextflow run main.nf -profile <profile_name> --mode run_pipeline --pipeline bronze_standard_1-1 -c data/pipeline.config
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 -c data/standard.config
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard bronze_standard_1-1 -c data/standard.config
 ```
 
 ## Running the pipeline on your own dataset
