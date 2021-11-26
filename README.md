@@ -25,12 +25,24 @@ tar -xf standards.tar.gz -C data/
 ```
 To run the pipeline on a dataset:
 ```
-nextflow run main.nf -profile <profile_name> --pipeline <pipeline_name> -c data/pipeline.config
+nextflow run main.nf -profile <profile_name> --mode run_pipeline --pipeline <pipeline_name> -c data/pipeline.config
 ```
-All folder names (except `reference`) can be used as the pipeline_name. For instance, to run the gold standard of seqFISH+ cortex dataset, you would do
+All folder names (except `reference`) can be used as the pipeline_name. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex bronze standard, you would do
 ```
-nextflow run main.nf -profile <profile_name> --pipeline gold_standard_1 -c data/pipeline.config
+nextflow run main.nf -profile <profile_name> --mode run_pipeline --pipeline gold_standard_1 -c data/pipeline.config
+nextflow run main.nf -profile <profile_name> --mode run_pipeline --pipeline bronze_standard_1-1 -c data/pipeline.config
 ```
+
+## Running the pipeline on your own dataset
+Run the pipeline with the `run_own_dataset` mode. At the minimum you would need to provide a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
+
+```
+nextflow run main.nf -profile <profile_name> --mode run_own_dataset --sc_input data/gold_standard_1/*.rds --sp_input data/reference/gold_standard_1.rds --sp_type seqFISH
+nextflow run main.nf -profile <profile_name> --mode run_own_dataset --sc_input data/bronze_standard_1-1/*.rds --sp_input data/reference/bronze_standard_1.rds
+```
+
+### Generating synthvisium data
+TODO
 
 
 ## Platforms
