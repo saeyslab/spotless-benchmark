@@ -1,0 +1,10 @@
+synvis:
+  type: add,aud
+  reps: 3
+  n_regions: 4
+  region_var: "none"
+  dataset_id: "1"
+  n_spots_min: 50
+  n_spots_max: 500
+  visium_mean: 20000
+  visium_sd: 7000
