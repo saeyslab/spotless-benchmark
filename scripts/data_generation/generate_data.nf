@@ -1,8 +1,9 @@
 nextflow.enable.dsl=2
 
-params.synvis = [type: "adrcd,blah,artificial_uniform_distinct,aud", reps: 10, n_regions: 5,
-                region_var: null, dataset_id: "1", n_spots_min: 50, n_spots_max: 500,
-                visium_mean: 20000, visium_sd: 7000]
+params.synvis = [type: "adrcd,blah,artificial_uniform_distinct,aud", reps: 1, clust_var: params.annot]
+
+// n_regions: 5,   clust_var: params.annot, region_var: null, dataset_id: "1",
+//                n_spots_min: 50, n_spots_max: 500, visium_mean: 20000, visium_sd: 7000]
 
 synvis_types_map = [aud: "artificial_uniform_distinct", add: "artificial_diverse_distinct",
                     auo: "artificial_uniform_overlap", ado: "artificial_diverse_overlap",
@@ -11,30 +12,29 @@ synvis_types_map = [aud: "artificial_uniform_distinct", add: "artificial_diverse
 synvis_types_fullnames = synvis_types_map.collect{ it.value }
 synvis_types_flat = synvis_types_map.collect{[it.key, it.value]}.flatten()
 
-// TODO: ADD REPLICATES AND DATASET TYPES AS INPUT
 process generate_synthetic_data {
     echo true
-    // publishDir "/mnt/d/spade-benchmark/test_generate_data/", mode: 'copy'
+    publishDir "/mnt/d/spade-benchmark/test_generate_data/", mode: 'copy'
     input:
         path (sc_input)
         val (dataset_type)
         val (args)
         each (rep)
 
-    // output:
-    //    path ("${sc_input}_${x}.rds")
+    output:
+        path ("$output")
 
     script:
+        output = "${file(sc_input).getSimpleName()}_${dataset_type}_rep${rep}.rds"
         """
-        echo "Received $sc_input"
-        echo "hello this is the $rep rep of $dataset_type"
-        echo "args are $args"
+        Rscript $params.rootdir/spade-benchmark/scripts/data_generation/generate_synthetic_data.R \
+                --sc_input $sc_input --dataset_type $dataset_type --rep $rep $args
         """
 }
 
 workflow generateSyntheticData {
-    //take:
-    //    sc_input
+    take:
+        sc_input
     main:
         // Filter out invalid input, write out full name of abbreviations, only get unique
         synvis_type_input = params.synvis.type.split(',').findAll{ synvis_types_flat.contains(it) }
@@ -43,17 +43,17 @@ workflow generateSyntheticData {
         // Extra arguments
         synvis_args_input = params.synvis.findAll{ it.key != "type" && it.key != "reps"}
                                   .collect{ "--$it.key $it.value" }.join(" ")
-        println("Single-cell reference: $params.sc_input")
-        println("Dataset types to be generated: $synvis_type_input, number of replicates: $params.synvis.reps")
-        println("Arguments: $synvis_args_input")
+        println("Single-cell reference: $sc_input")
+        println("Dataset types to be generated: ${synvis_type_input.join(", ")}")
+        println("Number of replicates per dataset type: $params.synvis.reps")
+        println("Arguments: ${ (synvis_args_input) ? synvis_args_input: "default" }")
                              
-        generate_synthetic_data(params.sc_input, Channel.from(synvis_type_input),
-                                synvis_args_input, 1..params.synvis.reps.toInteger())
+        //generate_synthetic_data(sc_input, Channel.from(synvis_type_input),
+        //                        synvis_args_input, 1..params.synvis.reps.toInteger())
     //emit:
     //    generate_synthetic_data.out
 }
 
 workflow {
-    generateSyntheticData(params.sc_input, "a")
-    generateSyntheticData.out.view()
+    generateSyntheticData(params.sc_input)
 }

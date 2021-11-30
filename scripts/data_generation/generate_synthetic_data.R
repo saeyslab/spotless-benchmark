@@ -1,43 +1,43 @@
 #!/usr/bin/env Rscript
-inputs = commandArgs(trailingOnly=TRUE)
-if (length(inputs) != 1) {
-    stop("usage: < rep no. >", call.=FALSE)
+
+# Create default values
+par <- list(
+  clust_var = "celltype",
+  n_regions = 5,
+  region_var = NULL,
+  dataset_id = "1",
+  n_spots_min = 50,
+  n_spots_max = 500,
+  visium_mean = 20000,
+  visium_sd = 7000
+)
+
+# Replace default values by user input
+args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+par[names(args)] <- args
+
+if (is.null(par$rep) || is.null(par$sc_input) || is.null(par$dataset_type)){
+  stop("Missing required argument(s): --sc_input --dataset_type --rep")
 }
 
 library(Seurat)
-library(synthvisium)
-createSynthvisiumRDS <- function(inputscRNA_rds, dataset_type, output_path="", 
-                                  celltype_var = "celltype", repl=""){
-  seurat_obj_scRNA =readRDS(inputscRNA_rds)
-  
-  # Create synthetic visium data from scRNA data
-  synthetic_visium_data = synthvisium::generate_synthetic_visium(seurat_obj = seurat_obj_scRNA, dataset_type = dataset_type, 
-                                                    clust_var = "celltype", n_regions = 5,
-                                                    n_spots_min = 100, n_spots_max = 200,
-                                                    visium_mean = 20000, visium_sd = 5000)
-  
-  directory = dirname(inputscRNA_rds)
-  inputscRNA_name = stringr::str_split(basename(inputscRNA_rds), "\\.")[[1]][1]
-  dir.create((paste0(output_path, inputscRNA_name, "/", repl)))
-  output_folder <- paste0(output_path, inputscRNA_name, "/", repl, "/")
-  saveRDS(synthetic_visium_data, paste0(output_folder, inputscRNA_name, "_", dataset_type, "_synthvisium.rds"))
-  print(paste0("Dataset saved at ", output_folder, inputscRNA_name, "_", dataset_type, "_synthvisium.rds"))
-}
-path <- "/group/irc/shared/synthetic_visium/generation/"
-datasets <- c("brain_cortex_generation.rds", "cerebellum_cell_generation.rds",
-              "cerebellum_nucleus_generation.rds", "hippocampus_generation.rds",
-              "kidney_generation.rds", "pbmc_generation.rds", "scc_p5_generation.rds")
+# library(synthvisium)
 
-dataset_types = c("artificial_uniform_distinct", "artificial_diverse_distinct", 
-                  "artificial_uniform_overlap", "artificial_diverse_overlap",
-                  "artificial_dominant_celltype_diverse",
-                  "artificial_partially_dominant_celltype_diverse",
-                  "artificial_dominant_rare_celltype_diverse",
-                  "artificial_regional_rare_celltype_diverse")
+seurat_obj_scRNA <- readRDS(par$sc_input)
+# synthetic_visium_data <- generate_synthetic_visium(
+#                           seurat_obj = seurat_obj_scRNA,
+#                           dataset_type = par$dataset_type,
+#                           clust_var = par$clust_var,
+#                           n_regions = as.numeric(par$n_regions),
+#                           n_spots_min = as.numeric(par$n_spots_min),
+#                           n_spots_max = as.numeric(par$n_spots_max),
+#                           visium_mean = as.numeric(par$visium_mean),
+#                           visium_sd = as.numeric(par$visium_sd))
 
-output_path = "/home/chananchidas/data/"
-for (dataset in datasets[3:length(datasets)]){
-  for (dataset_type in dataset_types){
-    createSynthvisiumRDS(paste0(path, dataset), dataset_type, output_path=output_path, repl=inputs[1])
-  }
-}
+
+inputscRNA_name <- stringr::str_split(basename(par$sc_input), "\\.")[[1]][1]
+output_name <- paste0(inputscRNA_name, "_", par$dataset_type, "_rep", par$rep, ".rds")
+
+# saveRDS(synthetic_visium_data, output_name)
+write.table(matrix("hello world"), output_name)
+print(paste0("Dataset saved at ", output_name))
