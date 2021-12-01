@@ -17,24 +17,27 @@ When running locally, we suggest using *local_docker* by modifying `params.rootd
 If you want to deploy the pipeline in other clusters (e.g., HPC or AWS cluster), you will have to create a new profile.
 
 ## Reproducing the pipeline with standards
-First, download the datasets from Zenodo and place them in the `data/` folder.
+First, download the datasets from Zenodo and place them in the `data/` folder. The file is 5GB.
 ```
 cd spade-benchmark
-wget <link>
+wget https://zenodo.org/record/5727614/files/standards.tar.gz?download=1
 tar -xf standards.tar.gz -C data/
+rm standards.tar.gz
 ```
 Then run the pipeline with the `run_standard` mode.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard <standard_name> -c data/standard.config
 ```
-All folder names (except `reference`) can be used as the standard_name. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex bronze standard, you would do
+All folder names (except `reference`) can be used as the *standard_name*. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex bronze standard, you would do
 ```
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 -c data/standard.config
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard bronze_standard_1-1 -c data/standard.config
 ```
 
 ## Running the pipeline on your own dataset
-Run the pipeline with the `run_dataset` mode. At the minimum you would need to provide a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
+There are two modes:
+1. `generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`synvis.sc_input`) and one to use as input in deconvolution methods (`sc_input`). See the next section for more details.
+2. `run_dataset` mode takes a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
 
 ```
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input data/gold_standard_1/*.rds --sp_input data/reference/gold_standard_1.rds --sp_type seqFISH
@@ -42,7 +45,27 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input data/
 ```
 
 ### Generating synthvisium data
-TODO
+The workflow `scripts/data_generation/generate_data.nf` generates synthetic visium data with *synthvisium*. The arguments are assumed to be stored in a dictionary, so it may be easier to provide this in a separate yaml/JSON file, shown below:
+
+```
+# synthvisium_params.yaml
+synvis:
+  sc_input: data/reference/bronze_standard_1.rds
+  clust_var: celltype
+  reps: 3
+  type: artificial_diverse_distinct,artificial_uniform_distinct
+```
+These parameters will return 6 synthetic datasets, with 3 replicates for each type. You can generate the data only (synthetic datasets will be copied to `outdir.synvis`), or run the whole pipeline immediately after.
+```
+# Only generate data
+nextflow run scripts/data_generation/generate_data.nf -profile <profile_name> --sc_input data/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
+
+# Generate and run the whole pipeline
+nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input data/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
+```
+In the second case, the same file will be used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in Machine Learning).
+
+TODO: explain arguments?
 
 
 ## Platforms
