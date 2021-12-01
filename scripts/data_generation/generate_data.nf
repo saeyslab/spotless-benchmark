@@ -2,9 +2,6 @@ nextflow.enable.dsl=2
 
 params.synvis = [type: "adrcd,blah,artificial_uniform_distinct,aud", reps: 1, clust_var: params.annot]
 
-// n_regions: 5,   clust_var: params.annot, region_var: null, dataset_id: "1",
-//                n_spots_min: 50, n_spots_max: 500, visium_mean: 20000, visium_sd: 7000]
-
 synvis_types_map = [aud: "artificial_uniform_distinct", add: "artificial_diverse_distinct",
                     auo: "artificial_uniform_overlap", ado: "artificial_diverse_overlap",
                     adcd: "artificial_dominant_celltype_diverse", apdcd: "artificial_partially_dominant_celltype_diverse",
@@ -16,7 +13,7 @@ synvis_types_flat = synvis_types_map.collect{[it.key, it.value]}.flatten()
 process generate_synthetic_data {
     tag "$output"
     container 'csangara/synthvisium:latest'
-    publishDir "${params.rootdir}/spade-benchmark/test_generate_data/", mode: 'copy'
+    publishDir params.outdir.synvis, mode: 'copy'
     input:
         path (sc_input)
         val (dataset_type)
@@ -52,8 +49,8 @@ workflow generateSyntheticData {
                              
         generate_synthetic_data(sc_input, Channel.from(synvis_type_input),
                                 synvis_args_input, 1..params.synvis.reps.toInteger())
-    //emit:
-    //    generate_synthetic_data.out
+    emit:
+        generate_synthetic_data.out
 }
 
 workflow {

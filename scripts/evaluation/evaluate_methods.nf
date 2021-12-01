@@ -1,6 +1,6 @@
 process computeMetrics {
     container 'csangara/spade_eval:latest'
-    publishDir params.outdir_metrics, mode: 'copy'
+    publishDir params.outdir.metrics, mode: 'copy'
     tag "$method_name"
     echo true
     input:
