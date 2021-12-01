@@ -1,9 +1,10 @@
 synvis:
+  sc_input:
+  clust_var:
   type: add,aud,prior
-  reps: 2
+  reps: 1
   n_regions: 4
-  region_var: "none"
-  dataset_id: "2"
+  dataset_id: "1"
   n_spots_min: 10
   n_spots_max: 100
   n_spots: 20
