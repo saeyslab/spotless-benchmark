@@ -20,7 +20,7 @@ process convertRDStoH5AD {
 
 
 process formatTSVFile {
-    publishDir params.outdir_props, mode: 'copy'
+    publishDir params.outdir.props, mode: 'copy'
 
     input:
         tuple val(method_name), path (tsv_file)
