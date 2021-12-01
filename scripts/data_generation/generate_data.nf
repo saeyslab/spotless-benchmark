@@ -8,13 +8,15 @@ params.synvis = [type: "adrcd,blah,artificial_uniform_distinct,aud", reps: 1, cl
 synvis_types_map = [aud: "artificial_uniform_distinct", add: "artificial_diverse_distinct",
                     auo: "artificial_uniform_overlap", ado: "artificial_diverse_overlap",
                     adcd: "artificial_dominant_celltype_diverse", apdcd: "artificial_partially_dominant_celltype_diverse",
-                    adrcd: "artificial_dominant_rare_celltype_diverse", arrcd: "artificial_regional_rare_celltype_diverse"]
+                    adrcd: "artificial_dominant_rare_celltype_diverse", arrcd: "artificial_regional_rare_celltype_diverse",
+                    prior: "prior_from_data"]
 synvis_types_fullnames = synvis_types_map.collect{ it.value }
 synvis_types_flat = synvis_types_map.collect{[it.key, it.value]}.flatten()
 
 process generate_synthetic_data {
-    echo true
-    publishDir "/mnt/d/spade-benchmark/test_generate_data/", mode: 'copy'
+    tag "$output"
+    container 'csangara/synthvisium:latest'
+    publishDir "${params.rootdir}/spade-benchmark/test_generate_data/", mode: 'copy'
     input:
         path (sc_input)
         val (dataset_type)
@@ -46,10 +48,10 @@ workflow generateSyntheticData {
         println("Single-cell reference: $sc_input")
         println("Dataset types to be generated: ${synvis_type_input.join(", ")}")
         println("Number of replicates per dataset type: $params.synvis.reps")
-        println("Arguments: ${ (synvis_args_input) ? synvis_args_input: "default" }")
+        println("Arguments: ${ (synvis_args_input) ? synvis_args_input: "None (default)" }")
                              
-        //generate_synthetic_data(sc_input, Channel.from(synvis_type_input),
-        //                        synvis_args_input, 1..params.synvis.reps.toInteger())
+        generate_synthetic_data(sc_input, Channel.from(synvis_type_input),
+                                synvis_args_input, 1..params.synvis.reps.toInteger())
     //emit:
     //    generate_synthetic_data.out
 }
