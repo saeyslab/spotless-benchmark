@@ -10,7 +10,7 @@ process runMusic {
     input:
         tuple path (sc_input), path (sp_input)
     output:
-        tuple val('music'), path("$output")
+        tuple val('music'), path("$output"), path (sp_input)
     
     script:
         output_suffix = file(sp_input).getSimpleName()
@@ -33,7 +33,7 @@ process runSpotlight {
         tuple path (sc_input), path (sp_input)
 
     output:
-        tuple val('spotlight'), path("$output")
+        tuple val('spotlight'), path("$output"), path (sp_input)
 
     script:
         output_suffix = file(sp_input).getSimpleName()
@@ -56,7 +56,7 @@ process runRCTD {
         tuple path (sc_input), path (sp_input)
 
     output:
-        tuple val('rctd'), path("$output")
+        tuple val('rctd'), path("$output"), path (sp_input)
 
     script:
         output_suffix = file(sp_input).getSimpleName()
@@ -71,6 +71,7 @@ process runRCTD {
 
 process buildStereoscopeModel {
     tag 'stereo_build'
+    label "retry"
     container 'csangara/spade_stereoscope:latest'
     echo true
 
@@ -92,6 +93,7 @@ process buildStereoscopeModel {
 }
 process fitStereoscopeModel {
     tag "stereo_$sp_file_basename"
+    label "retry"
     container 'csangara/spade_stereoscope:latest'
     echo true
 
@@ -99,7 +101,7 @@ process fitStereoscopeModel {
         path (sp_input)
         tuple path (r_file), path (logits_file)
     output:
-        tuple val('stereoscope'), path("$output")
+        tuple val('stereoscope'), path("$output"), path (sp_input)
     script:
         sp_file_basename = file(sp_input).getSimpleName()
         output = "proportions_stereoscope_${sp_file_basename}.preformat"
@@ -117,6 +119,7 @@ process fitStereoscopeModel {
 
 process buildCell2locationModel {
     tag 'c2l_build'
+    label "retry"
     container 'csangara/spade_cell2location:latest'
     echo true
 
@@ -140,6 +143,7 @@ process buildCell2locationModel {
 
 process fitCell2locationModel {
     tag "c2l_$output_suffix"
+    label "retry"
     container 'csangara/spade_cell2location:latest'
     echo true
 
@@ -147,7 +151,7 @@ process fitCell2locationModel {
         path (sp_input)
         path (model)
     output:
-        tuple val('cell2location'), path("$output")
+        tuple val('cell2location'), path("$output"), path (sp_input)
     script:
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_cell2location_${output_suffix}.preformat"

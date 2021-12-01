@@ -11,7 +11,7 @@ all_modes = ["run_standard", "run_dataset", "generate_and_run"]
 workflow {
     main:
         if (!all_modes.contains(params.mode)){
-            throw new Exception("Error: please enter --mode as 'run_standard' or 'run_dataset'")
+            throw new Exception("Error: please enter --mode as 'run_standard', 'run_dataset', or 'generate_and_run'")
         }
 
         // RUN STANDARD PIPELINE
@@ -30,38 +30,29 @@ workflow {
         else if (params.mode ==~ /run_dataset/ ) {
             println("Running the pipeline on the provided data...")
         }
-        // GENERATE SYNTHVISIUM DATA
+        // GENERATE SYNTHVISIUM DATA AND RUN
         else if (params.mode ==~ /generate_and_run/) {
-            println("Generating synthvisium data from ${params.sc_input}...")
-            // generateSyntheticData(params.sc_input, "a")
-            println("Synthetic data copied to ${params.sp_input}")
+            println("Generating synthvisium data...")
+            generateSyntheticData(params.synvis.sc_input)
+            println("Synthetic data will be copied to ${params.outdir.synvis}")
         }
 
         // Print inputs (the timing isn't right with with view(), so do this instead)
         // Although view() has the advantage that it gives the absolute path (sc_input_ch.view())
-        println("Single-cell reference dataset:")
-        println(params.mode ==~ /run_standard/ ? file(params.sc_input)[0]: file(params.sc_input))
+        if (!(params.mode ==~ /generate_and_run/)) {
+            println("Single-cell reference dataset:")
+            println(params.mode ==~ /run_standard/ ? file(params.sc_input)[0]: file(params.sc_input))
 
-        if (params.mode ==~ /generate_and_run/ ){
-            // Print the synthvisium files that will be generated
-            println("\nSpatial dataset(s) that will be generated:")
-            (1..params.synvis_reps).each{
-                println "${file(params.sc_input).getSimpleName()}_${params.synvis_type}_rep${it}.rds"
-            }
-        } // Without glob pattern, there will be multiple files
-        else {
             println("\nSpatial dataset(s):") 
+            // Without glob pattern, there will be multiple files
             params.sp_input =~ /\*/ ? file(params.sp_input).each{println "$it"} : println (file(params.sp_input))
         }
 
         sc_input_ch = Channel.fromPath(params.sc_input) // Can only have 1 file
         // Can have one or more files
-        // sp_input_ch = (params.mode ==~ /generate_and_run/ ? generateSyntheticData.out : Channel.fromPath(params.sp_input))
+        sp_input_ch = (params.mode ==~ /generate_and_run/ ? generateSyntheticData.out : Channel.fromPath(params.sp_input))
 
-        //runMethods(sc_input_ch, sp_input_ch)
+        runMethods(sc_input_ch, sp_input_ch)
+        computeMetrics(runMethods.out)
 
-        // Files are matched by parsing the names of proportion files
-        File sp_path = new File(params.sp_input)
-        //computeMetrics(runMethods.out, sp_path.getParent())
-        println("End of workflow")
 }
