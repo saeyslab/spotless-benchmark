@@ -25,7 +25,7 @@ process generate_synthetic_data {
     script:
         output = "${file(sc_input).getSimpleName()}_${dataset_type}_rep${rep}.rds"
         """
-        Rscript $params.rootdir/spade-benchmark/scripts/data_generation/generate_synthetic_data.R \
+        Rscript $params.rootdir/scripts/data_generation/generate_synthetic_data.R \
                 --sc_input $sc_input --dataset_type $dataset_type --rep $rep $args
         """
 }
