@@ -23,4 +23,4 @@ jobs:
           nextflow self-update
       - name: Run pipeline with test data
         run: |
-          nextflow run main.nf -profile local_docker
+          nextflow run scripts/test_nf.nf -profile test,docker
