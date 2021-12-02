@@ -55,3 +55,4 @@ vignettes/*.pdf
 AdRoit*
 data/*
 deconv_proportions/*
+results/*
