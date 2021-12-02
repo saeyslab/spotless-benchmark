@@ -21,6 +21,7 @@ process convertRDStoH5AD {
 
 process formatTSVFile {
     publishDir params.outdir.props, mode: 'copy'
+    container 'rocker/tidyverse:latest'
 
     input:
         tuple val(method_name), path (tsv_file), path(sp_input)
