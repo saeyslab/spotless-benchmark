@@ -38,11 +38,11 @@ process runSpotlight {
     script:
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_spotlight_${output_suffix}"
-
+        args = (params.deconv_args.spotlight ? params.deconv_args.spotlight : "")
         """
         Rscript $params.rootdir/spade-benchmark/scripts/deconvolution/spotlight/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
-            --annot $params.annot --output $output
+            --annot $params.annot --output $output $args
         """
 
 }
