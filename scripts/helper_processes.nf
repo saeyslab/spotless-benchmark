@@ -8,7 +8,7 @@ process convertRDStoH5AD {
         val (input_type)
     
     output:
-        file ("${rds_file_basename}.h5ad")
+        tuple path ("${rds_file_basename}.h5ad"), path (rds_file)
 
     script:
         rds_file_basename = file(rds_file).getSimpleName()

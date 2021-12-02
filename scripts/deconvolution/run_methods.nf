@@ -76,7 +76,8 @@ process buildStereoscopeModel {
     echo true
 
     input:
-        path (sc_input)
+        // rds input actually is not needed
+        tuple path (sc_input), path (sc_input_rds)
     output:
         tuple path ("R*.tsv"), path ("logits*.tsv")
 
@@ -98,10 +99,10 @@ process fitStereoscopeModel {
     echo true
 
     input:
-        path (sp_input)
+        tuple path (sp_input), path (sp_input_rds)
         tuple path (r_file), path (logits_file)
     output:
-        tuple val('stereoscope'), path("$output"), path (sp_input)
+        tuple val('stereoscope'), path("$output"), path (sp_input_rds)
     script:
         sp_file_basename = file(sp_input).getSimpleName()
         output = "proportions_stereoscope_${sp_file_basename}.preformat"
@@ -124,7 +125,8 @@ process buildCell2locationModel {
     echo true
 
     input:
-        path (sc_input)
+        // rds input is actually not needed
+        tuple path (sc_input), path (sc_input_rds)
     output:
         path "sc.h5ad"
 
@@ -150,10 +152,10 @@ process fitCell2locationModel {
     echo true
 
     input:
-        path (sp_input)
+        tuple path (sp_input), path (sp_input_rds)
         path (model)
     output:
-        tuple val('cell2location'), path("$output"), path (sp_input)
+        tuple val('cell2location'), path("$output"), path (sp_input_rds)
     script:
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_cell2location_${output_suffix}.preformat"
@@ -206,36 +208,36 @@ workflow runMethods {
         methods_list = Arrays.asList(methods.split(','))
         if ( !methods_list.disjoint(python_methods) ){
 
-            sc_input_h5ad = convert_sc(sc_input_ch, params.sc_type)
-            sp_input_h5ad = convert_sp(sp_input_ch, params.sp_type)
+            sc_input_pair = convert_sc(sc_input_ch, params.sc_type)
+            sp_input_pair = convert_sp(sp_input_ch, params.sp_type)
 
             if ( methods =~ /stereoscope/ ) {
-                buildStereoscopeModel(sc_input_h5ad)
+                buildStereoscopeModel(sc_input_pair)
 
                 // Repeat model output for each spatial file
-                buildStereoscopeModel.out.combine(sp_input_h5ad)
-                .multiMap { r_file, logits_file, sp_file ->
+                buildStereoscopeModel.out.combine(sp_input_pair)
+                .multiMap { r_file, logits_file, sp_file_h5ad, sp_file_rds ->
                             model: tuple r_file, logits_file
-                            sp_input_h5ad: sp_file }
+                            sp_input: tuple sp_file_h5ad, sp_file_rds }
                 .set{ stereo_combined_ch }
 
-                fitStereoscopeModel(stereo_combined_ch.sp_input_h5ad,
+                fitStereoscopeModel(stereo_combined_ch.sp_input,
                                     stereo_combined_ch.model)
                 formatStereoscope(fitStereoscopeModel.out) 
                 output_ch = output_ch.mix(formatStereoscope.out)
             }
 
             if ( methods =~ /cell2location/ ) {
-                buildCell2locationModel(sc_input_h5ad)
+                buildCell2locationModel(sc_input_pair)
 
                 // Repeat model output for each spatial file
-                buildCell2locationModel.out.combine(sp_input_h5ad)
-                .multiMap { model_sc_file, sp_file ->
+                buildCell2locationModel.out.combine(sp_input_pair)
+                .multiMap { model_sc_file, sp_file_h5ad, sp_file_rds ->
                             model: model_sc_file
-                            sp_input_h5ad: sp_file }
+                            sp_input: tuple sp_file_h5ad, sp_file_rds }
                 .set{ c2l_combined_ch }
 
-                fitCell2locationModel(c2l_combined_ch.sp_input_h5ad,
+                fitCell2locationModel(c2l_combined_ch.sp_input,
                                       c2l_combined_ch.model)
                 formatC2L(fitCell2locationModel.out)
                 output_ch = output_ch.mix(formatC2L.out)
