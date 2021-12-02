@@ -48,10 +48,8 @@ def main():
     import warnings
     warnings.filterwarnings('ignore')
 
-    ## READ IN SPATIAL DATA ##
-    print("Read in file from " + sp_data_path)
+    print("Reading in spatial data from " + sp_data_path + "...")
     adata = sc.read_h5ad(sp_data_path)
-    
     adata.var['SYMBOL'] = adata.var_names
 
     # mitochondria-encoded (MT) genes should be removed for spatial mapping
@@ -61,64 +59,64 @@ def main():
     adata_vis = adata.copy()
     adata_vis.raw = adata_vis
 
-    ## READ IN REFERENCE DATA
-    # adata_scrna_raw = sc.read(args.model_path)
+    print("Reading in the model...")
+    adata_scrna_raw = sc.read(args.model_path)
     
-    # # Export estimated expression in each cluster
-    # if 'means_per_cluster_mu_fg' in adata_scrna_raw.varm.keys():
-    #     inf_aver = adata_scrna_raw.varm['means_per_cluster_mu_fg'][[f'means_per_cluster_mu_fg_{i}' 
-    #                                     for i in adata_scrna_raw.uns['mod']['factor_names']]].copy()
-    # else:
-    #     inf_aver = adata_scrna_raw.var[[f'means_per_cluster_mu_fg_{i}' 
-    #                                     for i in adata_scrna_raw.uns['mod']['factor_names']]].copy()
-    # inf_aver.columns = adata_scrna_raw.uns['mod']['factor_names']
+    # Export estimated expression in each cluster
+    if 'means_per_cluster_mu_fg' in adata_scrna_raw.varm.keys():
+        inf_aver = adata_scrna_raw.varm['means_per_cluster_mu_fg'][[f'means_per_cluster_mu_fg_{i}' 
+                                        for i in adata_scrna_raw.uns['mod']['factor_names']]].copy()
+    else:
+        inf_aver = adata_scrna_raw.var[[f'means_per_cluster_mu_fg_{i}' 
+                                        for i in adata_scrna_raw.uns['mod']['factor_names']]].copy()
+    inf_aver.columns = adata_scrna_raw.uns['mod']['factor_names']
 
-    # # find shared genes and subset both anndata and reference signatures
-    # intersect = np.intersect1d(adata_vis.var_names, inf_aver.index)
-    # adata_vis = adata_vis[:, intersect].copy()
-    # inf_aver = inf_aver.loc[intersect, :].copy()
+    # find shared genes and subset both anndata and reference signatures
+    intersect = np.intersect1d(adata_vis.var_names, inf_aver.index)
+    adata_vis = adata_vis[:, intersect].copy()
+    inf_aver = inf_aver.loc[intersect, :].copy()
 
-    # # prepare anndata for cell2location model
-    # scvi.data.setup_anndata(adata=adata_vis)
+    # prepare anndata for cell2location model
+    scvi.data.setup_anndata(adata=adata_vis)
 
-    # # Create and train the model
-    # mod = cell2location.models.Cell2location(
-    #     adata_vis, cell_state_df=inf_aver, 
-    #     # the expected average cell abundance: tissue-dependent 
-    #     # hyper-prior which can be estimated from paired histology:
-    #     N_cells_per_location=30,
-    #     # hyperparameter controlling normalisation of
-    #     # within-experiment variation in RNA detection (using default here):
-    #     detection_alpha=200
-    # ) 
+    # Create and train the model
+    mod = cell2location.models.Cell2location(
+        adata_vis, cell_state_df=inf_aver, 
+        # the expected average cell abundance: tissue-dependent 
+        # hyper-prior which can be estimated from paired histology:
+        N_cells_per_location=30,
+        # hyperparameter controlling normalisation of
+        # within-experiment variation in RNA detection (using default here):
+        detection_alpha=200
+    ) 
 
-    # mod.train(max_epochs=args.epochs, 
-    #         # train using full data (batch_size=None)
-    #         batch_size=None, 
-    #         # use all data points in training because 
-    #         # we need to estimate cell abundance at all locations
-    #         train_size=1,
-    #         use_gpu=cuda_device.isdigit())
+    mod.train(max_epochs=args.epochs, 
+            # train using full data (batch_size=None)
+            batch_size=None, 
+            # use all data points in training because 
+            # we need to estimate cell abundance at all locations
+            train_size=1,
+            use_gpu=cuda_device.isdigit())
 
-    # # Export the estimated cell abundance (summary of the posterior distribution).
-    # adata_vis = mod.export_posterior(
-    #     adata_vis, sample_kwargs={'num_samples': 1000, 'batch_size': mod.adata.n_obs, 'use_gpu': cuda_device.isdigit()}
-    # )
+    # Export the estimated cell abundance (summary of the posterior distribution).
+    adata_vis = mod.export_posterior(
+        adata_vis, sample_kwargs={'num_samples': 1000, 'batch_size': mod.adata.n_obs, 'use_gpu': cuda_device.isdigit()}
+    )
 
-    # # Save model and anndata object with results
-    # mod.save(output_folder , overwrite=True)
-    # adata_vis.write(os.path.join(output_folder, 'sp.h5ad'))
+    # Save model and anndata object with results
+    mod.save(output_folder , overwrite=True)
+    adata_vis.write(os.path.join(output_folder, 'sp.h5ad'))
 
-    # # Export proportion file, but first rename columns and divide by rowSums
-    # props = adata_vis.obsm['q05_cell_abundance_w_sf']
-    # props = props.rename(columns={x:x.replace("q05cell_abundance_w_sf_", "") for x in props.columns})
-    # props = props.div(props.sum(axis=1), axis='index')
-    # props.to_csv(os.path.join(output_folder, 'proportions.tsv'), sep="\t")
+    # Export proportion file, but first rename columns and divide by rowSums
+    props = adata_vis.obsm['q05_cell_abundance_w_sf']
+    props = props.rename(columns={x:x.replace("q05cell_abundance_w_sf_", "") for x in props.columns})
+    props = props.div(props.sum(axis=1), axis='index')
+    props.to_csv(os.path.join(output_folder, 'proportions.tsv'), sep="\t")
 
-    df = pd.DataFrame(data=np.random.normal(size=(10,10)),
-                        index=["row"+str(i) for i in range(10)],
-                        columns=["col"+str(i) for i in range(10)])
-    df.to_csv(os.path.join(output_folder, 'proportions.tsv'), sep="\t")
+    # df = pd.DataFrame(data=np.random.normal(size=(10,10)),
+    #                     index=["row"+str(i) for i in range(10)],
+    #                     columns=["col"+str(i) for i in range(10)])
+    # df.to_csv(os.path.join(output_folder, 'proportions.tsv'), sep="\t")
 
         
 if __name__ == '__main__':
