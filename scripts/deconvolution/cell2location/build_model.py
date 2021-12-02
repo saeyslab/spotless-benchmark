@@ -28,6 +28,9 @@ def main():
                  type = str, help = "multiplicative technical effects, such as platform effects")
     
     prs.add_argument('-e', '--epochs', default=250, type = int, help = "number of epochs to train the model")
+
+    prs.add_argument('-p', '--posterior_sampling', default=1000, type = int, help = "number of samples to take from the posterior distribution")
+
     
     args = prs.parse_args()
     cuda_device = args.cuda_device
@@ -92,7 +95,7 @@ def main():
 
     # Export the estimated cell abundance (summary of the posterior distribution).
     adata_scrna_raw = mod.export_posterior(
-        adata_scrna_raw, sample_kwargs={'num_samples': 1000, 'batch_size': 2500, 'use_gpu': cuda_device.isdigit()}
+        adata_scrna_raw, sample_kwargs={'num_samples': args.posterior_sampling, 'batch_size': 2500, 'use_gpu': cuda_device.isdigit()}
     )
 
     # Save model and anndata object with results

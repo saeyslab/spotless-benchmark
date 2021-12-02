@@ -17,6 +17,8 @@ def main():
 
     prs.add_argument('-e', '--epochs', default=30000, type = int, help = "number of epochs to fit the model")
 
+    prs.add_argument('-p', '--posterior_sampling', default=1000, type = int, help = "number of samples to take from the posterior distribution")
+
     args = prs.parse_args()
     
     cuda_device = args.cuda_device
@@ -100,7 +102,8 @@ def main():
 
     # Export the estimated cell abundance (summary of the posterior distribution).
     adata_vis = mod.export_posterior(
-        adata_vis, sample_kwargs={'num_samples': 1000, 'batch_size': mod.adata.n_obs, 'use_gpu': cuda_device.isdigit()}
+        adata_vis, sample_kwargs={'num_samples': args.posterior_sampling,
+        'batch_size': mod.adata.n_obs, 'use_gpu': cuda_device.isdigit()}
     )
 
     # Save model and anndata object with results

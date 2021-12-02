@@ -131,12 +131,14 @@ process buildCell2locationModel {
     script:
         sample_id_arg = ( params.sampleID ==~ /none/ ? "" : "-s $params.sampleID" )
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-e $params.epoch_build")
+        args = ( params.deconv_args.cell2location ? params.deconv_args.cell2location : "" )
+        
         """
         echo "Building cell2location model..."
         source activate cell2loc_env
         export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
         python $params.rootdir/scripts/deconvolution/cell2location/build_model.py \
-            $sc_input $params.cuda_device -a $params.annot $sample_id_arg $epochs -o \$PWD 
+            $sc_input $params.cuda_device -a $params.annot $sample_id_arg $epochs $args -o \$PWD 
         """
 
 }
@@ -156,6 +158,7 @@ process fitCell2locationModel {
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_cell2location_${output_suffix}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-e $params.epoch_fit")
+        args = ( params.deconv_args.cell2location ? params.deconv_args.cell2location : "" )
 
         """
         echo "Model file $model, fitting cell2location model..."
@@ -163,7 +166,7 @@ process fitCell2locationModel {
         export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
 
         python $params.rootdir/scripts/deconvolution/cell2location/fit_model.py \
-            $sp_input $model $params.cuda_device $epochs -o \$PWD 
+            $sp_input $model $params.cuda_device $epochs $args -o \$PWD 
         mv proportions.tsv $output
         
         """

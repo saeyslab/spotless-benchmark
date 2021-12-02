@@ -23,9 +23,9 @@ process formatTSVFile {
     publishDir params.outdir.props, mode: 'copy'
 
     input:
-        tuple val(method_name), path (tsv_file)
+        tuple val(method_name), path (tsv_file), path(sp_input)
     output:
-        tuple val(method_name), path (new_tsv_file)
+        tuple val(method_name), path (new_tsv_file), path(sp_input)
     script:
         new_tsv_file = file(tsv_file).getSimpleName()
         """
