@@ -16,7 +16,7 @@ for (method in methods){
   celltypenames <- c('Astro', 'CR', 'Endo', 'L23IT', 'L4', 'L5IT', 'L5PT', 'L6b',
                      'L6CT', 'L6IT', 'Lamp5', 'Macrophage', 'Meis2', 'NP', 'Oligo',
                      'Peri', 'Pvalb', 'Serpinf1', 'SMC', 'Sncg', 'Sst', 'Vip', 'VLMC')
-  expect_equal(ncol(output_props), 23)
+  expect_equal(ncol(output_props), 22)
   expect_equal(nrow(output_props), 16)
   expect_equal(colnames(output_props), celltypenames)
   
