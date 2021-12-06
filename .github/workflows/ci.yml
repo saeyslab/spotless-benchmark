@@ -57,7 +57,7 @@ jobs:
         with:
           name: proportions-deconv
 
-      - name: Print files
+      - name: Check proportions with testthat
         shell: bash
         run: |
           Rscript unit-test/test_run_dataset_proportions.R rctd,stereoscope
@@ -77,8 +77,7 @@ jobs:
         with:
           name: metrics
           
-      - name: Print files
+      - name: Check metrics with testthat
         shell: bash
         run: |
-          echo $(ls)
-
+          Rscript unit-test/test_run_dataset_metrics.R rctd,stereoscope

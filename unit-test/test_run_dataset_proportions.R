@@ -11,7 +11,7 @@ if (methods[1] == "all"){ methods <- methods_all }
 
 for (method in methods){
   # Check 1
-  cat(">>> Checking whether output file is correct...\n")
+  cat(">>> Checking whether output file is formatted correctly...\n")
   output_props <- read.table(paste0("proportions_", method, "_test_sp_data"),
                              sep="\t", header=TRUE)
   celltypenames <- c('Astro', 'CR', 'Endo', 'L23IT', 'L4', 'L5IT', 'L5PT', 'L6b',
