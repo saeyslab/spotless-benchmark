@@ -47,6 +47,7 @@ jobs:
     name: Tests proportions output by the pipeline
     needs: test_run_dataset
     runs-on: ubuntu-latest
+    container: rocker/tidyverse:3.6.3
     steps:
       - name: Download proportions from test run
         uses: actions/download-artifact@v2
@@ -56,13 +57,13 @@ jobs:
         shell: bash
         run: |
           echo $(ls)
-          echo $(ls deconv_proportions/)
 
 
   test_metrics:
     name: Tests the computed metrics
     needs: test_run_dataset
     runs-on: ubuntu-latest
+    container: rocker/tidyverse:3.6.3
     steps:
       - name: Download metrics from test run
         uses: actions/download-artifact@v2
@@ -72,5 +73,4 @@ jobs:
         shell: bash
         run: |
           echo $(ls)
-          echo $(ls results/)
 
