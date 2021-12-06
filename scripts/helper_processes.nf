@@ -8,6 +8,7 @@ process convertRDStoH5AD {
         val (input_type)
     
     output:
+        // Needs to return rds file for computing metrics
         tuple path ("${rds_file_basename}.h5ad"), path (rds_file)
 
     script:
@@ -20,7 +21,7 @@ process convertRDStoH5AD {
 
 
 process formatTSVFile {
-    publishDir params.outdir.props, mode: 'copy'
+    publishDir params.outdir.props, mode: 'copy', pattern: "proportions_*"
     container 'rocker/tidyverse:latest'
 
     input:

@@ -18,7 +18,7 @@ process checkDir {
 
 workflow {
     main:
-        checkDir()
+        // checkDir()
 
         if (!all_modes.contains(params.mode)){
             throw new Exception("Error: please enter --mode as 'run_standard', 'run_dataset', or 'generate_and_run'")
