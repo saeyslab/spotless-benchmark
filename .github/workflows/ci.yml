@@ -36,8 +36,8 @@ jobs:
         with:
           name: deconv-proportions-and-metrics
           path: |
-            deconv_proportions/
-            results/
+            deconv_proportions/*
+            results/*
 
   test_output_run_dataset:
     name: Tests outputs of the pipeline
@@ -56,4 +56,5 @@ jobs:
       - name: Check proportions and metrics with testthat
         shell: bash
         run: |
+          echo $(ls)
           Rscript unit-test/test_run_dataset.R rctd
