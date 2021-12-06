@@ -56,5 +56,4 @@ jobs:
       - name: Check proportions and metrics with testthat
         shell: bash
         run: |
-          Rscript unit-test/test_run_dataset_proportions.R rctd
-          Rscript unit-test/test_run_dataset_metrics.R rctd
+          Rscript unit-test/test_run_dataset.R rctd
