@@ -60,7 +60,7 @@ jobs:
       - name: Print files
         shell: bash
         run: |
-          Rscript unit-test/test_run_dataset_proportions.R rctd
+          Rscript unit-test/test_run_dataset_proportions.R rctd,stereoscope
 
 
   test_metrics:
