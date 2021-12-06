@@ -13,7 +13,7 @@ for (method in methods){
   # Check 1
   cat(">>> Checking", method)
   cat(">>> Checking whether proportion file is formatted correctly...\n")
-  output_props <- read.table(paste0("proportions_", method, "_test_sp_data"),
+  output_props <- read.table(paste0("deconv_proportions/proportions_", method, "_test_sp_data"),
                              sep="\t", header=TRUE)
   celltypenames <- c('Astro', 'CR', 'Endo', 'L23IT', 'L4', 'L5IT', 'L5PT', 'L6b',
                      'L6CT', 'L6IT', 'Lamp5', 'Macrophage', 'Meis2', 'NP', 'Oligo',
@@ -33,7 +33,7 @@ for (method in methods){
   
   # Check 3
   cat(">>> Checking whether metrics file is formatted correctly...\n")
-  output_metrics <- read.table(paste0("metrics_", method, "_test_sp_data"),
+  output_metrics <- read.table(paste0("results/metrics_", method, "_test_sp_data"),
                                sep=" ", header=TRUE)
   metric_names <- c("corr", "RMSE", "accuracy", "sensitivity", "specificity", "precision", "F1", "prc")
   expect_equal(ncol(output_metrics), 8)
