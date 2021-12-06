@@ -12,7 +12,7 @@ There are currently three profiles:
 - *local_docker* uses the local environment with docker containers
 - *prism* submits the job to a Sun Grid Engine cluster
 
-When running locally, we suggest using *local_docker* by modifying `params.rootdir` (directory preceding the cloned repository) and `workDir` (directory in which temporary files will be saved, you can also remove this).
+When running locally, we suggest using *local_docker* by modifying `params.rootdir` (directory up to and including the repo, e.g., `"/home/$USER/spade-benchmark"`) and `workDir` (directory in which temporary files will be saved, you can also remove this).
 
 If you want to deploy the pipeline in other clusters (e.g., HPC or AWS cluster), you will have to create a new profile.
 
