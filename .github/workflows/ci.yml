@@ -29,7 +29,7 @@ jobs:
 
       - name: Run pipeline with test data
         run: |
-          nextflow run main.nf -profile test
+          nextflow run main.nf -profile test,docker
 
       - name: Upload proportions
         uses: actions/upload-artifact@v2
@@ -60,7 +60,7 @@ jobs:
       - name: Print files
         shell: bash
         run: |
-          echo $(ls)
+          Rscript unit-test/test_run_dataset_proportions.R rctd
 
 
   test_metrics:
