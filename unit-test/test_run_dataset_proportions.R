@@ -26,7 +26,7 @@ for (method in methods){
   expected_props <- read.table(paste0("unit-test/test_run_dataset_expected_props/",
                                       "proportions_", method, "_test_sp_data"),
                                sep="\t", header=TRUE)
-  expect_equal(rowSums(output_props), rep(1, 16), tolerance=1e-8)
+  expect_equal(rowSums(output_props), rep(1, 16), tolerance=1e-6)
   expect_equal(sum(output_props$L23IT), sum(expected_props$L23IT), tolerance=1e-4)
   expect_equal(output_props[15,1:10], expected_props[15,1:10], tolerance=1e-4)
   
