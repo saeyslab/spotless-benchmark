@@ -1,9 +1,9 @@
-name: spade-benchmark CI
+name: test run_dataset mode
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
 on: [push, pull_request]
 
 jobs:
-  test_run_dataset:
+  run_dataset:
     name: Run workflow tests
     runs-on: ubuntu-latest
     strategy:
@@ -21,11 +21,11 @@ jobs:
         run: |
           wget https://zenodo.org/record/5763377/files/test_data.tar.gz?download=1 -o test_data.tar.gz
           echo $(ls)
-          tar -xzvf test_data.tar.gz
+          tar -xvf test_data.tar.gz
           echo $(ls)
 
-      # - name: Checkout LFS objects
-      #   run: git lfs checkout
+  #     - name: Checkout LFS objects
+  #       run: git lfs checkout
 
   #     - name: Install Nextflow
   #       run: |
@@ -48,7 +48,7 @@ jobs:
 
   # test_output_run_dataset:
   #   name: Tests outputs of the pipeline
-  #   needs: test_run_dataset
+  #   needs: run_dataset
   #   runs-on: ubuntu-latest
   #   container: rocker/tidyverse:3.6.3
   #   steps:
