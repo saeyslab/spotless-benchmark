@@ -1,6 +1,6 @@
 name: test run_dataset mode
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
-on: [pull_request]
+on: [push, pull_request]
 
 jobs:
   run_dataset:
@@ -63,4 +63,4 @@ jobs:
         shell: bash
         run: |
           echo $(ls)
-          Rscript unit-test/test_run_dataset.R rctd
+          Rscript unit-test/test_run_dataset.R all
