@@ -1,6 +1,6 @@
 name: test run_dataset mode
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   run_dataset:
@@ -35,7 +35,7 @@ jobs:
 
       - name: Run pipeline with test data
         run: |
-          nextflow run main.nf -profile test,docker --methods rctd
+          nextflow run main.nf -profile test,docker --mode run_dataset --methods all
 
       - name: Upload proportions and metrics
         uses: actions/upload-artifact@v2
