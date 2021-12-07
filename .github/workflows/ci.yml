@@ -14,47 +14,53 @@ jobs:
     steps:
       - name: Check out pipeline code
         uses: actions/checkout@v2
-        with:
-          lfs: true
+        # with:
+        #   lfs: true
 
-      - name: Checkout LFS objects
-        run: git lfs checkout
-
-      - name: Install Nextflow
+      - name: Download test dataset
         run: |
-          wget -qO- get.nextflow.io | bash
-          sudo mv nextflow /usr/local/bin/
-          export ${{ matrix.nxf_ver }}
-          nextflow self-update
-
-      - name: Run pipeline with test data
-        run: |
-          nextflow run main.nf -profile test,docker --methods rctd
-
-      - name: Upload proportions and metrics
-        uses: actions/upload-artifact@v2
-        with:
-          name: deconv-proportions-and-metrics
-          path: |
-            deconv_proportions/*
-            results/*
-
-  test_output_run_dataset:
-    name: Tests outputs of the pipeline
-    needs: test_run_dataset
-    runs-on: ubuntu-latest
-    container: rocker/tidyverse:3.6.3
-    steps:
-      - name: Check out pipeline code
-        uses: actions/checkout@v2
-
-      - name: Download proportions from test run
-        uses: actions/download-artifact@v2
-        with:
-          name: deconv-proportions-and-metrics
-
-      - name: Check proportions and metrics with testthat
-        shell: bash
-        run: |
+          wget https://zenodo.org/record/5763377/files/test_data.tar.gz?download=1
+          tar -xzvf test_data.tar.gz
           echo $(ls)
-          Rscript unit-test/test_run_dataset.R rctd
+
+      # - name: Checkout LFS objects
+      #   run: git lfs checkout
+
+  #     - name: Install Nextflow
+  #       run: |
+  #         wget -qO- get.nextflow.io | bash
+  #         sudo mv nextflow /usr/local/bin/
+  #         export ${{ matrix.nxf_ver }}
+  #         nextflow self-update
+
+  #     - name: Run pipeline with test data
+  #       run: |
+  #         nextflow run main.nf -profile test,docker --methods rctd
+
+  #     - name: Upload proportions and metrics
+  #       uses: actions/upload-artifact@v2
+  #       with:
+  #         name: deconv-proportions-and-metrics
+  #         path: |
+  #           deconv_proportions/*
+  #           results/*
+
+  # test_output_run_dataset:
+  #   name: Tests outputs of the pipeline
+  #   needs: test_run_dataset
+  #   runs-on: ubuntu-latest
+  #   container: rocker/tidyverse:3.6.3
+  #   steps:
+  #     - name: Check out pipeline code
+  #       uses: actions/checkout@v2
+
+  #     - name: Download proportions from test run
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: deconv-proportions-and-metrics
+
+  #     - name: Check proportions and metrics with testthat
+  #       shell: bash
+  #       run: |
+  #         echo $(ls)
+  #         Rscript unit-test/test_run_dataset.R rctd

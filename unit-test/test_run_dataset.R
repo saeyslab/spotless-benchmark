@@ -11,7 +11,7 @@ if (methods[1] == "all"){ methods <- methods_all }
 
 for (method in methods){
   # Check 1
-  cat(">>> Checking", method)
+  cat(">>> Checking", method, "\n")
   cat(">>> Checking whether proportion file is formatted correctly...\n")
   output_props <- read.table(paste0("deconv_proportions/proportions_", method, "_test_sp_data"),
                              sep="\t", header=TRUE)
