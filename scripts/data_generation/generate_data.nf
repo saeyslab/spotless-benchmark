@@ -46,9 +46,10 @@ workflow generateSyntheticData {
         println("Dataset types to be generated: ${synvis_type_input.join(", ")}")
         println("Number of replicates per dataset type: $params.synvis.reps")
         println("Arguments: ${ (synvis_args_input) ? synvis_args_input: "None (default)" }")
-                             
-        generate_synthetic_data(sc_input, Channel.from(synvis_type_input),
-                                synvis_args_input, 1..params.synvis.reps.toInteger())
+        sc_input_rep = (Channel.fromPath(sc_input).toList()*synvis_type_input.size)
+        
+        generate_synthetic_data(sc_input_rep.flatMap(), Channel.from(synvis_type_input),
+                               synvis_args_input, 1..params.synvis.reps.toInteger())
     emit:
         generate_synthetic_data.out
 }
