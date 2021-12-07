@@ -58,7 +58,7 @@ synvis:
 These parameters will return 6 synthetic datasets, with 3 replicates for each type. You can generate the data only (synthetic datasets will be copied to `outdir.synvis`), or run the whole pipeline immediately after.
 ```
 # Only generate data
-nextflow run scripts/data_generation/generate_data.nf -profile <profile_name> --sc_input data/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
+nextflow run scripts/data_generation/generate_data.nf -profile <profile_name> --params-file synthvisium_params.yaml
 
 # Generate and run the whole pipeline
 nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input data/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
