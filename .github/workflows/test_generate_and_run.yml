@@ -1,0 +1,76 @@
+name: test data generation
+# This workflow generates synthetic data
+on: [push, pull_request]
+
+jobs:
+  generate_data:
+    name: Run workflow to generate synthetic data
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Nextflow versions: check pipeline minimum and latest edge version
+        nxf_ver: 
+          - 'NXF_VER=21.04.3'
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@v2
+        # with:
+        #   lfs: true
+
+      - name: Download test dataset
+        run: |
+          wget https://zenodo.org/record/5763377/files/test_data.tar.gz?download=1 -O test_data.tar.gz
+          tar -xzvf test_data.tar.gz
+          echo $(ls)
+
+  #     - name: Checkout LFS objects
+  #       run: git lfs checkout
+
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+          export ${{ matrix.nxf_ver }}
+          nextflow self-update
+
+      - name: Run pipeline with test data
+        run: |
+          nextflow run scripts/data_generation/generate_data.nf -profile test,docker
+
+      - name: Check output files
+        run: |
+          echo ">>> Checking if all synthetic datasets are generated"
+          if [ `ls -1 synthetic_data/*.rds | wc -l` -ne 6 ]; then exit 1; fi
+
+          echo ">>> Checking file names"
+          for REP in rep1 rep2; do
+          for DATASET_TYPE in artificial_diverse_distinct artificial_uniform_distinct prior_from_data; do
+          if [ ! -f "synthetic_data/test_sc_data_${DATASET_TYPE}_${REP}.rds" ]
+          then exit 1; fi ; done; done
+
+      - name: Upload synthetic data
+        uses: actions/upload-artifact@v2
+        with:
+          name: synthetic-data
+          path: |
+            synthetic_data/test_sc_data_artificial_diverse_distinct_rep1.rds
+
+  test_output_generate:
+    name: Tests outputs of the pipeline
+    needs: generate_data
+    runs-on: ubuntu-latest
+    container: rocker/tidyverse:3.6.3
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@v2
+
+      - name: Download proportions from test run
+        uses: actions/download-artifact@v2
+        with:
+          name: synthetic-data
+
+      - name: Check proportions and metrics with testthat
+        shell: bash
+        run: |
+          echo $(ls)
+          # Rscript unit-test/test_run_dataset.R rctd
