@@ -73,4 +73,4 @@ jobs:
         shell: bash
         run: |
           echo $(ls)
-          # Rscript unit-test/test_run_dataset.R rctd
+          Rscript unit-test/test_generate_data.R test_sc_data_artificial_diverse_distinct_rep1.rds
