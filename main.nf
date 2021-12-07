@@ -43,7 +43,7 @@ workflow {
         // GENERATE SYNTHVISIUM DATA AND RUN
         else if (params.mode ==~ /generate_and_run/) {
             println("Generating synthvisium data...")
-            generateSyntheticData(params.synvis.sc_input)
+            generateSyntheticData()
             println("Synthetic data will be copied to ${params.outdir.synvis}")
         }
 

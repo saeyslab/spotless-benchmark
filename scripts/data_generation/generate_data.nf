@@ -31,29 +31,29 @@ process generate_synthetic_data {
 }
 
 workflow generateSyntheticData {
-    take:
-        sc_input
     main:
         // Filter out invalid input, write out full name of abbreviations, filter out duplicates
         synvis_type_input = params.synvis.type.split(',').findAll{ synvis_types_flat.contains(it) }
                                             .collect{ ( synvis_types_fullnames.contains(it) ? it : synvis_types_map[it]) }
                                             .unique()
         // Extra arguments: remove dataset type and number of replicates, then turn to string
-        synvis_args_input = params.synvis.findAll{ it.key != "type" && it.key != "reps"}
+        synvis_args_input = params.synvis.findAll{ it.key != "type" && it.key != "reps" && it.key != "sc_input"}
                                   .collect{ "--$it.key $it.value" }.join(" ")
 
-        println("Single-cell reference: $sc_input")
+        println("Single-cell reference: $params.synvis.sc_input")
         println("Dataset types to be generated: ${synvis_type_input.join(", ")}")
         println("Number of replicates per dataset type: $params.synvis.reps")
         println("Arguments: ${ (synvis_args_input) ? synvis_args_input: "None (default)" }")
-        sc_input_rep = (Channel.fromPath(sc_input).toList()*synvis_type_input.size)
+
+        // Duplicates sc_input by converting it to a list then turning it back into a dataflow
+        sc_input_ch = (Channel.fromPath(params.synvis.sc_input).toList()*synvis_type_input.size).flatMap()
         
-        generate_synthetic_data(sc_input_rep.flatMap(), Channel.from(synvis_type_input),
+        generate_synthetic_data(sc_input_ch, Channel.from(synvis_type_input),
                                synvis_args_input, 1..params.synvis.reps.toInteger())
     emit:
         generate_synthetic_data.out
 }
 
 workflow {
-    generateSyntheticData(params.synvis.sc_input)
+    generateSyntheticData()
 }
