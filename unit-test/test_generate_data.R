@@ -9,7 +9,7 @@ synthetic_visium_data <- readRDS(input_path)
 expect_equal(names(synthetic_visium_data), list_names)
 
 cat(">>> Checking each substructure...\n")
-cat(">>> Checking counts...")
+cat(">>> Checking counts...\n")
 expect_equal(ncol(synthetic_visium_data$counts), 6)
 expect_equal(nrow(synthetic_visium_data$counts), 26252)
 

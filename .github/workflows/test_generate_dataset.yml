@@ -1,6 +1,6 @@
 name: test data generation
 # This workflow generates synthetic data
-on: [push, pull_request]
+on: [pull_request]
 
 jobs:
   generate_data:
@@ -33,7 +33,7 @@ jobs:
           export ${{ matrix.nxf_ver }}
           nextflow self-update
 
-      - name: Run pipeline with test data
+      - name: Run data generation script
         run: |
           nextflow run scripts/data_generation/generate_data.nf -profile test,docker
 
@@ -64,12 +64,12 @@ jobs:
       - name: Check out pipeline code
         uses: actions/checkout@v2
 
-      - name: Download proportions from test run
+      - name: Download generated synthetic data
         uses: actions/download-artifact@v2
         with:
           name: synthetic-data
 
-      - name: Check proportions and metrics with testthat
+      - name: Check synethic data structure
         shell: bash
         run: |
           echo $(ls)

@@ -3,11 +3,12 @@ library(testthat)
 methods_all <- c("cell2location", "music", "rctd", "spotlight", "stereoscope")
 methods <- strsplit(commandArgs(trailingOnly=TRUE), ",")[[1]]
 
+if (methods[1] == "all"){ methods <- methods_all }
+
 if (!all(methods %in% methods_all)){
   stop("Invalid method given.")
 }
 
-if (methods[1] == "all"){ methods <- methods_all }
 
 for (method in methods){
   # Check 1
