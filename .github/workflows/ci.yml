@@ -19,8 +19,8 @@ jobs:
 
       - name: Download test dataset
         run: |
-          wget https://zenodo.org/record/5763377/files/test_data.tar.gz?download=1 \
-                -o test_data.tar.gz
+          wget https://zenodo.org/record/5763377/files/test_data.tar.gz?download=1 -o test_data.tar.gz
+          echo $(ls)
           tar -xzvf test_data.tar.gz
           echo $(ls)
 
