@@ -1,8 +1,8 @@
 nextflow.enable.dsl=2
 
-include { runMethods } from './scripts/deconvolution/run_methods'
-include { computeMetrics } from './scripts/evaluation/evaluate_methods'
-include { generateSyntheticData } from './scripts/data_generation/generate_data'
+include { runMethods } from './subworkflows/deconvolution/run_methods'
+include { computeMetrics } from './subworkflows/evaluation/evaluate_methods'
+include { generateSyntheticData } from './subworkflows/data_generation/generate_data'
 
 bronze_standards = ((1..7)*8).sort().withIndex().collect{ it, i -> "bronze_standard_$it-${ -> i%8+1}".toString() }
 all_standards = ["gold_standard_1", "gold_standard_2"] + bronze_standards
