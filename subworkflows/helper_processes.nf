@@ -14,7 +14,7 @@ process convertRDStoH5AD {
     script:
         rds_file_basename = file(rds_file).getSimpleName()
         """
-        Rscript $params.rootdir/scripts/deconvolution/convertRDStoH5AD.R \
+        Rscript $params.rootdir/subworkflows/deconvolution/convertRDStoH5AD.R \
         --input_path $rds_file --input_type $input_type
         """
 }

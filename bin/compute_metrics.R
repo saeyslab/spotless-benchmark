@@ -32,7 +32,7 @@ par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 # DEFAULT PARAMETERS
 # par <- list(
 #   # props_file = "/mnt/d/spade-benchmark/proportions_music",
-#   props_file = "/mnt/d/spade-benchmark/scripts/deconvolution/music/proportions.tsv",
+#   props_file = "/mnt/d/spade-benchmark/subworkflows/deconvolution/music/proportions.tsv",
 #   sp_input = "/mnt/d/spade-benchmark/unit-test/test_sp_data.rds",
 #   sp_type = "synthvisium",
 #   output = "tempMetrics"

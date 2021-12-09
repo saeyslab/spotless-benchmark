@@ -35,7 +35,7 @@ jobs:
 
       - name: Run data generation script
         run: |
-          nextflow run scripts/data_generation/generate_data.nf -profile test,docker
+          nextflow run subworkflows/data_generation/generate_data.nf -profile test,docker
 
       - name: Check output files
         run: |

@@ -12,26 +12,26 @@ There are currently three profiles:
 - *local_docker* uses the local environment with docker containers
 - *prism* submits the job to a Sun Grid Engine cluster
 
-When running locally, we suggest using *local_docker* by modifying `params.rootdir` (directory preceding the cloned repository) and `workDir` (directory in which temporary files will be saved, you can also remove this).
+When running locally, we suggest using *local_docker* by modifying `params.rootdir` (directory up to and including the repo, e.g., `"/home/$USER/spade-benchmark"`) and `workDir` (directory in which temporary files will be saved, you can also remove this).
 
 If you want to deploy the pipeline in other clusters (e.g., HPC or AWS cluster), you will have to create a new profile.
 
 ## Reproducing the pipeline with standards
-First, download the datasets from Zenodo and place them in the `data/` folder. The file is 5GB.
+First, download the datasets from Zenodo and place them in the `standards/` folder. The file is 5GB.
 ```
 cd spade-benchmark
 wget https://zenodo.org/record/5727614/files/standards.tar.gz?download=1
-tar -xf standards.tar.gz -C data/
+tar -xf standards.tar.gz -C standards/
 rm standards.tar.gz
 ```
 Then run the pipeline with the `run_standard` mode.
 ```
-nextflow run main.nf -profile <profile_name> --mode run_standard --standard <standard_name> -c data/standard.config
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard <standard_name> -c standards/standard.config
 ```
 All folder names (except `reference`) can be used as the *standard_name*. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex bronze standard, you would do
 ```
-nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 -c data/standard.config
-nextflow run main.nf -profile <profile_name> --mode run_standard --standard bronze_standard_1-1 -c data/standard.config
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 -c standards/standard.config
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard bronze_standard_1-1 -c standards/standard.config
 ```
 
 ## Running the pipeline on your own dataset
@@ -40,17 +40,17 @@ There are two modes:
 2. `run_dataset` mode takes a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
 
 ```
-nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input data/gold_standard_1/*.rds --sp_input data/reference/gold_standard_1.rds --sp_type seqFISH
-nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input data/bronze_standard_1-1/*.rds --sp_input data/reference/bronze_standard_1.rds
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input standards/gold_standard_1/*.rds --sp_input standards/reference/gold_standard_1.rds --sp_type seqFISH
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input standards/bronze_standard_1-1/*.rds --sp_input standards/reference/bronze_standard_1.rds
 ```
 
 ### Generating synthvisium data
-The workflow `scripts/data_generation/generate_data.nf` generates synthetic visium data with *synthvisium*. The arguments are assumed to be stored in a dictionary, so it may be easier to provide this in a separate yaml/JSON file, shown below:
+The workflow `subworkflows/data_generation/generate_data.nf` generates synthetic visium data with *synthvisium*. The arguments are assumed to be stored in a dictionary, so it may be easier to provide this in a separate yaml/JSON file, shown below:
 
 ```
 # synthvisium_params.yaml
 synvis:
-  sc_input: data/reference/bronze_standard_1.rds
+  sc_input: standards/reference/bronze_standard_1.rds
   clust_var: celltype
   reps: 3
   type: artificial_diverse_distinct,artificial_uniform_distinct
@@ -58,10 +58,10 @@ synvis:
 These parameters will return 6 synthetic datasets, with 3 replicates for each type. You can generate the data only (synthetic datasets will be copied to `outdir.synvis`), or run the whole pipeline immediately after.
 ```
 # Only generate data
-nextflow run scripts/data_generation/generate_data.nf -profile <profile_name> --sc_input data/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> --params-file synthvisium_params.yaml
 
 # Generate and run the whole pipeline
-nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input data/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
+nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
 ```
 In the second case, the same file will be used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in Machine Learning).
 

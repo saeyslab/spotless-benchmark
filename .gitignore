@@ -53,6 +53,7 @@ vignettes/*.pdf
 
 #### MISC ####
 AdRoit*
-data/*
+standards/*
 deconv_proportions/*
 results/*
+work/*

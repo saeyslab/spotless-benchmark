@@ -17,7 +17,7 @@ process runMusic {
         output = "proportions_music_${output_suffix}"
 
         """
-        Rscript $params.rootdir/scripts/deconvolution/music/script_nf.R \
+        Rscript $params.rootdir/subworkflows/deconvolution/music/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
             --annot $params.annot --output $output --sampleID $params.sampleID
         """
@@ -40,7 +40,7 @@ process runSpotlight {
         output = "proportions_spotlight_${output_suffix}"
         args = (params.deconv_args.spotlight ? params.deconv_args.spotlight : "")
         """
-        Rscript $params.rootdir/scripts/deconvolution/spotlight/script_nf.R \
+        Rscript $params.rootdir/subworkflows/deconvolution/spotlight/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
             --annot $params.annot --output $output $args
         """
@@ -62,7 +62,7 @@ process runRCTD {
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_rctd_${output_suffix}"
         """
-        Rscript $params.rootdir/scripts/deconvolution/rctd/script_nf.R \
+        Rscript $params.rootdir/subworkflows/deconvolution/rctd/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
             --annot $params.annot --output $output
         """
@@ -139,7 +139,7 @@ process buildCell2locationModel {
         echo "Building cell2location model..."
         source activate cell2loc_env
         export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
-        python $params.rootdir/scripts/deconvolution/cell2location/build_model.py \
+        python $params.rootdir/subworkflows/deconvolution/cell2location/build_model.py \
             $sc_input $params.cuda_device -a $params.annot $sample_id_arg $epochs $args -o \$PWD 
         """
 
@@ -167,7 +167,7 @@ process fitCell2locationModel {
         source activate cell2loc_env
         export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
 
-        python $params.rootdir/scripts/deconvolution/cell2location/fit_model.py \
+        python $params.rootdir/subworkflows/deconvolution/cell2location/fit_model.py \
             $sp_input $model $params.cuda_device $epochs $args -o \$PWD 
         mv proportions.tsv $output
         
