@@ -8,24 +8,26 @@ process convertRDStoH5AD {
         val (input_type)
     
     output:
-        file ("${rds_file_basename}.h5ad")
+        // Needs to return rds file for computing metrics
+        tuple path ("${rds_file_basename}.h5ad"), path (rds_file)
 
     script:
         rds_file_basename = file(rds_file).getSimpleName()
         """
-        Rscript $params.rootdir/spade-benchmark/subworkflows/deconvolution/convertRDStoH5AD.R \
+        Rscript $params.rootdir/subworkflows/deconvolution/convertRDStoH5AD.R \
         --input_path $rds_file --input_type $input_type
         """
 }
 
 
 process formatTSVFile {
-    publishDir params.outdir.props, mode: 'copy'
+    publishDir params.outdir.props, mode: 'copy', pattern: "proportions_*"
+    container 'rocker/tidyverse:latest'
 
     input:
-        tuple val(method_name), path (tsv_file)
+        tuple val(method_name), path (tsv_file), path(sp_input)
     output:
-        tuple val(method_name), path (new_tsv_file)
+        tuple val(method_name), path (new_tsv_file), path(sp_input)
     script:
         new_tsv_file = file(tsv_file).getSimpleName()
         """

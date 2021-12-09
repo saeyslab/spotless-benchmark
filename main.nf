@@ -8,8 +8,18 @@ bronze_standards = ((1..7)*8).sort().withIndex().collect{ it, i -> "bronze_stand
 all_standards = ["gold_standard_1", "gold_standard_2"] + bronze_standards
 all_modes = ["run_standard", "run_dataset", "generate_and_run"]
 
+
+process checkDir {
+    echo true
+    """
+    echo \$(ls /home/runner/work/spade-benchmark/spade-benchmark/)
+    """
+}
+
 workflow {
     main:
+        // checkDir()
+
         if (!all_modes.contains(params.mode)){
             throw new Exception("Error: please enter --mode as 'run_standard', 'run_dataset', or 'generate_and_run'")
         }
@@ -33,7 +43,7 @@ workflow {
         // GENERATE SYNTHVISIUM DATA AND RUN
         else if (params.mode ==~ /generate_and_run/) {
             println("Generating synthvisium data...")
-            generateSyntheticData(params.synvis.sc_input)
+            generateSyntheticData()
             println("Synthetic data will be copied to ${params.outdir.synvis}")
         }
 

@@ -1,0 +1,66 @@
+name: test run_dataset mode
+# This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
+on: [push, pull_request]
+
+jobs:
+  run_dataset:
+    name: Run workflow with run_dataset mode
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Nextflow versions: check pipeline minimum and latest edge version
+        nxf_ver: 
+          - 'NXF_VER=21.04.3'
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@v2
+        # with:
+        #   lfs: true
+
+      - name: Download test dataset
+        run: |
+          wget https://zenodo.org/record/5763377/files/test_data.tar.gz?download=1 -O test_data.tar.gz
+          tar -xzvf test_data.tar.gz
+          echo $(ls)
+
+  #     - name: Checkout LFS objects
+  #       run: git lfs checkout
+
+      - name: Install Nextflow
+        run: |
+          wget -qO- get.nextflow.io | bash
+          sudo mv nextflow /usr/local/bin/
+          export ${{ matrix.nxf_ver }}
+          nextflow self-update
+
+      - name: Run pipeline with test data
+        run: |
+          nextflow run main.nf -profile test,docker --mode run_dataset --methods all
+
+      - name: Upload proportions and metrics
+        uses: actions/upload-artifact@v2
+        with:
+          name: deconv-proportions-and-metrics
+          path: |
+            deconv_proportions/*
+            results/*
+
+  test_output_run_dataset:
+    name: Tests outputs of the pipeline
+    needs: run_dataset
+    runs-on: ubuntu-latest
+    container: rocker/tidyverse:3.6.3
+    steps:
+      - name: Check out pipeline code
+        uses: actions/checkout@v2
+
+      - name: Download proportions from test run
+        uses: actions/download-artifact@v2
+        with:
+          name: deconv-proportions-and-metrics
+
+      - name: Check proportions and metrics with testthat
+        shell: bash
+        run: |
+          echo $(ls)
+          Rscript unit-test/test_run_dataset.R all
