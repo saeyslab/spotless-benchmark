@@ -1,16 +1,19 @@
 process computeMetrics {
-    container 'csangara/spade_eval:latest'
-    publishDir params.outdir.metrics, mode: 'copy'
     tag "$method_name"
+    container 'csangara/spade_eval:latest'
+    publishDir { "${params.outdir.metrics}/${output_suffix.replaceFirst(/_rep[0-9]+/, "")}" },
+                mode: 'copy'
     echo true
+
     input:
         tuple val (method_name), path (props_file), path (sp_input)
+
     output:
         tuple val (method_name), path ("$metrics_file")
+
     script:
-        // Get corresponding spatial object based on the proportions file name
-        sp_filename = file(props_file).getSimpleName().replace("proportions_${method_name}_", "")
-        metrics_file = "metrics_${method_name}_${sp_filename}"
+        output_suffix = file(sp_input).getSimpleName()
+        metrics_file = "metrics_${method_name}_${output_suffix}"
 
         """
         Rscript $params.rootdir/subworkflows/evaluation/metrics.R \

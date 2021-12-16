@@ -1,6 +1,7 @@
 nextflow.enable.dsl=2
 
 process convertRDStoH5AD {
+    tag "convert_${input_type}"
     container 'csangara/seuratdisk:latest'
 
     input:
@@ -21,8 +22,10 @@ process convertRDStoH5AD {
 
 
 process formatTSVFile {
-    publishDir params.outdir.props, mode: 'copy', pattern: "proportions_*"
+    tag "format_${method_name}"
     container 'rocker/tidyverse:latest'
+    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_rep[0-9]+/, "")}" },
+                mode: 'copy', pattern: "proportions_*"
 
     input:
         tuple val(method_name), path (tsv_file), path(sp_input)
@@ -30,6 +33,7 @@ process formatTSVFile {
         tuple val(method_name), path (new_tsv_file), path(sp_input)
     script:
         new_tsv_file = file(tsv_file).getSimpleName()
+        output_suffix = file(sp_input).getSimpleName()
         """
         #!/usr/bin/env Rscript
         deconv_matrix <- read.table("$tsv_file", sep="\t", header=TRUE, row.names=1)
