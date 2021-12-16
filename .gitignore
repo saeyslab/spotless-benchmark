@@ -41,6 +41,7 @@ vignettes/*.pdf
 
 # Data
 *.rds
+*.h5ad
 *.tsv
 
 #### NEXTFLOW ####
@@ -57,3 +58,4 @@ standards/*
 deconv_proportions/*
 results/*
 work/*
+data/raw_data/*
