@@ -7,14 +7,14 @@ In the future, you will be able to run this pipeline directly from NextFlow. Fro
 
 ‼**We highly recommend you to create a profile in the nextflow.config file**‼
 
-There are currently three profiles: 
-- *local_env* uses the local environment without docker containers (i.e., you have to install all methods locally)
-- *local_docker* uses the local environment with docker containers
+There are currently three main profiles: 
+- *local* uses the local environment 
 - *prism* submits the job to a Sun Grid Engine cluster
+- *hpc* submits the job to a high-performance computing cluster
 
-When running locally, we suggest using *local_docker* by modifying `params.rootdir` (directory up to and including the repo, e.g., `"/home/$USER/spade-benchmark"`) and `workDir` (directory in which temporary files will be saved, you can also remove this).
+When running locally, we suggest using it in conjuction with the *docker* profile, that is `nextflow run main.nf -profile local,docker`. You would need to modify `params.rootdir` (directory up to and including the repo, e.g., `"/home/$USER/spade-benchmark"`) and `workDir` (directory in which temporary files will be saved, you can also remove this) to suit your local folder structure.
 
-If you want to deploy the pipeline in other clusters (e.g., HPC or AWS cluster), you will have to create a new profile.
+If you want to deploy the pipeline in other clusters (e.g., an AWS cluster), you will have to create a new profile.
 
 ## Reproducing the pipeline with standards
 First, download the datasets from Zenodo and place them in the `standards/` folder. The file is 5GB.
