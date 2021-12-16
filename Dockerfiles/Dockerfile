@@ -3,7 +3,7 @@ RUN apt-get install -y git && eval "$(ssh-agent -s)"
 RUN R -e "install.packages(c('remotes', 'BiocManager', 'R.utils', 'credentials')); BiocManager::install('DropletUtils')"
 # Run it once inside the container and retrieve the known_hosts file
 COPY known_hosts /root/.ssh/ 
-RUN R -e "library(credentials); remotes::install_git('git@github.com:csangara/synthvisium.git', upgrade='never')"
+RUN R -e "library(credentials); remotes::install_git('git@github.com:csangara/synthvisium.git', upgrade='never', ref='prior')"
 
 # First step - create csangara/synthvisium:pre
 # FROM csangara/seurat:3.2.3
