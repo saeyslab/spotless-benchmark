@@ -21,7 +21,7 @@ par <- list(
 args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 par[names(args)] <- args
 # Convert numbers to numeric type
-par[grepl("[0-9]", par)] <- as.numeric(par[grepl("[0-9]", par)]) 
+par[grepl("^[0-9\\.]+$", par)] <- as.numeric(par[grepl("^[0-9\\.]+$", par)]) 
 
 ## START ##
 cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
