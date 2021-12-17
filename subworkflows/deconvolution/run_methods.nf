@@ -84,13 +84,14 @@ process buildStereoscopeModel {
 
     script:
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-sce $params.epoch_build")
+        args = ( params.deconv_args.stereoscope ? params.deconv_args.stereoscope : "" )
 
         """
         echo "Received $sc_input, now building stereoscope model..."
         source activate stereoscope
         export LD_LIBRARY_PATH=/opt/conda/envs/stereoscope/lib
         stereoscope run --sc_cnt $sc_input --label_colname $params.annot \
-        -n 5000 $epochs -o \$PWD
+        $epochs $args -o \$PWD
         """
 }
 process fitStereoscopeModel {
@@ -108,13 +109,14 @@ process fitStereoscopeModel {
         sp_file_basename = file(sp_input).getSimpleName()
         output = "proportions_stereoscope_${sp_file_basename}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-ste $params.epoch_fit")
-
+        args = ( params.deconv_args.stereoscope ? params.deconv_args.stereoscope : "" )
+        
         """
         echo "Model files $r_file and $logits_file, fitting stereoscope model..."
         source activate stereoscope
         export LD_LIBRARY_PATH=/opt/conda/envs/stereoscope/lib
         stereoscope run --sc_fit $r_file $logits_file \
-        --st_cnt $sp_input -n 5000 $epochs -o \$PWD
+        --st_cnt $sp_input $epochs $args -o \$PWD
         mv $sp_file_basename/W*.tsv $output
         """
 }
