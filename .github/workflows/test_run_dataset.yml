@@ -1,6 +1,6 @@
 name: test run_dataset mode
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
-on: [pull_request]
+on: [pull_request, workflow_dispatch ]
 
 jobs:
   run_dataset:

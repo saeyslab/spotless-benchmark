@@ -1,6 +1,6 @@
 name: test data generation
 # This workflow generates synthetic data
-on: [pull_request]
+on: [pull_request, workflow_dispatch]
 
 jobs:
   generate_data:
