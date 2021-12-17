@@ -20,8 +20,9 @@ If you want to deploy the pipeline in other clusters (e.g., an AWS cluster), you
 First, download the datasets from Zenodo and place them in the `standards/` folder. The file is 5GB.
 ```
 cd spade-benchmark
-wget https://zenodo.org/record/5727614/files/standards.tar.gz?download=1
+wget https://zenodo.org/record/5727614/files/standards.tar.gz?download=1 -O standards.tar.gz
 tar -xf standards.tar.gz -C standards/
+mv standards/data/* standards/ ; rmdir standards/data # file structure to be fixed in the future
 rm standards.tar.gz
 ```
 Then run the pipeline with the `run_standard` mode.
