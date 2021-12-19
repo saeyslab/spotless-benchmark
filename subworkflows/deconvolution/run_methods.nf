@@ -27,6 +27,7 @@ process runMusic {
 
 process runSpotlight {
     tag "spotlight_$output_suffix"
+    label "retry"
     container 'csangara/spade_spotlight:latest'
     publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_rep[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
@@ -62,10 +63,11 @@ process runRCTD {
     script:
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_rctd_${output_suffix}"
+        num_cores = task.cpus
         """
         Rscript $params.rootdir/subworkflows/deconvolution/rctd/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
-            --annot $params.annot --output $output
+            --annot $params.annot --output $output --num_cores $num_cores
         """
 
 }

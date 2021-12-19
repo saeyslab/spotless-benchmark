@@ -26,9 +26,10 @@ cat("Converting spatial data to SpatialRNA object...\n")
 spatialRNA_obj_visium <- RCTD:::SpatialRNA(counts = synthetic_visium_data$counts,
                                            use_fake_coords = TRUE)
 
-cat("Running deconvolution tool...\n")
+cat("Running RCTD with", par$num_cores, "cores...\n")
 start_time <- Sys.time()
-RCTD_deconv <- create.RCTD(spatialRNA_obj_visium, reference_obj, max_cores = Sys.getenv("NSLOTS"), CELL_MIN_INSTANCE = 5)
+RCTD_deconv <- create.RCTD(spatialRNA_obj_visium, reference_obj, max_cores = as.numeric(par$num_cores),
+                            CELL_MIN_INSTANCE = 5)
 RCTD_deconv <- run.RCTD(RCTD_deconv, doublet_mode = "full")
 end_time <- Sys.time()
 cat("Runtime: ", round((end_time-start_time)[[1]], 2), "s\n", sep="")
