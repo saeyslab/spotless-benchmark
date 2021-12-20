@@ -13,7 +13,7 @@ def main():
     prs.add_argument('sc_data_path',
                      type = str, help = 'path to single cell h5ad count data')
     
-    prs.add_argument('cuda_device', type = str, help = "index of cuda device ID (from 0-7) or cpu")
+    prs.add_argument('cuda_device', type = str, help = "index of cuda device ID or cpu")
 
     prs.add_argument('-o','--out_dir', default = None,
                      type = str, help = 'directory for regression model')
@@ -35,7 +35,7 @@ def main():
     args = prs.parse_args()
     cuda_device = args.cuda_device
 
-    assert (cuda_device in ["0", "1", "2", "3", "4", "5", "6", "7"] or cuda_device == "cpu"), "invalid device id"
+    assert (cuda_device.isdigit() or cuda_device == "cpu"), "invalid device id"
     assert os.path.exists(args.sc_data_path), "sc file not found"
 
     if args.out_dir is None:

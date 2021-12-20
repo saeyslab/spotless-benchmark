@@ -75,6 +75,7 @@ process runRCTD {
 process buildStereoscopeModel {
     tag 'stereo_build'
     label "retry"
+    label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/spade_stereoscope:latest'
     echo true
 
@@ -87,18 +88,22 @@ process buildStereoscopeModel {
     script:
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-sce $params.epoch_build")
         args = ( params.deconv_args.stereoscope ? params.deconv_args.stereoscope : "" )
+        gpu_flag = ( params.gpu ? "--gpu" : "" )
+        println ("Received ${sc_input}, now building stereoscope model with ${ (params.gpu) ? "GPU" : "CPU" }...")
 
         """
-        echo "Received $sc_input, now building stereoscope model..."
         source activate stereoscope
-        export LD_LIBRARY_PATH=/opt/conda/envs/stereoscope/lib
+        export CUDA_VISIBLE_DEVICES=$params.cuda_device
+
         stereoscope run --sc_cnt $sc_input --label_colname $params.annot \
-        $epochs $args -o \$PWD
+            $epochs $args $gpu_flag -o \$PWD
         """
 }
+
 process fitStereoscopeModel {
     tag "stereo_$sp_file_basename"
     label "retry"
+    label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/spade_stereoscope:latest'
     echo true
 
@@ -112,13 +117,17 @@ process fitStereoscopeModel {
         output = "proportions_stereoscope_${sp_file_basename}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-ste $params.epoch_fit")
         args = ( params.deconv_args.stereoscope ? params.deconv_args.stereoscope : "" )
+        gpu_flag = ( params.gpu ? "--gpu" : "" )
+
+        println ("Received model files $r_file and $logits_file")
+        println ("Fitting stereoscope model with ${ (params.gpu) ? "GPU" : "CPU" }...")
         
         """
-        echo "Model files $r_file and $logits_file, fitting stereoscope model..."
         source activate stereoscope
-        export LD_LIBRARY_PATH=/opt/conda/envs/stereoscope/lib
+        export CUDA_VISIBLE_DEVICES=$params.cuda_device
+        
         stereoscope run --sc_fit $r_file $logits_file \
-        --st_cnt $sp_input $epochs $args -o \$PWD
+            --st_cnt $sp_input $epochs $args $gpu_flag -o \$PWD
         mv $sp_file_basename/W*.tsv $output
         """
 }
@@ -126,6 +135,7 @@ process fitStereoscopeModel {
 process buildCell2locationModel {
     tag 'c2l_build'
     label "retry"
+    label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/spade_cell2location:latest'
     echo true
 
@@ -139,13 +149,12 @@ process buildCell2locationModel {
         sample_id_arg = ( params.sampleID ==~ /none/ ? "" : "-s $params.sampleID" )
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-e $params.epoch_build")
         args = ( params.deconv_args.cell2location ? params.deconv_args.cell2location : "" )
-        
+        cuda_device = ( params.gpu ? params.cuda_device : "cpu" )
+        println ("Building cell2location model with ${ (params.gpu) ? "GPU" : "CPU" }...")
         """
-        echo "Building cell2location model..."
         source activate cell2loc_env
-        export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
         python $params.rootdir/subworkflows/deconvolution/cell2location/build_model.py \
-            $sc_input $params.cuda_device -a $params.annot $sample_id_arg $epochs $args -o \$PWD 
+            $sc_input $cuda_device -a $params.annot $sample_id_arg $epochs $args -o \$PWD 
         """
 
 }
@@ -153,6 +162,7 @@ process buildCell2locationModel {
 process fitCell2locationModel {
     tag "c2l_$output_suffix"
     label "retry"
+    label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/spade_cell2location:latest'
     echo true
 
@@ -166,16 +176,14 @@ process fitCell2locationModel {
         output = "proportions_cell2location_${output_suffix}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-e $params.epoch_fit")
         args = ( params.deconv_args.cell2location ? params.deconv_args.cell2location : "" )
-
-        """
-        echo "Model file $model, fitting cell2location model..."
-        source activate cell2loc_env
-        export LD_LIBRARY_PATH=/opt/conda/envs/cell2loc_env/lib
-
-        python $params.rootdir/subworkflows/deconvolution/cell2location/fit_model.py \
-            $sp_input $model $params.cuda_device $epochs $args -o \$PWD 
-        mv proportions.tsv $output
+        cuda_device = ( params.gpu ? params.cuda_device : "cpu" )
+        println ("Fitting cell2location model from file ${model} with ${ (params.gpu) ? "GPU" : "CPU" }...")
         
+        """
+        source activate cell2loc_env
+        python $params.rootdir/subworkflows/deconvolution/cell2location/fit_model.py \
+            $sp_input $model $cuda_device $epochs $args -o \$PWD 
+        mv proportions.tsv $output
         """
 }
 

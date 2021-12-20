@@ -10,7 +10,7 @@ def main():
 
     prs.add_argument('model_path', type = str, help = 'path to regression model')
     
-    prs.add_argument('cuda_device', type = str, help = "index of cuda device ID, from 0-7, or cpu")
+    prs.add_argument('cuda_device', type = str, help = "index of cuda device ID or cpu")
 
     prs.add_argument('-o','--out_dir', default = os.getcwd() ,
                      type = str, help = 'model and proportions output directory')
@@ -25,7 +25,7 @@ def main():
     sp_data_path = args.sp_data_path
     output_folder = args.out_dir
         
-    assert (cuda_device in ["0", "1", "2", "3", "4", "5", "6", "7"] or cuda_device == "cpu"), "invalid device id"
+    assert (cuda_device.isdigit() or cuda_device == "cpu"), "invalid device input"
     
     ##### MAIN PART #####
     if cuda_device.isdigit():
