@@ -39,9 +39,13 @@ nextflow run main.nf -profile <profile_name> --mode run_standard --standard bron
 There are two modes:
 1. `run_dataset` mode takes a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
 ```
-nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input standards/gold_standard_1/*.rds --sp_input standards/reference/gold_standard_1.rds --sp_type seqFISH
-nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input standards/bronze_standard_1-1/*.rds --sp_input standards/reference/bronze_standard_1.rds
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/gold_standard_1/*.rds" \
+--sc_input standards/reference/gold_standard_1.rds --sp_type seqFISH
+
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/bronze_standard_1-1/*.rds" \
+--sc_input standards/reference/bronze_standard_1_brain_cortex.rds
 ```
+‼ Don't forget to put any directories with [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns) in quotes.
 2. `generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`synvis.sc_input`) and one to use as input in deconvolution methods (`sc_input`). See the next section for more details.
 
 ### Generating synthvisium data
