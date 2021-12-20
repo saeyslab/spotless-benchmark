@@ -2,15 +2,15 @@
 
 # Create default values
 par <- list(
-  clust_var = "celltype",
-  n_regions = 5,
-  region_var = NULL,
-  dataset_id = "1",
-  n_spots_min = 50,
-  n_spots_max = 500,
-  n_spots = 250,
-  visium_mean = 20000,
-  visium_sd = 7000
+  clust_var = "celltype",    # annotation column in scRNA-seq object
+  n_regions = 5,             # number of synthetic regions to be generated
+  region_var = NULL,         # column with regional metadata, if any (for "real" dataset types)
+  dataset_id = "1",          # character vector to define how you want to identify the dataset
+  n_spots_min = 50,          # minimum number of spots allowed per region
+  n_spots_max = 500,         # maximum number of spots allowed per region
+  n_spots = 250,             # number of spots generated (only in the "prior_from_data" dataset type)
+  visium_mean = 20000,       # mean of normal dist. used for downsampling each spot
+  visium_sd = 7000           # sd of normal dist. used for downsampling each spot
 )
 
 # Replace default values by user input
