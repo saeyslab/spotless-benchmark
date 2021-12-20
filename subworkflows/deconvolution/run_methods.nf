@@ -89,7 +89,7 @@ process buildStereoscopeModel {
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-sce $params.epoch_build")
         args = ( params.deconv_args.stereoscope ? params.deconv_args.stereoscope : "" )
         gpu_flag = ( params.gpu ? "--gpu" : "" )
-        println ("Received ${sc_input}, now building stereoscope model with ${ (params.gpu) ? "GPU" : "CPU" }...")
+        println ("Building stereoscope model with ${ (params.gpu) ? "GPU" : "CPU" }...")
 
         """
         source activate stereoscope
