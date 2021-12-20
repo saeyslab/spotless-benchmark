@@ -37,13 +37,12 @@ nextflow run main.nf -profile <profile_name> --mode run_standard --standard bron
 
 ## Running the pipeline on your own dataset
 There are two modes:
-1. `generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`synvis.sc_input`) and one to use as input in deconvolution methods (`sc_input`). See the next section for more details.
-2. `run_dataset` mode takes a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
-
+1. `run_dataset` mode takes a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input standards/gold_standard_1/*.rds --sp_input standards/reference/gold_standard_1.rds --sp_type seqFISH
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input standards/bronze_standard_1-1/*.rds --sp_input standards/reference/bronze_standard_1.rds
 ```
+2. `generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`synvis.sc_input`) and one to use as input in deconvolution methods (`sc_input`). See the next section for more details.
 
 ### Generating synthvisium data
 The workflow `subworkflows/data_generation/generate_data.nf` generates synthetic visium data with *synthvisium*. The arguments are assumed to be stored in a dictionary, so it may be easier to provide this in a separate yaml/JSON file, shown below:
@@ -68,8 +67,15 @@ In the second case, the same file will be used to generate synthetic data and to
 
 TODO: explain arguments?
 
+## Using the GPU
+Stereoscope and cell2location can make use of the GPU to shorten their runtimes. They have been installed on the [NVIDIA base image](https://hub.docker.com/r/nvidia/cuda), which allows the container to access the host GPU. You can do this by providing the `--gpu` flag when running the pipeline.
+```
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 \
+-c standards/standard.config --methods stereoscope,cell2location --gpu
+```
 
 ## Platforms
-The workflow has been tested on two platforms:
+The workflow has been tested on three platforms:
 - NextFlow 21.04.3 on the Windows Subsystem for Linux (WSL2, Ubuntu 20.04), with Docker Desktop for Windows 4.1.0
-- NextFlow 20.10.3 on CentOS Linux, with Singularity 3.8.1
+- NextFlow 20.10.3 on CentOS 7, with Singularity 3.8.1
+- NextFlow 21.03.0 on CentOS 7, with Singularity 3.8.5 (+NVIDIA Volta V100 GPUs)
