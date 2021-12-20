@@ -10,7 +10,7 @@ In the future, you will be able to run this pipeline directly from NextFlow. Fro
 There are currently three main profiles: 
 - *local* uses the local environment 
 - *prism* submits the job to a Sun Grid Engine cluster
-- *hpc* submits the job to a high-performance computing cluster
+- *hpc* submits the job to a Slurm cluster
 
 When running locally, we suggest using it in conjuction with the *docker* profile, that is `nextflow run main.nf -profile local,docker`. You would need to modify `params.rootdir` (directory up to and including the repo, e.g., `"/home/$USER/spade-benchmark"`) and `workDir` (directory in which temporary files will be saved, you can also remove this) to suit your local folder structure.
 
@@ -45,8 +45,7 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input stand
 2. `generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`synvis.sc_input`) and one to use as input in deconvolution methods (`sc_input`). See the next section for more details.
 
 ### Generating synthvisium data
-The workflow `subworkflows/data_generation/generate_data.nf` generates synthetic visium data with *synthvisium*. The arguments are assumed to be stored in a dictionary, so it may be easier to provide this in a separate yaml/JSON file, shown below:
-
+The workflow `subworkflows/data_generation/generate_data.nf` generates synthetic visium data with *synthvisium*. The arguments are assumed to be stored in a dictionary, so it may be easier to provide this in a separate yaml/JSON file. The four required arguments are:
 ```
 # synthvisium_params.yaml
 synvis:
@@ -55,7 +54,7 @@ synvis:
   reps: 3
   type: artificial_diverse_distinct,artificial_uniform_distinct
 ```
-These parameters will return 6 synthetic datasets, with 3 replicates for each type. You can generate the data only (synthetic datasets will be copied to `outdir.synvis`), or run the whole pipeline immediately after.
+These parameters will return 3 replicates for each dataset type, resulting in 6 files. You can also adjust other parameters such as the number of spots and mean or standard deviation per spot (see `subworkflows/data_generation/generate_synthetic_data.R`). You can generate the data only (synthetic datasets will be copied to `outdir.synvis`), or run the whole pipeline immediately after.
 ```
 # Only generate data
 nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> --params-file synthvisium_params.yaml
@@ -63,19 +62,27 @@ nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_nam
 # Generate and run the whole pipeline
 nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
 ```
-In the second case, the same file will be used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in Machine Learning).
+In the second case, the same file will be used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
 
-TODO: explain arguments?
+## Pipeline arguments
+You can find the default arguments of the pipeline in the `nextflow.config` file, under the `params` scope. These can be overwritten by parameters provided in the command line or in an external JSON/YAML file (see exact priorities [here](https://www.nextflow.io/docs/latest/config.html)).
+* `methods`: deconvolution methods to run in the pipeline, must be in small laters and comma-separated with no space, e.g.,  <br /> `--methods music,rctd` (default: all)
+* `mode`: as explained above, the different modes in which the pipeline can be run (run_standard, run_dataset, generate_and_run)
+* `annot`: the cell type annotation column in the input scRNA-seq Seurat object (default: subclass)
+* `sampleID`: the column containing batch information for the input scRNA-seq Seurat object (default: none) 
+* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. Can also be passed with the command line, e.g., `--deconv_args.cell2location "-p 10"`
+* `synvis`: synthvisium arguments, see "Generating synthvisium data"
+* `gpu`: add this flag to use host GPU, see below
 
-## Using the GPU
-Stereoscope and cell2location can make use of the GPU to shorten their runtimes. They have been installed on the [NVIDIA base image](https://hub.docker.com/r/nvidia/cuda), which allows the container to access the host GPU. You can do this by providing the `--gpu` flag when running the pipeline.
+### GPU usage
+Stereoscope and cell2location can make use of a GPU to shorten their runtimes. You can do this by providing the `--gpu` flag when running the pipeline. If you have a specific GPU you want to use, you will have to provide the index with `cuda_device` (default: 0). This works from inside the containers, so you still do not have to install the programs locally (the containers were built on top of a [NVIDIA base image](https://hub.docker.com/r/nvidia/cuda)).
 ```
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 \
--c standards/standard.config --methods stereoscope,cell2location --gpu
+-c standards/standard.config --methods stereoscope,cell2location --gpu #--cuda_device 1
 ```
 
 ## Platforms
 The workflow has been tested on three platforms:
 - NextFlow 21.04.3 on the Windows Subsystem for Linux (WSL2, Ubuntu 20.04), with Docker Desktop for Windows 4.1.0
 - NextFlow 20.10.3 on CentOS 7, with Singularity 3.8.1
-- NextFlow 21.03.0 on CentOS 7, with Singularity 3.8.5 (+NVIDIA Volta V100 GPUs)
+- NextFlow 21.03.0 on CentOS 7, with Singularity 3.8.5 (and NVIDIA Volta V100 GPUs)
