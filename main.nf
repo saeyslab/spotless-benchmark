@@ -54,7 +54,7 @@ workflow {
             println(params.mode ==~ /run_standard/ ? file(params.sc_input)[0]: file(params.sc_input))
 
             println("\nSpatial dataset(s):") 
-            // Without glob pattern, there will be multiple files
+            // With glob pattern, there will be multiple files
             params.sp_input =~ /\*/ ? file(params.sp_input).each{println "$it"} : println (file(params.sp_input))
         }
 
