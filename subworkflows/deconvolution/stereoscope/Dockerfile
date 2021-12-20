@@ -1,6 +1,6 @@
 FROM nvidia/cuda:10.2-base-ubuntu18.04
 
-# install os packages
+# install os packages, also update gcc and libstdc++
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes \
         curl \
