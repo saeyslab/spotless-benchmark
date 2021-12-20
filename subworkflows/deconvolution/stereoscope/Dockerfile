@@ -10,6 +10,10 @@ RUN apt-get update \
         wget \
         ca-certificates \
         git \
+        gcc-8 libssl1.0.0 software-properties-common \
+    && add-apt-repository ppa:ubuntu-toolchain-r/test \
+    && apt-get update \
+    && apt-get install --yes --only-upgrade libstdc++6 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -21,6 +25,10 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     && /bin/bash /tmp/miniconda.sh -b -p /opt/conda \
     && rm /tmp/miniconda.sh
 RUN /opt/conda/condabin/conda init bash
-RUN conda create -n stereoscope python=3.7 numba jupyter scanpy numpy pandas matplotlib scikit-learn umap-learn anndata scipy Pillow libgcc --channel bioconda --channel conda-forge
+RUN /opt/conda/condabin/conda create -n stereoscope python=3.7 numba jupyter scanpy numpy pandas matplotlib scikit-learn \
+umap-learn anndata scipy Pillow libgcc --channel bioconda --channel conda-forge
+ENV PATH /opt/conda/envs/stereoscope/bin:/opt/conda/bin:$PATH
+SHELL ["/bin/bash", "-c"]
 RUN source activate stereoscope && pip install torch loompy && \
  git clone https://github.com/almaan/stereoscope && cd stereoscope && ./setup.py install
+RUN echo "source activate stereoscope" >> ~/.bashrc
