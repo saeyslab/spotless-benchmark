@@ -3,7 +3,7 @@ library(precrec)
 library(magrittr)
 
 getConfusionMatrix <- function(known_props, test_props){
-  # test_props <- round(test_props, 2)
+  test_props <- round(test_props, 2)
   tp <- 0; tn <- 0; fp <- 0; fn <- 0
   missing_rows <- which(rowSums(is.na(known_props)) > 0)
   
@@ -60,12 +60,13 @@ RMSE <- mean(sqrt(rowSums((known_props-deconv_matrix)**2)/ncells))
 
 # Classification metrics
 conf_mat <- getConfusionMatrix(known_props, deconv_matrix)
-accuracy <- round((conf_mat$tp + conf_mat$tn) / (conf_mat$tp + conf_mat$tn + conf_mat$fp + conf_mat$fn), 2)
-sensitivity <- round(conf_mat$tp / (conf_mat$tp + conf_mat$fn), 2)
-specificity <- round(conf_mat$tn / (conf_mat$tn + conf_mat$fp), 2)
-precision <- round(conf_mat$tp / (conf_mat$tp + conf_mat$fp), 2)
-F1 <- round(2 * ((precision * sensitivity) /
-                  (precision + sensitivity)), 2)
+accuracy <- round((conf_mat$tp + conf_mat$tn) / (conf_mat$tp + conf_mat$tn + conf_mat$fp + conf_mat$fn), 3)
+sensitivity <- round(conf_mat$tp / (conf_mat$tp + conf_mat$fn), 3)
+specificity <- round(conf_mat$tn / (conf_mat$tn + conf_mat$fp), 3)
+balanced_accuracy <- round((sensitivity + specificity) / 2, 3)
+precision <- round(conf_mat$tp / (conf_mat$tp + conf_mat$fp), 3)
+F1 <- round((2* precision * sensitivity) / (precision + sensitivity), 3)
+F2 <- round((5 * precision * sensitivity) / (4*precision + sensitivity), 3)
 
 # Precrec package
 known_props_binary <- ifelse(known_props > 0, "present", "absent") %>%
@@ -79,7 +80,7 @@ eval_prc <- evalmod(scores = c(as.matrix(deconv_matrix)), labels=known_props_bin
 prc <- subset(auc(eval_prc), curvetypes == "PRC")$aucs
 
 metrics <- data.frame("corr"=corr_spots, "RMSE"=RMSE,
-                      "accuracy"=accuracy, "sensitivity"=sensitivity,
-                      "specificity"=specificity, "precision"=precision, "F1"=F1,
-                      "prc"=prc)
+                      "accuracy"=accuracy, "balanced_accuracy"=balanced_accuracy,
+                      "sensitivity"=sensitivity, "specificity"=specificity,
+                      "precision"=precision, "F1"=F1, "F2"=F2, "prc"=prc)
 write.table(metrics, file=par$output, row.names=FALSE)
