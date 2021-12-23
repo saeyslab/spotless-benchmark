@@ -42,19 +42,21 @@ workflow {
         // Print inputs (the timing isn't right with with view(), so do this instead)
         // Although view() has the advantage that it gives the absolute path (sc_input_ch.view())
         if (!(params.mode ==~ /generate_and_run/)) {
-            println("Single-cell reference dataset:")
-            println(params.mode ==~ /run_standard/ ? file(params.sc_input)[0]: file(params.sc_input))
+            if (params.verbose) {
+                println("Single-cell reference dataset:")
+                println(params.mode ==~ /run_standard/ ? file(params.sc_input)[0]: file(params.sc_input))
 
-            println("\nSpatial dataset(s):") 
-            // With glob pattern, there will be multiple files
-            params.sp_input =~ /\*/ ? file(params.sp_input).each{println "$it"} : println (file(params.sp_input))
+                println("\nSpatial dataset(s):") 
+                // With glob pattern, there will be multiple files
+                params.sp_input =~ /\*/ ? file(params.sp_input).each{println "$it"} : println (file(params.sp_input))
+            }
         }
 
         sc_input_ch = Channel.fromPath(params.sc_input) // Can only have 1 file
         // Can have one or more files
         sp_input_ch = (params.mode ==~ /generate_and_run/ ? generateSyntheticData.out : Channel.fromPath(params.sp_input))
 
-        runMethods(sc_input_ch, sp_input_ch)
-        computeMetrics(runMethods.out)
+        // runMethods(sc_input_ch, sp_input_ch)
+        // computeMetrics(runMethods.out)
 
 }
