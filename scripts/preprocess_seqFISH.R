@@ -34,7 +34,7 @@ get_coarse_annot <- function(celltype){
 }
 
 #### CHANGEABLE PARAMS ####
-path <- "D:/spade-benchmark/data/seqFISH_eng2019/"
+path <- "D:/spade-benchmark/data/raw_data/seqFISH_eng2019"
 dataset_source <- "Eng2019"
 dataset <- "ob" # cortex_svz or ob
 standard_no <- ifelse(dataset == "cortex_svz", 1, 2)
@@ -78,8 +78,8 @@ saveRDS(seurat_obj, paste0("D:/spade-benchmark/data/gold_standard_", standard_no
 # Each camera FOV is 2,000 pixels * 0.103 micron/pixel = 206 micron
 # Visium has center-to-center distance of 100 microns, spot size 55 micron
 fov_size <- 2000
-cc_distance <- 55 / 0.103 # center-to-center distance of spots (in pixels)
-spot_diameter <- 55 / 0.103  # spot diameter (in pixels)
+cc_distance <- 55 / 0.103 # center-to-center distance of spots (in micrometers)
+spot_diameter <- 55 / 0.103  # spot diameter (in micrometers)
 gap <- cc_distance-spot_diameter
 
 # Calculate how many spots there can be
