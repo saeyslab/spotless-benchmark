@@ -15,7 +15,7 @@ process runMusic {
     
     script:
         output_suffix = file(sp_input).getSimpleName()
-        output = "proportions_music_${output_suffix}${params.runID}"
+        output = "proportions_music_${output_suffix}${params.runID_props}"
 
         """
         Rscript $params.rootdir/subworkflows/deconvolution/music/script_nf.R \
@@ -39,7 +39,7 @@ process runSpotlight {
 
     script:
         output_suffix = file(sp_input).getSimpleName()
-        output = "proportions_spotlight_${output_suffix}${params.runID}"
+        output = "proportions_spotlight_${output_suffix}${params.runID_props}"
         args = (params.deconv_args.spotlight ? params.deconv_args.spotlight : "")
         """
         Rscript $params.rootdir/subworkflows/deconvolution/spotlight/script_nf.R \
@@ -62,7 +62,7 @@ process runRCTD {
 
     script:
         output_suffix = file(sp_input).getSimpleName()
-        output = "proportions_rctd_${output_suffix}${params.runID}"
+        output = "proportions_rctd_${output_suffix}${params.runID_props}"
         num_cores = task.cpus
         """
         Rscript $params.rootdir/subworkflows/deconvolution/rctd/script_nf.R \
@@ -114,7 +114,7 @@ process fitStereoscopeModel {
         tuple val('stereoscope'), path("$output"), path (sp_input_rds)
     script:
         sp_file_basename = file(sp_input).getSimpleName()
-        output = "proportions_stereoscope_${sp_file_basename}${params.runID}.preformat"
+        output = "proportions_stereoscope_${sp_file_basename}${params.runID_props}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-ste $params.epoch_fit")
         args = ( params.deconv_args.stereoscope ? params.deconv_args.stereoscope : "" )
         gpu_flag = ( params.gpu ? "--gpu" : "" )
@@ -173,7 +173,7 @@ process fitCell2locationModel {
         tuple val('cell2location'), path("$output"), path (sp_input_rds)
     script:
         output_suffix = file(sp_input).getSimpleName()
-        output = "proportions_cell2location_${output_suffix}${params.runID}.preformat"
+        output = "proportions_cell2location_${output_suffix}${params.runID_props}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-e $params.epoch_fit")
         args = ( params.deconv_args.cell2location ? params.deconv_args.cell2location : "" )
         cuda_device = ( params.gpu ? params.cuda_device : "cpu" )

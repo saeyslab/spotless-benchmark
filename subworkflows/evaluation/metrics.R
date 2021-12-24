@@ -53,6 +53,21 @@ known_props <- cbind(known_props,
                             dimnames = list(rownames(known_props), columns_to_add)))
 known_props <- known_props[,sort(colnames(known_props), method="shell")]
 
+if (!is.null(par$remap)){
+  conversion <- read.table(par$remap, sep="\t") %>% setNames(c("old_annot", "new_annot"))
+  if (!all(colnames(deconv_matrix) %in% conversion$old_annot)){
+    missing <- colnames(deconv_matrix)[which(!colnames(deconv_matrix) %in% conversion$old_annot)]
+    stop("Missing cell types in ", par$remap, ": ", paste(missing, collapse=", "))
+  }
+  
+  deconv_matrix <- sapply(unique(conversion$new_annot), function(new_celltype){
+                   rowSums(deconv_matrix[,conversion$old_annot[conversion$new_annot == new_celltype],
+                        drop=FALSE])})
+  known_props <- sapply(unique(conversion$new_annot), function(new_celltype){
+                   rowSums(known_props[,conversion$old_annot[conversion$new_annot == new_celltype],
+                        drop=FALSE])})
+}
+
 # Correlation and RMSE
 corr_spots <- mean(diag(cor(t(known_props), t(deconv_matrix))))
 RMSE <- mean(sqrt(rowSums((known_props-deconv_matrix)**2)/ncells))
