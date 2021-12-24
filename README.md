@@ -63,7 +63,7 @@ nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input 
 ```
 In the second case, the same file will be used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
 
-## Pipeline arguments
+## Pipeline arguments (Advanced use)
 You can find the default arguments of the pipeline in the `nextflow.config` file, under the `params` scope. These can be overwritten by parameters provided in the command line or in an external JSON/YAML file (see exact priorities [here](https://www.nextflow.io/docs/latest/config.html)).
 * `methods`: deconvolution methods to run in the pipeline, must be in small laters and comma-separated with no space, e.g.,  <br /> `--methods music,rctd` (default: all)
 * `mode`: as explained above, the different modes in which the pipeline can be run (run_standard, run_dataset, generate_and_run)
@@ -72,12 +72,27 @@ You can find the default arguments of the pipeline in the `nextflow.config` file
 * `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. Can also be passed with the command line, e.g., `--deconv_args.cell2location "-p 10"`
 * `synvis`: synthvisium arguments, see "Generating synthvisium data"
 * `gpu`: add this flag to use host GPU, see below
+* `verbose`: add this flag to print input files
+* `runID_props`, `runID_metrics`: a suffix added to the proportions and metrics file output by the pipeline
+* `remap_annot`: if you want to use another celltype annotation to calculate the metrics, see below
 
 ### GPU usage
 Stereoscope and cell2location can make use of a GPU to shorten their runtimes. You can do this by providing the `--gpu` flag when running the pipeline. If you have a specific GPU you want to use, you will have to provide the index with `cuda_device` (default: 0). This works from inside the containers, so you still do not have to install the programs locally (the containers were built on top of a [NVIDIA base image](https://hub.docker.com/r/nvidia/cuda)).
 ```
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 \
 -c standards/standard.config --methods stereoscope,cell2location --gpu #--cuda_device 1
+```
+
+### Remapping cell type annotations
+You can sum up the proportions of closely related cell types together to see if the methods perform better with a broader annotation. You can do this by creating a tsv file that maps one cell type to another (see `standards/gold_standard_1/conversion.tsv` for an example). The deconvolution will still be performed with the original annotations, but the proportions will be summed during metrics calculation. You have to provide the absolute file path with the `remap_annot` parameter. 
+```
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 \
+-c standards/standard.config --remap_annot /home/$USER/spade-benchmark/standards/gold_standard_1/conversion.tsv
+
+# Only rerun the calculations - add file suffix to not overwrite existing metrics file
+nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name> \
+  --sp_input "standards/gold_standard_1/*.rds" --sp_type seqFISH --runID_metrics "_coarse" \
+  --remap_annot /home/$USER/spade-benchmark/standards/gold_standard_1/conversion.tsv 
 ```
 
 ## Platforms
