@@ -3,18 +3,12 @@ This is a repository for benchmarking spatial deconvolution and mapping tools.
 
 You can either run the pipeline with the gold/silver/bronze standards or run it with your own data. In either case, you need to [install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html), and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
 
-In the future, you will be able to run this pipeline directly from NextFlow. From now you must clone the repository to run the pipeline.
+In the future, you will be able to run this pipeline directly from NextFlow. For now you must clone the repository to run the pipeline.
 
-‼**We highly recommend you to create a profile in the nextflow.config file**‼
+‼**You need to modify/create a profile to run the pipeline**‼
+Currently, there are three profiles: *local* uses the local environment to execute the pipeline, *prism* uses a Sun Grid Engine cluster, and *hpc* uses a Slurm cluster.
 
-There are currently three main profiles: 
-- *local* uses the local environment 
-- *prism* submits the job to a Sun Grid Engine cluster
-- *hpc* submits the job to a Slurm cluster
-
-When running locally, we suggest using it in conjuction with the *docker* profile, that is `nextflow run main.nf -profile local,docker`. You would need to modify `params.rootdir` (directory up to and including the repo, e.g., `"/home/$USER/spade-benchmark"`) and `workDir` (directory in which temporary files will be saved, you can also remove this) to suit your local folder structure.
-
-If you want to deploy the pipeline in other clusters (e.g., an AWS cluster), you will have to create a new profile.
+To run the pipeline locally, modify `params.rootdir` as the directory up to and including the reposity, e.g., `"/home/$USER/spade-benchmark"`. To use containers, you also need to modify the bind mounts of `docker.runOptions`. Then you can run the pipeline with `nextflow run main.nf -profile local,docker`.
 
 ## Reproducing the pipeline with standards
 First, download the datasets from Zenodo and place them in the `standards/` folder. The file is 5GB.
@@ -46,6 +40,7 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "stan
 --sc_input standards/reference/bronze_standard_1_brain_cortex.rds
 ```
 ‼ Don't forget to put any directories with [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns) in quotes.
+
 2. `generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`synvis.sc_input`) and one to use as input in deconvolution methods (`sc_input`). See the next section for more details.
 
 ### Generating synthvisium data
