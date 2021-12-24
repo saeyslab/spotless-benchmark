@@ -15,7 +15,7 @@ process computeMetrics {
 
     script:
         output_suffix = file(sp_input).getSimpleName()
-        metrics_file = "metrics_${method_name}_${output_suffix}"
+        metrics_file = "metrics_${method_name}_${output_suffix}${params.runID}"
 
         """
         Rscript $params.rootdir/subworkflows/evaluation/metrics.R \
@@ -38,7 +38,7 @@ workflow {
     input_ch = methods_list.combine(sp_input_ch)
                 .multiMap { method, sp_input ->
                     inputs: tuple (method, \
-                    "${params.outdir.props}/${file(sp_input).getSimpleName().replaceFirst(/_rep[0-9]+/, "")}/proportions_${method}_${file(sp_input).getSimpleName()}",\
+                    "${params.outdir.props}/${file(sp_input).getSimpleName().replaceFirst(/_rep[0-9]+/, "")}/proportions_${method}_${file(sp_input).getSimpleName()}${params.runID}",\
                     sp_input)
                 }
                 
