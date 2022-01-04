@@ -178,7 +178,7 @@ process fitCell2locationModel {
         args = ( params.deconv_args.cell2location ? params.deconv_args.cell2location : "" )
         cuda_device = ( params.gpu ? params.cuda_device : "cpu" )
         println ("Fitting cell2location model from file ${model} with ${ (params.gpu) ? "GPU" : "CPU" }...")
-        
+        println ("Arguments: ${args}")
         """
         source activate cell2loc_env
         python $params.rootdir/subworkflows/deconvolution/cell2location/fit_model.py \

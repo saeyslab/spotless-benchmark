@@ -19,6 +19,10 @@ def main():
 
     prs.add_argument('-p', '--posterior_sampling', default=1000, type = int, help = "number of samples to take from the posterior distribution")
 
+    prs.add_argument('-n', '--n_cells_per_location', default=30, type = int, help = "estimated number of cells per spot")
+
+    prs.add_argument('-d', '--detection_alpha', default=200, type = int, help = "within-experiment variation in RNA detection sensitivity")
+    
     args = prs.parse_args()
     
     cuda_device = args.cuda_device
@@ -86,10 +90,10 @@ def main():
         adata_vis, cell_state_df=inf_aver, 
         # the expected average cell abundance: tissue-dependent 
         # hyper-prior which can be estimated from paired histology:
-        N_cells_per_location=30,
+        N_cells_per_location=args.n_cells_per_location,
         # hyperparameter controlling normalisation of
         # within-experiment variation in RNA detection (using default here):
-        detection_alpha=200
+        detection_alpha=args.detection_alpha
     ) 
 
     mod.train(max_epochs=args.epochs, 
