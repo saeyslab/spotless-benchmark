@@ -148,7 +148,7 @@ process buildCell2locationModel {
     script:
         sample_id_arg = ( params.sampleID ==~ /none/ ? "" : "-s $params.sampleID" )
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-e $params.epoch_build")
-        args = ( params.deconv_args.cell2location ? params.deconv_args.cell2location : "" )
+        args = ( params.deconv_args.cell2location.build ? params.deconv_args.cell2location.build : "" )
         cuda_device = ( params.gpu ? params.cuda_device : "cpu" )
         println ("Building cell2location model with ${ (params.gpu) ? "GPU" : "CPU" }...")
         """
@@ -175,7 +175,7 @@ process fitCell2locationModel {
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_cell2location_${output_suffix}${params.runID_props}.preformat"
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-e $params.epoch_fit")
-        args = ( params.deconv_args.cell2location ? params.deconv_args.cell2location : "" )
+        args = ( params.deconv_args.cell2location.fit ? params.deconv_args.cell2location.fit : "" )
         cuda_device = ( params.gpu ? params.cuda_device : "cpu" )
         println ("Fitting cell2location model from file ${model} with ${ (params.gpu) ? "GPU" : "CPU" }...")
         println ("Arguments: ${args}")
