@@ -5,7 +5,7 @@ include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L } from 
 process runMusic {
     tag "music_$output_suffix"
     container 'csangara/spade_music:latest'
-    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_rep[0-9]+/, "")}" },
+    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
 
     input:
@@ -29,7 +29,7 @@ process runSpotlight {
     tag "spotlight_$output_suffix"
     label "retry"
     container 'csangara/spade_spotlight:latest'
-    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_rep[0-9]+/, "")}" },
+    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
     input:
         tuple path (sc_input), path (sp_input)
@@ -52,7 +52,7 @@ process runSpotlight {
 process runRCTD {
     tag "rctd_$output_suffix"
     container 'csangara/spade_rctd:latest'
-    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_rep[0-9]+/, "")}" },
+    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
     input:
         tuple path (sc_input), path (sp_input)

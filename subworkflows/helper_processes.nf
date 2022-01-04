@@ -24,7 +24,7 @@ process convertRDStoH5AD {
 process formatTSVFile {
     tag "format_${method_name}"
     container 'rocker/tidyverse:latest'
-    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_rep[0-9]+/, "")}" },
+    publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
 
     input:
