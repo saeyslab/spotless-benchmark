@@ -31,6 +31,11 @@ def main():
         
     assert (cuda_device.isdigit() or cuda_device == "cpu"), "invalid device input"
     
+    print("Parameters\n==========")
+    print("Detection alpha: {}\nCells per location: {}".format(args.detection_alpha, args.n_cells_per_location))
+    print("Training epochs: {}\nPosterior sampling: {}".format(args.epochs, args.posterior_sampling))
+    print("==========")
+
     ##### MAIN PART #####
     if cuda_device.isdigit():
         os.environ["CUDA_VISIBLE_DEVICES"]=cuda_device

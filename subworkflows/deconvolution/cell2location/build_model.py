@@ -45,6 +45,10 @@ def main():
 
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
+
+    print("Parameters\n==========")
+    print("Training epochs: {}\nPosterior sampling: {}".format(args.epochs, args.posterior_sampling))
+    print("==========")
     
     ##### MAIN CODE #####
     if cuda_device.isdigit():
