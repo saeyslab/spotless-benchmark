@@ -56,10 +56,10 @@ synvis:
 These parameters will return 3 replicates for each dataset type, resulting in 6 files. You can also adjust other parameters such as the number of spots and mean or standard deviation per spot (see `subworkflows/data_generation/generate_synthetic_data.R`). You can generate the data only (synthetic datasets will be copied to `outdir.synvis`), or run the whole pipeline immediately after.
 ```
 # Only generate data
-nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> --params-file synthvisium_params.yaml
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
 
 # Generate and run the whole pipeline
-nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds --params-file synthvisium_params.yaml
+nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds -params-file synthvisium_params.yaml
 ```
 In the second case, the same file will be used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
 
@@ -69,7 +69,7 @@ You can find the default arguments of the pipeline in the `nextflow.config` file
 * `mode`: as explained above, the different modes in which the pipeline can be run (run_standard, run_dataset, generate_and_run)
 * `annot`: the cell type annotation column in the input scRNA-seq Seurat object (default: subclass)
 * `sampleID`: the column containing batch information for the input scRNA-seq Seurat object (default: none) 
-* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. Can also be passed with the command line, e.g., `--deconv_args.cell2location "-p 10"`
+* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. Can also be passed with the command line, e.g., `--deconv_args.cell2location "-p 10"` (**only for Nextflow version 21, for version 20 provide this in a separate file!**)
 * `synvis`: synthvisium arguments, see "Generating synthvisium data"
 * `gpu`: add this flag to use host GPU, see below
 * `verbose`: add this flag to print input files
