@@ -36,8 +36,9 @@ for (method in methods){
   cat(">>> Checking whether metrics file is formatted correctly...\n")
   output_metrics <- read.table(paste0("results/test_sp_data/metrics_", method, "_test_sp_data"),
                                sep=" ", header=TRUE)
-  metric_names <- c("corr", "RMSE", "accuracy", "sensitivity", "specificity", "precision", "F1", "prc")
-  expect_equal(ncol(output_metrics), 8)
+  metric_names <- c("corr", "RMSE", "accuracy", "balanced_accuracy",
+                    "sensitivity", "specificity", "precision", "F1", "F2", "prc")
+  expect_equal(ncol(output_metrics), 10)
   expect_equal(nrow(output_metrics), 1)
   expect_equal(colnames(output_metrics), metric_names)
   
