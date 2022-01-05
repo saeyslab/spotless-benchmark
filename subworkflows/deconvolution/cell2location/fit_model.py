@@ -19,7 +19,7 @@ def main():
 
     prs.add_argument('-p', '--posterior_sampling', default=1000, type = int, help = "number of samples to take from the posterior distribution")
 
-    prs.add_argument('-n', '--n_cells_per_location', default=30, type = int, help = "estimated number of cells per spot")
+    prs.add_argument('-n', '--n_cells_per_location', default=8, type = int, help = "estimated number of cells per spot")
 
     prs.add_argument('-d', '--detection_alpha', default=200, type = int, help = "within-experiment variation in RNA detection sensitivity")
     
