@@ -261,3 +261,28 @@ workflow runMethods {
         output_ch
 }
 
+workflow {
+
+    if (!(params.mode ==~ /run_dataset/)){
+        throw new Exception("Error: can only run this with the 'run_dataset' mode")
+    }
+
+    // RUN ON YOUR OWN DATA
+    println("Running the pipeline on the provided data...")
+    
+    // Print inputs (the timing isn't right with with view(), so do this instead)
+    // Although view() has the advantage that it gives the absolute path (sc_input_ch.view())
+    if (params.verbose) {
+        println("Single-cell reference dataset:")
+        println(file(params.sc_input))
+
+        println("\nSpatial dataset(s):") 
+        // With glob pattern, there will be multiple files
+        params.sp_input =~ /\*/ ? file(params.sp_input).each{println "$it"} : println (file(params.sp_input))
+    }
+
+    sc_input_ch = Channel.fromPath(params.sc_input) // Can only have 1 file
+    sp_input_ch = Channel.fromPath(params.sp_input) // Can have one or more files
+
+    runMethods(sc_input_ch, sp_input_ch)
+}
