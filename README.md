@@ -9,7 +9,7 @@ In the future, you will be able to run this pipeline directly from NextFlow. For
 
 Currently, there are three profiles: *local* uses the local environment to execute the pipeline, *prism* uses a Sun Grid Engine cluster, and *hpc* uses a Slurm cluster.
 
-To run the pipeline locally, modify `params.rootdir` as the directory up to and including the reposity, e.g., `"/home/$USER/spade-benchmark"`. To use containers, you also need to modify the bind mounts of `docker.runOptions`. Then you can run the pipeline with `nextflow run main.nf -profile local,docker`. By default the proportions and metrics are saved at `deconv_proportions/` and `results/`.
+To run the pipeline locally, modify `params.rootdir` in the file *nextflow.config* as the directory up to and including the reposity, e.g., `"/home/$USER/spade-benchmark"`. To use containers, you also need to modify the bind mounts of `docker.runOptions`. Then you can run the pipeline with `nextflow run main.nf -profile local,docker`. By default the proportions and metrics are saved at `deconv_proportions/` and `results/`.
 
 ## Pipeline overview
 The complete pipeline (`main.nf`) has the following steps:
