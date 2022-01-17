@@ -35,7 +35,7 @@ jobs:
 
       - name: Run pipeline with test data
         run: |
-          nextflow run main.nf -profile test,docker --mode run_dataset --methods all
+          nextflow run main.nf -profile test,docker --mode run_dataset --methods rctd
 
       - name: Upload proportions and metrics
         uses: actions/upload-artifact@v2
@@ -44,6 +44,7 @@ jobs:
           path: |
             deconv_proportions/*
             results/*
+            trace.txt
 
   test_output_run_dataset:
     name: Tests outputs of the pipeline
@@ -63,4 +64,4 @@ jobs:
         shell: bash
         run: |
           echo $(ls)
-          Rscript unit-test/test_run_dataset.R all
+          Rscript unit-test/test_run_dataset.R rctd

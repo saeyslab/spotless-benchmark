@@ -47,6 +47,17 @@ for (method in methods){
   expected_metrics <- read.table(paste0("unit-test/test_run_dataset/",
                                         "metrics_", method, "_test_sp_data"),
                                  sep=" ", header=TRUE)
-  expect_equal(output_metrics, expected_metrics, tolerance=1e-3)
-  cat(">>> Test finished successfully!\n")  
+  expect_equal(output_metrics, expected_metrics, tolerance=1e-3) 
 }
+
+# Check 5 - trace file
+cat(">>> Checking whether trace file is correct...\n")
+trace_file <- read.table("trace.txt", header=TRUE, sep="\t")
+
+expect_equal(ncol(trace_file), 19)
+trace_cols <- c("task_id", "hash", "name", "tag", "status", "exit", "container",
+              "duration", "realtime", "cpus", "disk", "memory", "attempt",
+              "X.cpu", "X.mem", "rss", "peak_rss", "vmem", "peak_vmem")
+expect_equal(colnames(trace_file), trace_cols)
+
+cat(">>> Test finished successfully!\n") 
