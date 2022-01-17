@@ -29,7 +29,8 @@ df_new <- lapply(datasets_strip, function(ds) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
         read.table(paste0("D:/spade-benchmark/results/", ds, "_", dt, "/metrics_",
-                                         method, "_", ds, "_", dt, "_rep", repl)) %>% t %>% data.frame %>%
+                                         method, "_", ds, "_", dt, "_rep", repl)) %>%
+          t %>% data.frame %>%
           mutate("method" = method, "rep" = repl, "dataset" = ds, "dataset_type" = dt) 
       }) %>% do.call(rbind, .)
     }) %>% do.call(rbind, .)
@@ -56,7 +57,7 @@ df_old <- lapply(possible_metrics, function(met){
   mutate("source" = "old") %>% select(colnames(df_new)) 
 
 
-#### PLOT ####
+#### PLOTS ####
 moi <- "prc"
 
 df_combined <- rbind(df_new[df_new$metric == moi,],
@@ -80,7 +81,7 @@ ggplot(df_combined, aes(x=method, y=all_values, color=method, fill=source)) + ge
   facet_grid(dataset ~ dt_linebreak, scales="free_y",
            labeller=labeller(dataset=proper_dataset_names))
 
-ggsave(paste0("D:/spade-benchmark/plots/old_vs_new_boxplot_", moi, ".png"),
+ggsave(paste0("D:/spade-benchmark/plots/old_vs_new_boxplot_", moi, "_musicwithsampleID.png"),
        width = 29.7, height = 21.0, units="cm", dpi = 300)
 
 ## Before after line plot
@@ -98,5 +99,73 @@ ggplot(summary_df, aes(x=source, y=median, color=method, group=id)) + geom_line(
         panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
   scale_y_continuous(breaks=y_breaks[[moi]]) +
   facet_grid(dataset ~ dt_linebreak, labeller=labeller(dataset=proper_dataset_names))
-ggsave(paste0("D:/spade-benchmark/plots/old_vs_new_lineplot_", moi, ".png"),
+ggsave(paste0("D:/spade-benchmark/plots/old_vs_new_lineplot_", moi, "_musicwithsampleID.png"),
        width = 29.7, height = 21.0, units="cm", dpi = 300)
+
+###### BAR PLOT OF BEST PERFORMERS #####
+df_new_best <- df_new %>%
+  filter(!grepl("F2|balanced_accuracy|corr", metric)) %>% 
+  # Calculate median of metrics
+  group_by(metric, method, dataset, dataset_type) %>%
+  summarise(median_val = round(median(as.numeric(all_values)), 3)) %>%
+  # Get best value (min for RMSE, max for others)
+  group_by(metric, dataset, dataset_type) %>%
+  filter(case_when(metric == "RMSE" ~ median_val == min(median_val),
+                    T ~ median_val == max(median_val))) %>%
+  # Count number of best performers, if more than 1 then it is a tie
+  add_tally() %>% mutate(winner = ifelse(n == 1, method, "Tie")) %>%
+  # Count number of times a method performs best
+  summarise(method = unique(winner)) %>%
+  group_by(metric) %>% count(method) %>%
+  # Add zeroes to methods that had zero counts
+  tidyr::pivot_wider(names_from = method, values_from = n, values_fill = 0) %>%
+  tidyr::pivot_longer(!metric, names_to = "method", values_to = "n")
+
+ggplot(df_new_best, aes(x=metric, y=n, fill=method)) + geom_bar(width=0.75, position="fill", stat="identity") +
+  ylab("% Best performing") + xlab("Metric") + labs(fill="Method") +
+  scale_fill_manual(values = c("#f8766d", "#a3a500", "#00bf7d", "#00b0f6", "#e76bf3", "#a1a1a1"), 
+                   labels=c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope", "Tie"))
+
+
+df_old_best <- df_old %>%
+  filter(!grepl("corr", metric)) %>% 
+  # Calculate median of metrics
+  group_by(metric, method, dataset, dataset_type) %>%
+  summarise(median_val = round(median(as.numeric(all_values)), 3)) %>%
+  # Get best value (min for RMSE, max for others)
+  group_by(metric, dataset, dataset_type) %>%
+  filter(case_when(metric == "RMSE" ~ median_val == min(median_val),
+                   T ~ median_val == max(median_val))) %>%
+  # Count number of best performers, if more than 1 then it is a tie
+  add_tally() %>% mutate(winner = ifelse(n == 1, method, "Tie")) %>%
+  # Count number of times a method performs best
+  summarise(method = unique(winner)) %>%
+  group_by(metric) %>% count(method) %>%
+  # Add zeroes to methods that had zero counts
+  tidyr::pivot_wider(names_from = method, values_from = n, values_fill = 0) %>%
+  tidyr::pivot_longer(!metric, names_to = "method", values_to = "n")
+
+ggplot(df_old_best, aes(x=metric, y=n, fill=method)) + geom_bar(width=0.75, position="fill", stat="identity") +
+  ylab("% Best performing") + xlab("Metric") + labs(fill="Method") +
+  scale_fill_manual(values = c("#f8766d", "#a3a500", "#00bf7d", "#00b0f6", "#e76bf3", "#a1a1a1"), 
+                    labels=c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope", "Tie"))
+
+# Combine old and new
+df_comb_best <- bind_rows(df_old_best, df_new_best, .id = "source") %>%
+  mutate(method = str_replace(method, "RCTD", "rctd")) %>%
+  filter(grepl("RMSE|prc", metric)) %>%
+  mutate(metric = factor(metric, levels = c("RMSE", "prc")))
+
+ggplot(df_comb_best, aes(x=factor(source), y=n, fill=method)) + geom_bar(width=0.6, position="stack", stat="identity") +
+  ylab("# Best performing out of 56 datasets") + labs(fill="Method") + 
+  scale_fill_manual(values = c("#f8766d", "#a3a500", "#00bf7d", "#00b0f6", "#e76bf3", "#a1a1a1"), 
+                    labels=c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope", "Tie")) +
+  facet_grid(~metric, labeller=labeller(metric=proper_metric_names)) +
+  scale_x_discrete(labels=c("Old", "New")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+  theme_classic() + theme(panel.background = element_blank(), panel.grid = element_blank(),
+                     axis.title.x = element_blank(), axis.ticks.y = element_blank(),
+                     axis.text.y = element_blank())
+  #geom_text(aes(label=n), position = position_stack())
+ggsave("D:/PhD/figs/sc_meeting_10012022/old_vs_new_barplot.png",
+       width=150, height=80, units="mm", dpi=200)
