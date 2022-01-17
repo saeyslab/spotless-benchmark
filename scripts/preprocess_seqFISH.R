@@ -10,6 +10,7 @@ library(ggplot2)
 library(Matrix)
 library(gridExtra)
 library(stringr)
+library(patchwork)
 
 #### HELPER FUNCTIONS ####
 # Returns data frame of circle points to visualize with ggplot
@@ -34,11 +35,12 @@ get_coarse_annot <- function(celltype){
 }
 
 #### CHANGEABLE PARAMS ####
-path <- "D:/spade-benchmark/data/raw_data/seqFISH_eng2019"
+path <- "D:/spade-benchmark/data/raw_data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
 dataset <- "ob" # cortex_svz or ob
 standard_no <- ifelse(dataset == "cortex_svz", 1, 2)
 fov_no <- 2 # 0-6
+combine_all_plots <- TRUE
 
 #### READ IN FILE ####
 annot <- read.csv(paste0(path, dataset, "_cell_type_annotations.csv"))
@@ -86,7 +88,7 @@ gap <- cc_distance-spot_diameter
 n_spots <- floor((fov_size+gap)/(spot_diameter+gap))
 total_spot_size <- (n_spots*spot_diameter) + ((n_spots-1)*gap)
 start <- (fov_size-total_spot_size)/2
-
+all_plots <- list()
 # Subset only needed field of view
 for (fov_no in 0:6){
   counts_subset <- counts[metadata$Field.of.View==fov_no & metadata$celltype != "Unannotated",]
@@ -118,13 +120,27 @@ for (fov_no in 0:6){
   }
   
   # Visualization - overlay cells with spots
+  pt_size = ifelse(combine_all_plots, 1.5, 3)
+  avg_cells <- cells_in_spots %>% group_by(spot_no) %>% tally() %>% summarise(median=median(n))
+  avg_celltypes <- cells_in_spots %>% group_by(spot_no, celltype) %>% tally() %>%
+    group_by(spot_no) %>% tally() %>% summarise(median=median(n))
   p_cells <- ggplot(data=meta_subset, aes(x=X, y=Y, color=factor(celltype))) +
-    geom_point(size=3) + xlim(0, 2000) + ylim(0, 2000) + theme_minimal()
+    geom_point(size=pt_size) + xlim(0, 2000) + ylim(0, 2000) + theme_minimal()
   p <- p_cells + geom_path(data=spot_vis, inherit.aes=FALSE, aes(x,y, group=index))
   #print(p)
   
+  if (combine_all_plots) { 
+
+    p <- p + theme(legend.position = "none", axis.title = element_blank(),
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          panel.grid = element_blank()) +
+          ggtitle(paste0("FOV ", fov_no), subtitle = paste0("Cells/spot: ", avg_cells,
+                                                            "\nCell types/spot: ", avg_celltypes))
+    all_plots[[fov_no+1]] <- p
+    next;
+  }
   #### FORMATTING GROUND TRUTH OBJECT ####
-  
+  print("hello")
   # Follow same format as synthvisium
   # synthvisium_data <- readRDS("D:/spade-benchmark/unit-test/test_sp_data.rds")
   
@@ -169,17 +185,19 @@ for (fov_no in 0:6){
   
   # Save rds
   filename <- paste0(dataset_source, "_", dataset, "_fov", fov_no)
-  saveRDS(full_data, paste0("D:/spade-benchmark/data/gold_standard_", standard_no, "/", filename, ".rds"))
   
+  # saveRDS(full_data, paste0("D:/spade-benchmark/data/gold_standard_", standard_no, "/", filename, ".rds"))
+
   # Save plot and add additional information on cells, celltypes and counts
-  plot_table <- cells_in_spots %>% group_by(spot_no) %>%
-    summarise(total_cells=n(), ncelltypes=length(unique(celltype))) %>%
-    add_column(total_counts=rowSums(spot_counts)) %>% column_to_rownames("spot_no")
-  p_final <- grid.arrange(p + coord_fixed() + ggtitle(filename) + scale_y_reverse(),
-                          tableGrob(plot_table), widths=c(2,1))
-  ggsave(paste0("D:/spade-benchmark/data/gold_standard_", standard_no, "/", filename, ".jpeg"),
-         p_final, width = 3000, height = 1600, units="px")
+  # plot_table <- cells_in_spots %>% group_by(spot_no) %>%
+  #   summarise(total_cells=n(), ncelltypes=length(unique(celltype))) %>%
+  #   add_column(total_counts=rowSums(spot_counts)) %>% column_to_rownames("spot_no")
+  # p_final <- grid.arrange(p + coord_fixed() + ggtitle(filename) + scale_y_reverse(),
+  #                         tableGrob(plot_table), widths=c(2,1))
+  # ggsave(paste0("D:/spade-benchmark/data/gold_standard_", standard_no, "/", filename, ".jpeg"),
+  #        p_final, width = 3000, height = 1600, units="px")
 }
 
-
-
+p_all <- patchwork::wrap_plots(all_plots, nrow = 1)
+ggsave(paste0("D:/PhD/figs/sc_meeting_10012022/", dataset, "_all_fovs.png"),
+               p_all, width = 4000, height = 800, units="px")
