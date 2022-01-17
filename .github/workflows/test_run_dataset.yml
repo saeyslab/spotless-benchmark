@@ -44,6 +44,7 @@ jobs:
           path: |
             deconv_proportions/*
             results/*
+            trace.txt
 
   test_output_run_dataset:
     name: Tests outputs of the pipeline
