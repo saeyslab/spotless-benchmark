@@ -15,6 +15,14 @@ if (par$input_type != "seurat"){
 }
 
 DefaultAssay(seurat_obj) <- "RNA"
+
+# SeuratDisk cannot work with a Seurat object older than v3.1.2
+if (compareVersion(as.character(seurat_obj@version), "3.1.2") == -1){
+  print("Seurat object is too old, creating a new one...")
+  seurat_obj <- CreateSeuratObject(counts = GetAssayData(seurat_obj), assay = DefaultAssay(seurat_obj),
+                                   meta.data=seurat_obj@meta.data)
+}
+
 file_name <- stringr::str_split(basename(par$input_path), "\\.")[[1]][1]
 
 if (file.exists(paste0(file_name, ".h5ad"))){
