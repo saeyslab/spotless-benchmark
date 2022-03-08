@@ -1,4 +1,4 @@
-# SPAtial DEconvolution Benchmark
+# Spotless: A benchmark pipeline for deconvolution tools
 This is a repository for benchmarking spatial deconvolution and mapping tools with a Nextflow pipeline.
 
 You can either run the pipeline with the gold/silver/bronze standards or run it with your own data. In either case, you need to [install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html), and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
