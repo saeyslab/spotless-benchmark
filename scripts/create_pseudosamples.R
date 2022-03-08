@@ -2,7 +2,7 @@ library(caret)
 library(tibble)
 
 n_pseudosamples <- 3
-sc_input <- readRDS("D:/spade-benchmark/standards/reference/bronze_standard_5_kidney.rds")
+sc_input <- readRDS("D:/spotless-benchmark/standards/reference/bronze_standard_5_kidney.rds")
 
 
 celltypes <- factor(sc_input$celltype)
@@ -14,4 +14,4 @@ sc_input$pseudosample <- partitions$fold
 DimPlot(sc_input, group.by = "pseudosample")
 
 saveRDS(sc_input,
-        "D:/spade-benchmark/standards/reference/bronze_standard_7_scc_p5_pseudosample.rds")
+        "D:/spotless-benchmark/standards/reference/bronze_standard_7_scc_p5_pseudosample.rds")

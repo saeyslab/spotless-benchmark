@@ -1,13 +1,13 @@
 library(Seurat)
 library(RCTD)
-# setwd("C:/Users/dylan/spade-benchmark/")
+# setwd("C:/Users/dylan/spotless-benchmark/")
 setwd("/home/chananchidas")
-counts_all <- read.csv("spade-benchmark/data/cellCountsA1_1.csv", row.names = 1)
-annot_all <- read.csv("spade-benchmark/data/clusterannotTotalA1_1.csv")
+counts_all <- read.csv("spotless-benchmark/data/cellCountsA1_1.csv", row.names = 1)
+annot_all <- read.csv("spotless-benchmark/data/clusterannotTotalA1_1.csv")
 coords_all <- counts_all[,c("X", "Y")]
 
-counts_nucleus <- read.csv("spade-benchmark/data/CountsNucA1_1.csv", row.names = 1)
-annot_nucleus <- read.csv("spade-benchmark/data/clusterannotNucA1_1.csv")
+counts_nucleus <- read.csv("spotless-benchmark/data/CountsNucA1_1.csv", row.names = 1)
+annot_nucleus <- read.csv("spotless-benchmark/data/clusterannotNucA1_1.csv")
 coords_nucleus <- coords_all[rownames(counts_nucleus),]
 
 reference <- readRDS("data/Liver/anndatafineAnnot_new.rds")
@@ -28,7 +28,7 @@ RCTD_nuc <- create.RCTD(spatialRNA_nucleus, reference_obj, max_cores = Sys.geten
 RCTD_nuc_doublet <- run.RCTD(RCTD_nuc, doublet_mode = 'doublet') # doublet mode
 RCTD_nuc_multi <- run.RCTD(RCTD_nuc, doublet_mode = 'multi') # multi mode
 
-# saveRDS(RCTD_all_doublet, "spade-benchmark/resolve_results/RCTD_all_doublet.rds")
-# saveRDS(RCTD_all_multi, "spade-benchmark/resolve_results/RCTD_all_multi.rds")
-saveRDS(RCTD_nuc_doublet, "spade-benchmark/resolve_results/RCTD_nuc_doublet.rds")
-saveRDS(RCTD_nuc_multi, "spade-benchmark/resolve_results/RCTD_nuc_multi.rds")
+# saveRDS(RCTD_all_doublet, "spotless-benchmark/resolve_results/RCTD_all_doublet.rds")
+# saveRDS(RCTD_all_multi, "spotless-benchmark/resolve_results/RCTD_all_multi.rds")
+saveRDS(RCTD_nuc_doublet, "spotless-benchmark/resolve_results/RCTD_nuc_doublet.rds")
+saveRDS(RCTD_nuc_multi, "spotless-benchmark/resolve_results/RCTD_nuc_multi.rds")

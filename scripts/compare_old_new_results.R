@@ -19,7 +19,7 @@ proper_metric_names <- c("Correlation", "RMSE", "Accuracy", "Sensitivity", "Spec
   setNames(possible_metrics)
 
 ##### NEW RESULTS #####
-setwd("D:/spade-benchmark")
+setwd("D:/spotless-benchmark")
 path <- "D:/Work (Yr 2 Sem 1)/Thesis/Data/synthetic_datasets/"
 
 datasets_strip <- str_replace(datasets, "_generation", "")
@@ -28,7 +28,7 @@ df_new <- lapply(datasets_strip, function(ds) {
   lapply(tolower(methods), function (method) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
-        read.table(paste0("D:/spade-benchmark/results/", ds, "_", dt, "/metrics_",
+        read.table(paste0("D:/spotless-benchmark/results/", ds, "_", dt, "/metrics_",
                                          method, "_", ds, "_", dt, "_rep", repl)) %>%
           t %>% data.frame %>%
           mutate("method" = method, "rep" = repl, "dataset" = ds, "dataset_type" = dt) 
@@ -81,7 +81,7 @@ ggplot(df_combined, aes(x=method, y=all_values, color=method, fill=source)) + ge
   facet_grid(dataset ~ dt_linebreak, scales="free_y",
            labeller=labeller(dataset=proper_dataset_names))
 
-ggsave(paste0("D:/spade-benchmark/plots/old_vs_new_boxplot_", moi, "_musicwithsampleID.png"),
+ggsave(paste0("D:/spotless-benchmark/plots/old_vs_new_boxplot_", moi, "_musicwithsampleID.png"),
        width = 29.7, height = 21.0, units="cm", dpi = 300)
 
 ## Before after line plot
@@ -99,7 +99,7 @@ ggplot(summary_df, aes(x=source, y=median, color=method, group=id)) + geom_line(
         panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
   scale_y_continuous(breaks=y_breaks[[moi]]) +
   facet_grid(dataset ~ dt_linebreak, labeller=labeller(dataset=proper_dataset_names))
-ggsave(paste0("D:/spade-benchmark/plots/old_vs_new_lineplot_", moi, "_musicwithsampleID.png"),
+ggsave(paste0("D:/spotless-benchmark/plots/old_vs_new_lineplot_", moi, "_musicwithsampleID.png"),
        width = 29.7, height = 21.0, units="cm", dpi = 300)
 
 ###### BAR PLOT OF BEST PERFORMERS #####

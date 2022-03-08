@@ -2,7 +2,7 @@ nextflow.enable.dsl=2
 
 process computeMetrics {
     tag "${method_name}_${output_suffix}"
-    container 'csangara/spade_eval:latest'
+    container 'csangara/sp_eval:latest'
     publishDir { "${params.outdir.metrics}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy'
     echo true

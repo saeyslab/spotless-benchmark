@@ -4,7 +4,7 @@ library(stringr)
 library(ggplot2)
 library(precrec)
 library(reshape2)
-setwd("D:/spade-benchmark")
+setwd("D:/spotless-benchmark")
 source("D:/Work (Yr 2 Sem 1)/Thesis/Scripts/helperFunctions.R")
 path <- "D:/Work (Yr 2 Sem 1)/Thesis/Data/synthetic_datasets/"
 dataset <- "pbmc_generation"
@@ -14,7 +14,7 @@ possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_d
                             "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse")
 repl <- "rep1"
 all_results <- list()
-result_path <- "D:/spade-benchmark/deconv_proportions/pbmc_rep1/"
+result_path <- "D:/spotless-benchmark/deconv_proportions/pbmc_rep1/"
 for (dataset_type in possible_dataset_types){
   
   # Load reference data and deconvolution results

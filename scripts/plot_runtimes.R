@@ -3,8 +3,8 @@ library(dplyr)
 library(ungeviz) # geom_hpline
 library(ggplot2)
 
-#trace_file <- read.table("D:/spade-benchmark/trace_old.txt", header=TRUE, sep="\t")
-#trace_file2 <- read.table("D:/spade-benchmark/trace.txt", header=TRUE, sep="\t")
+#trace_file <- read.table("D:/spotless-benchmark/trace_old.txt", header=TRUE, sep="\t")
+#trace_file2 <- read.table("D:/spotless-benchmark/trace.txt", header=TRUE, sep="\t")
 
 datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
              'hippocampus', 'kidney', 'pbmc', 'scc_p5')
@@ -15,15 +15,15 @@ proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)",
                           "Hippocampus", "Kidney", "PBMC", "SCC (patient 5)") %>% setNames(datasets)
 fields <- str_split("task_id,hash,name,tag,status,exit,container,duration,realtime,cpus,disk,memory,attempt,pcpu,pmem,rss,peak_rss,vmem,peak_vmem", ",")[[1]]
 
-spotlight_logs <-  read.table("D:/spade-benchmark/logs/hpc_cpu_spotlight.txt", sep="\t") %>%
+spotlight_logs <-  read.table("D:/spotless-benchmark/logs/hpc_cpu_spotlight.txt", sep="\t") %>%
   setNames(fields)
 
 
-prism_logs <- read.table("D:/spade-benchmark/logs/prism_3methods.txt", sep="\t") %>%
+prism_logs <- read.table("D:/spotless-benchmark/logs/prism_3methods.txt", sep="\t") %>%
   setNames(fields)
-hpc_logs <- read.table("D:/spade-benchmark/logs/hpc_gpu.txt", sep="\t") %>%
+hpc_logs <- read.table("D:/spotless-benchmark/logs/hpc_gpu.txt", sep="\t") %>%
   setNames(fields)
-c2l_cpu <-  read.table("D:/spade-benchmark/logs/hpc_cpu_c2l.txt", sep="\t") %>%
+c2l_cpu <-  read.table("D:/spotless-benchmark/logs/hpc_cpu_c2l.txt", sep="\t") %>%
   setNames(fields) %>% mutate(tag = sapply(tag, function(u) str_replace(u, "c2l", "c2lcpu")))
 
 df <- bind_rows(prism_logs %>% filter(!grepl("stereo", tag)),

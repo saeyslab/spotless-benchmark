@@ -77,16 +77,16 @@ workflow bleh{
   // println(all_pipelines[3].getClass())
   if (!( params.pipeline ==~ /none/ )){
     println("hello world")
-    test = "$params.rootdir/spade-benchmark/data/reference/reference_${params.pipeline.split('-')[0]}.rds"
-    //sc_input_ch = Channel.fromPath("$params.rootdir/spade-benchmark/data/reference/reference_${params.pipeline.split('-')[0]}.rds")
+    test = "$params.rootdir/spotless-benchmark/data/reference/reference_${params.pipeline.split('-')[0]}.rds"
+    //sc_input_ch = Channel.fromPath("$params.rootdir/spotless-benchmark/data/reference/reference_${params.pipeline.split('-')[0]}.rds")
     //sc_input_ch.view()
     println(test)
     if (!all_pipelines.contains(params.pipeline)){
       println("Pipeline not found.")
 
     }
-    // sc_input = "$params.rootdir/spade-benchmark/data/$params.pipeline/*[0-9].rds"
-    // sp_input = "$params.rootdir/spade-benchmark/data/$params.pipeline/reference*.rds"
+    // sc_input = "$params.rootdir/spotless-benchmark/data/$params.pipeline/*[0-9].rds"
+    // sp_input = "$params.rootdir/spotless-benchmark/data/$params.pipeline/reference*.rds"
     //sc_input_ch = Channel.fromPath(sc_input)
     //sc_input_ch.view()
     // sp_input_ch = Channel.fromPath(sp_input)

@@ -6,7 +6,7 @@ library(Seurat)
 library(precrec)
 library(stringr)
 
-path <- "D:/spade-benchmark/results/"
+path <- "D:/spotless-benchmark/results/"
 methods <- c("cell2location", "music", "rctd", "spotlight", "stereoscope")
 metrics <- c("RMSE", "prc")
 possible_metrics <- c("corr", "RMSE", "balanced_accuracy", "accuracy", "sensitivity", "specificity", "precision", "F1", "F2", "prc")
@@ -51,7 +51,7 @@ ggplot(df, aes(y=value, x=n_cells, group=fov)) +
              labeller=labeller(metric=proper_metric_names)) +
   guides(colour = guide_legend(nrow = 1))
 
-ggsave("D:/spade-benchmark/plots/c2l_priors_seqFISH_bw.png",
+ggsave("D:/spotless-benchmark/plots/c2l_priors_seqFISH_bw.png",
        #width = 29.7, height = 15.0, units="cm", dpi = 300)
        width = 1600, height = 900, units="px")
        
@@ -94,7 +94,7 @@ ggplot(summary_df, aes(x=source, y=median, group=id)) + geom_line() +
   facet_wrap(~dataset_type)
   #facet_grid(dataset ~ dt_linebreak, labeller=labeller(dataset=proper_dataset_names))
 
-ggsave(paste0("D:/spade-benchmark/plots/old_vs_new_lineplot_", moi, "_spotlightold_rerun.png"),
+ggsave(paste0("D:/spotless-benchmark/plots/old_vs_new_lineplot_", moi, "_spotlightold_rerun.png"),
        width = 29.7, height = 21.0, units="cm", dpi = 300)
 
 #### BRONZE STANDARD - MUSIC PSEUDOSAMPLES ####
@@ -138,5 +138,5 @@ ggplot(summary_df, aes(x=source, y=value, group=id)) + geom_line() +
         panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
   facet_grid(dataset~dt_linebreak, labeller=labeller(dataset=proper_dataset_names))
 
-ggsave(paste0("D:/spade-benchmark/plots/music_pseudosamples_", moi, ".png"),
+ggsave(paste0("D:/spotless-benchmark/plots/music_pseudosamples_", moi, ".png"),
        width = 29.7, height = 16.0, units="cm", dpi = 300)

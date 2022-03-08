@@ -3,7 +3,7 @@ library(dplyr)
 library(reshape2)
 library(ungeviz) # geom_hpline
 
-path <- "D:/spade-benchmark/results/"
+path <- "D:/spotless-benchmark/results/"
 methods <- c("cell2location", "music", "rctd", "spotlight", "stereoscope")
 metrics <- c("RMSE", "prc")
 datasets <- c("cortex_svz", "ob")
@@ -16,14 +16,14 @@ library(Seurat)
 
 metric_dir_list = list()
 for (dataset_i in 1:2){
-  reference_data <- readRDS(paste0("D:/spade-benchmark/standards/reference/gold_standard_", dataset_i, ".rds"))
+  reference_data <- readRDS(paste0("D:/spotless-benchmark/standards/reference/gold_standard_", dataset_i, ".rds"))
   for (fov in paste0("fov", 0:6)){
     # Get number of cells from reference
     ncells <- length(unique(reference_data$celltype))
     celltypes <- stringr::str_replace_all(unique(reference_data$celltype), "[ /]", "\\.")
     
     # Spots from synthetic data
-    synthetic_data <- readRDS(paste0("D:/spade-benchmark/standards/gold_standard_", dataset_i,"/Eng2019_",
+    synthetic_data <- readRDS(paste0("D:/spotless-benchmark/standards/gold_standard_", dataset_i,"/Eng2019_",
                                      datasets[dataset_i], "_", fov, ".rds"))
     nspots <- nrow(synthetic_data$spot_composition)
     
@@ -95,11 +95,11 @@ pval_df$padj <- p.adjust(pval_df$pval, method="BY")
 #### MAKE CONVERSION FILE FOR COARSE CELL TYPE ####
 
 for (dataset_i in 1:2){
-  reference_data <- readRDS(paste0("D:/spade-benchmark/standards/reference/gold_standard_", dataset_i, ".rds"))
+  reference_data <- readRDS(paste0("D:/spotless-benchmark/standards/reference/gold_standard_", dataset_i, ".rds"))
   conversion <- unique(cbind(reference_data$celltype, reference_data$celltype_coarse)) %>%
     data.frame %>% mutate_all(funs(stringr::str_replace_all(., "[/ .]", "")))
   write.table(conversion[order(conversion[,1]),],
-              paste0("D:/spade-benchmark/standards/gold_standard_", dataset_i, "/conversion.tsv"),
+              paste0("D:/spotless-benchmark/standards/gold_standard_", dataset_i, "/conversion.tsv"),
               col.names=FALSE, row.names=FALSE, sep="\t", quote=FALSE)
 }
 
@@ -169,7 +169,7 @@ ggsave("D:/PhD/figs/benchmark_paper/gold_standard_group.png", units="px", width=
 results <- lapply(c("cortex_svz", "ob"), function (dataset) {
   lapply(methods, function (method) {
     lapply(fovs, function(fov){
-      read.table(paste0("D:/spade-benchmark/deconv_proportions/Eng2019_", dataset, "/proportions_", method,
+      read.table(paste0("D:/spotless-benchmark/deconv_proportions/Eng2019_", dataset, "/proportions_", method,
                         "_Eng2019_", dataset, "_fov", fov),
                  header = TRUE, sep= "\t")
       }) %>%
@@ -181,10 +181,10 @@ results <- lapply(c("cortex_svz", "ob"), function (dataset) {
 
 
 ground_truth <- lapply(1:2, function (i) {
-  reference <- readRDS(paste0("D:/spade-benchmark/standards/reference/gold_standard_", i, ".rds"))
+  reference <- readRDS(paste0("D:/spotless-benchmark/standards/reference/gold_standard_", i, ".rds"))
   celltypes <- stringr::str_replace_all(unique(reference$celltype), "[/ .]", "")
     lapply(fovs, function(fov){
-      known_props <- readRDS(paste0("D:/spade-benchmark/standards/gold_standard_",
+      known_props <- readRDS(paste0("D:/spotless-benchmark/standards/gold_standard_",
                                     i, "/Eng2019_", datasets[i],
                                     "_fov", fov, ".rds"))$relative_spot_composition
       colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
@@ -242,7 +242,7 @@ for (ds in datasets) {
 
 p_all <- patchwork::wrap_plots(plots, nrow = 2)
 p_all
-ggsave("D:/spade-benchmark/plots/seqFISH_abundance_barplot_a.png",
+ggsave("D:/spotless-benchmark/plots/seqFISH_abundance_barplot_a.png",
        p_all, width=297, height=120, units="mm", dpi=200)
 
 #### Coarse bar plot

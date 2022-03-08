@@ -11,7 +11,7 @@ get_color_vector <- function(n) {
   return (col_vector)
 }
 
-scRNA_obj <- readRDS("D:/spade-benchmark/standards/reference/gold_standard_1.rds")
+scRNA_obj <- readRDS("D:/spotless-benchmark/standards/reference/gold_standard_1.rds")
 scRNA_obj <- scRNA_obj %>% .[apply(GetAssayData(.), 1, max) > 4,] %>%
   .[, colSums(.) >= 200] %>% NormalizeData() %>%
   FindVariableFeatures(mean.cutoff=c(0.05, 3), dispersion.cutoff=c(0, Inf), nfeatures = 3500) %>%
@@ -48,7 +48,7 @@ df <- data.frame(scRNA_obj@meta.data)
 df <- df %>% select(c("nCount_RNA", "nFeature_RNA")) %>% reshape2::melt(id.var=NULL)
 ggplot(data=df, aes(x=value, color=variable)) + geom_density()
 
-scRNA_obj2 <- readRDS("D:/spade-benchmark/standards/reference/gold_standard_2.rds")
+scRNA_obj2 <- readRDS("D:/spotless-benchmark/standards/reference/gold_standard_2.rds")
 scRNA_obj2 <- scRNA_obj2 %>% .[apply(GetAssayData(.), 1, max) > 2,] %>%
   NormalizeData() %>%
   FindVariableFeatures(mean.cutoff=c(0.05, 3), dispersion.cutoff=c(0.2, Inf), nfeatures = 3500) %>%
@@ -89,7 +89,7 @@ vln + vln2 + plot_layout(ncol=2) & ylim(0, 20000)
 datasets <- c("cortex_svz", "ob")
 spots_df <- lapply(1:2, function(i) {
   lapply(0:6, function(fov_no) {
-    spatial_data <- readRDS(paste0("D:/spade-benchmark/standards/gold_standard_", i,
+    spatial_data <- readRDS(paste0("D:/spotless-benchmark/standards/gold_standard_", i,
                       "/Eng2019_", datasets[i], "_fov", fov_no, ".rds"))
     colSums(spatial_data$counts)
   }) %>% melt() 

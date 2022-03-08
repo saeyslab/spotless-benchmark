@@ -35,7 +35,7 @@ plot_pr_curves <- function(curve_df, text, optimal_points=NULL){
 }
 
 ##### NEW RESULTS #####
-setwd("D:/spade-benchmark")
+setwd("D:/spotless-benchmark")
 dsi <- 1
 ds <- datasets[dsi]
 dti <- 6
@@ -59,7 +59,7 @@ if (plot_type == "all_replicates"){
     }) %>% setNames(methods)
     
     # Load ground truth data
-    ground_truth_data <- readRDS(paste0("D:/spade-benchmark/standards/bronze_standard_",
+    ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/bronze_standard_",
                                         dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
     ncells <- ncol(ground_truth_data$spot_composition)-2
     
@@ -105,9 +105,9 @@ if (plot_type == "all_replicates"){
 p <- grid.arrange(grobs=all_plots, ncol=ncells, top = paste0(ds, "_", dt),
                   bottom="Recall", left="Precision")
 withpoints <- ifelse(plot_optimal_points, "_withpoints", "")
-dir.create(paste0("D:/spade-benchmark/plots/pr_curves_by_abundance/", ds),
+dir.create(paste0("D:/spotless-benchmark/plots/pr_curves_by_abundance/", ds),
            showWarnings = FALSE)
-ggsave(p, filename = paste0("D:/spade-benchmark/plots/pr_curves_by_abundance/", ds,
+ggsave(p, filename = paste0("D:/spotless-benchmark/plots/pr_curves_by_abundance/", ds,
       "/", ds, "_", dt, withpoints, ".png"),
       width=7000, height=2000, units = "px")
 
@@ -121,7 +121,7 @@ deconv_props <- lapply(tolower(methods), function (method){
 }) %>% setNames(methods)
   
 # Load ground truth data
-ground_truth_data <- readRDS(paste0("D:/spade-benchmark/standards/bronze_standard_",
+ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/bronze_standard_",
                              dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
 ncells <- ncol(ground_truth_data$spot_composition)-2
 
@@ -163,7 +163,7 @@ ggplot(curve_df, aes(x=x, y=y)) +
 #### CODE DUMP ####
 # Load ground truth data
 # avg_abundance <- lapply(1:10, function (r) {
-#   ground_truth_data <- readRDS(paste0("D:/spade-benchmark/standards/bronze_standard_",
+#   ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/bronze_standard_",
 #                                       dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
 #   ncells <- ncol(ground_truth_data$spot_composition)-2
 #   known_props <- ground_truth_data$relative_spot_composition[,1:ncells]

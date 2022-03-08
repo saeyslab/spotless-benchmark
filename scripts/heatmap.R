@@ -20,14 +20,14 @@ proper_metric_names <- c("Correlation", "RMSE", "Accuracy", "Balanced Accuracy",
                         setNames(possible_metrics)
 
 ##### NEW RESULTS #####
-setwd("D:/spade-benchmark")
+setwd("D:/spotless-benchmark")
 path <- "D:/Work (Yr 2 Sem 1)/Thesis/Data/synthetic_datasets/"
 
 df <- lapply(datasets, function(ds) {
   lapply(methods, function (method) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
-        read.table(paste0("D:/spade-benchmark/results/", ds, "_", dt, "/metrics_",
+        read.table(paste0("D:/spotless-benchmark/results/", ds, "_", dt, "/metrics_",
                           method, "_", ds, "_", dt, "_rep", repl)) %>% t %>% data.frame %>%
           mutate("method" = method, "rep" = repl, "dataset" = ds, "dataset_type" = dt) 
       }) %>% do.call(rbind, .)
@@ -60,5 +60,5 @@ pheatmap(df_test, cluster_cols = FALSE, cluster_rows = FALSE,
        annotation_legend = FALSE, annotation_colors = ann_colors,
        angle_col = 315,
        border_color = NA)
-       # filename = "D:/spade-benchmark/plots/heatmap_angle.png", width=11.35, height=8.25)
+       # filename = "D:/spotless-benchmark/plots/heatmap_angle.png", width=11.35, height=8.25)
 

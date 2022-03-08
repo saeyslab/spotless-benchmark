@@ -35,7 +35,7 @@ get_coarse_annot <- function(celltype){
 }
 
 #### CHANGEABLE PARAMS ####
-path <- "D:/spade-benchmark/data/raw_data/seqFISH_eng2019/"
+path <- "D:/spotless-benchmark/data/raw_data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
 dataset <- "ob" # cortex_svz or ob
 standard_no <- ifelse(dataset == "cortex_svz", 1, 2)
@@ -71,7 +71,7 @@ if (dataset == "ob"){
 library(Seurat)
 seurat_obj <- CreateSeuratObject(counts=t(counts[metadata$celltype != "Unannotated",]),
                                  meta.data=metadata[metadata$celltype != "Unannotated",])
-saveRDS(seurat_obj, paste0("D:/spade-benchmark/data/gold_standard_", standard_no, "/reference/reference_", dataset, ".rds"))
+saveRDS(seurat_obj, paste0("D:/spotless-benchmark/data/gold_standard_", standard_no, "/reference/reference_", dataset, ".rds"))
 # seurat_obj <- seurat_obj %>% ScaleData() %>% FindVariableFeatures() %>%
 #   RunPCA() %>%  RunUMAP(dims = 1:30)
 # DimPlot(seurat_obj, reduction = "umap", group.by="celltype_coarse", label=TRUE)
@@ -142,7 +142,7 @@ for (fov_no in 0:6){
   #### FORMATTING GROUND TRUTH OBJECT ####
   print("hello")
   # Follow same format as synthvisium
-  # synthvisium_data <- readRDS("D:/spade-benchmark/unit-test/test_sp_data.rds")
+  # synthvisium_data <- readRDS("D:/spotless-benchmark/unit-test/test_sp_data.rds")
   
   ## 1. COUNT MATRIX (genes x spots) ##
   # Sum up counts across all cells belonging to the same spot
@@ -186,7 +186,7 @@ for (fov_no in 0:6){
   # Save rds
   filename <- paste0(dataset_source, "_", dataset, "_fov", fov_no)
   
-  # saveRDS(full_data, paste0("D:/spade-benchmark/data/gold_standard_", standard_no, "/", filename, ".rds"))
+  # saveRDS(full_data, paste0("D:/spotless-benchmark/data/gold_standard_", standard_no, "/", filename, ".rds"))
 
   # Save plot and add additional information on cells, celltypes and counts
   # plot_table <- cells_in_spots %>% group_by(spot_no) %>%
@@ -194,7 +194,7 @@ for (fov_no in 0:6){
   #   add_column(total_counts=rowSums(spot_counts)) %>% column_to_rownames("spot_no")
   # p_final <- grid.arrange(p + coord_fixed() + ggtitle(filename) + scale_y_reverse(),
   #                         tableGrob(plot_table), widths=c(2,1))
-  # ggsave(paste0("D:/spade-benchmark/data/gold_standard_", standard_no, "/", filename, ".jpeg"),
+  # ggsave(paste0("D:/spotless-benchmark/data/gold_standard_", standard_no, "/", filename, ".jpeg"),
   #        p_final, width = 3000, height = 1600, units="px")
 }
 

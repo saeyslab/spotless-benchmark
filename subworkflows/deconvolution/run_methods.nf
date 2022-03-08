@@ -4,7 +4,7 @@ include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L } from 
 
 process runMusic {
     tag "music_$output_suffix"
-    container 'csangara/spade_music:latest'
+    container 'csangara/sp_music:latest'
     publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
 
@@ -28,7 +28,7 @@ process runMusic {
 process runSpotlight {
     tag "spotlight_$output_suffix"
     label "retry"
-    container 'csangara/spade_spotlight:latest'
+    container 'csangara/sp_spotlight:latest'
     publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
     input:
@@ -51,7 +51,7 @@ process runSpotlight {
 
 process runRCTD {
     tag "rctd_$output_suffix"
-    container 'csangara/spade_rctd:latest'
+    container 'csangara/sp_rctd:latest'
     publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
     input:
@@ -76,7 +76,7 @@ process buildStereoscopeModel {
     tag 'stereo_build'
     label "retry"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
-    container 'csangara/spade_stereoscope:latest'
+    container 'csangara/sp_stereoscope:latest'
     echo true
 
     input:
@@ -104,7 +104,7 @@ process fitStereoscopeModel {
     tag "stereo_$sp_file_basename"
     label "retry"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
-    container 'csangara/spade_stereoscope:latest'
+    container 'csangara/sp_stereoscope:latest'
     echo true
 
     input:
@@ -136,7 +136,7 @@ process buildCell2locationModel {
     tag 'c2l_build'
     label "retry"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
-    container 'csangara/spade_cell2location:latest'
+    container 'csangara/sp_cell2location:latest'
     echo true
 
     input:
@@ -163,7 +163,7 @@ process fitCell2locationModel {
     tag "c2l_$output_suffix"
     label "retry"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
-    container 'csangara/spade_cell2location:latest'
+    container 'csangara/sp_cell2location:latest'
     echo true
 
     input:

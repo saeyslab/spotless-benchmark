@@ -9,7 +9,7 @@ In the future, you will be able to run this pipeline directly from NextFlow. For
 
 Currently, there are three profiles: *local* uses the local environment to execute the pipeline, *prism* uses a Sun Grid Engine cluster, and *hpc* uses a Slurm cluster.
 
-To run the pipeline locally, modify `params.rootdir` in the file *nextflow.config* as the directory up to and including the reposity, e.g., `"/home/$USER/spade-benchmark"`. To use containers, you also need to modify the bind mounts of `docker.runOptions`. Then you can run the pipeline with `nextflow run main.nf -profile local,docker`. By default the proportions and metrics are saved at `deconv_proportions/` and `results/`.
+To run the pipeline locally, modify `params.rootdir` in the file *nextflow.config* as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`. To use containers, you also need to modify the bind mounts of `docker.runOptions`. Then you can run the pipeline with `nextflow run main.nf -profile local,docker`. By default the proportions and metrics are saved at `deconv_proportions/` and `results/`.
 
 ## Pipeline overview
 The complete pipeline (`main.nf`) has the following steps:
@@ -25,7 +25,7 @@ You can run `main.nf` with three modes, `run_standard` (reproducing our analysis
 ### Reproducing the pipeline on standards
 First, download the datasets from Zenodo and place them in the `standards/` folder. The file is 5GB.
 ```
-cd spade-benchmark
+cd spotless-benchmark
 wget https://zenodo.org/record/5727614/files/standards.tar.gz?download=1 -O standards.tar.gz
 tar -xf standards.tar.gz -C standards/
 mv standards/data/* standards/ ; rmdir standards/data # file structure to be fixed in the future
@@ -128,12 +128,12 @@ nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold
 You can sum up the proportions of closely related cell types together to see if the methods perform better with a broader annotation. You can do this by creating a tsv file that maps one cell type to another (see `standards/gold_standard_1/conversion.tsv` for an example). The deconvolution will still be performed with the original annotations, but the proportions will be summed during metrics calculation. You have to provide the absolute file path with the `remap_annot` parameter. 
 ```
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 \
--c standards/standard.config --remap_annot /home/$USER/spade-benchmark/standards/gold_standard_1/conversion.tsv
+-c standards/standard.config --remap_annot /home/$USER/spotless-benchmark/standards/gold_standard_1/conversion.tsv
 
 # Only rerun the calculations - add file suffix to not overwrite existing metrics file
 nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name> \
   --sp_input "standards/gold_standard_1/*.rds" --sp_type seqFISH --runID_metrics "_coarse" \
-  --remap_annot /home/$USER/spade-benchmark/standards/gold_standard_1/conversion.tsv 
+  --remap_annot /home/$USER/spotless-benchmark/standards/gold_standard_1/conversion.tsv 
 ```
 
 ## Platforms
