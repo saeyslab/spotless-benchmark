@@ -42,17 +42,17 @@ nextflow run main.nf -profile <profile_name> --mode run_standard --standard bron
 ```
 
 ### Benchmarking your own dataset
-Running the pipeline with the `run_dataset` mode requires a single-cell Seurat object (`sc_input`), a directory containing the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`). By default the spatial data is assumed to be generated using *synthvisium* and the annotation column is *celltype*. We can run the standards in this way also.
+Running the pipeline with the `run_dataset` mode requires a single-cell Seurat object (`sc_input`), the path to the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`, default: celltype). We can run the standards in this way also.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/gold_standard_1/*.rds" \
---sc_input standards/reference/gold_standard_1.rds --sp_type seqFISH
+--sc_input standards/reference/gold_standard_1.rds
 
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/bronze_standard_1-1/*.rds" \
 --sc_input standards/reference/bronze_standard_1_brain_cortex.rds
 ```
 ‼ Don't forget to put any directories with [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns) in quotes.
 
-‼ To benchmark a non-*synthvisium* synthetic spatial dataset, see **"Synthvisium object structure"** on how you would have to structure it.
+‼ By default the spatial data is assumed to be a list of counts and the known proportions. See **"Synthvisium object structure"** for the structure, or check out the rds files in `unit-test/` for sample single-cell and spatial files.
 
 ### Generating synthetic datasets and benchmarking them
 `generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`synvis.sc_input`) and one to use as input in deconvolution methods (`sc_input`). It first makes use of `subworkflows/data_generation/generate_data.nf` to generate synthetic data with *synthvisium*. The arguments are assumed to be stored in a dictionary, so it may be easier to provide this in a separate yaml/JSON file. The four required arguments are:
@@ -100,7 +100,7 @@ It is possible to add more metrics in the `subworkflows/evaluation/metrics.R` yo
 
 ```
 nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name> \
-  --sp_input "standards/gold_standard_1/*.rds" --sp_type seqFISH
+  --sp_input "standards/gold_standard_1/*.rds"
 ```
 
 ## Pipeline arguments (Advanced use)
@@ -132,7 +132,7 @@ nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold
 
 # Only rerun the calculations - add file suffix to not overwrite existing metrics file
 nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name> \
-  --sp_input "standards/gold_standard_1/*.rds" --sp_type seqFISH --runID_metrics "_coarse" \
+  --sp_input "standards/gold_standard_1/*.rds" --runID_metrics "_coarse" \
   --remap_annot /home/$USER/spotless-benchmark/standards/gold_standard_1/conversion.tsv 
 ```
 

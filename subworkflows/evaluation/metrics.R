@@ -31,16 +31,15 @@ par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 
 # Load reference data
 ground_truth_data <- readRDS(par$sp_input)
-ncells <- ncol(ground_truth_data$spot_composition)
 
-if (par$sp_type == "synthvisium"){ 
-  ncells <- ncells - 2
-} else {
-  ncells <- ncells - 1
+if (par$sp_type == "list"){ 
+  celltype_cols <- !grepl("^name$|^region$|^spot_no$",
+                          colnames(ground_truth_data$spot_composition))
 }
 
+ncells <- sum(celltype_cols)
 # Remove all spaces and dots from cell names, sort them
-known_props <- ground_truth_data$relative_spot_composition[,1:ncells]
+known_props <- ground_truth_data$relative_spot_composition[,celltype_cols]
 colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
 
 # Load deconvolution results
