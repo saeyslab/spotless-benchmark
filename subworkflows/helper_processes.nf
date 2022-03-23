@@ -3,6 +3,7 @@ nextflow.enable.dsl=2
 process convertRDStoH5AD {
     tag "convert_${rds_file_basename}"
     container 'csangara/seuratdisk:latest'
+    label 'retry'
 
     input:
         path (rds_file)

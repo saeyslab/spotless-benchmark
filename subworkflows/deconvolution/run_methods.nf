@@ -27,7 +27,7 @@ process runMusic {
 
 process runSpotlight {
     tag "spotlight_$output_suffix"
-    label "retry"
+    label "longer_time"
     container 'csangara/sp_spotlight:latest'
     publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
@@ -75,6 +75,7 @@ process runRCTD {
 process buildStereoscopeModel {
     tag 'stereo_build'
     label "retry"
+    label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/sp_stereoscope:latest'
     echo true
@@ -103,6 +104,7 @@ process buildStereoscopeModel {
 process fitStereoscopeModel {
     tag "stereo_$sp_file_basename"
     label "retry"
+    label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/sp_stereoscope:latest'
     echo true
@@ -135,6 +137,7 @@ process fitStereoscopeModel {
 process buildCell2locationModel {
     tag 'c2l_build'
     label "retry"
+    label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/sp_cell2location:latest'
     echo true
@@ -162,6 +165,7 @@ process buildCell2locationModel {
 process fitCell2locationModel {
     tag "c2l_$output_suffix"
     label "retry"
+    label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/sp_cell2location:latest'
     echo true
