@@ -6,7 +6,6 @@ process convertRDStoH5AD {
 
     input:
         path (rds_file)
-        val (input_type)
     
     output:
         // Needs to return rds file for computing metrics
@@ -16,7 +15,7 @@ process convertRDStoH5AD {
         rds_file_basename = file(rds_file).getSimpleName()
         """
         Rscript $params.rootdir/subworkflows/deconvolution/convertRDStoH5AD.R \
-        --input_path $rds_file --input_type $input_type
+        --input_path $rds_file
         """
 }
 

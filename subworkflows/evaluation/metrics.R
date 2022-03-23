@@ -32,7 +32,7 @@ par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 # Load reference data
 ground_truth_data <- readRDS(par$sp_input)
 
-if (par$sp_type == "list"){ 
+if (class(ground_truth_data) == "list"){ 
   celltype_cols <- !grepl("^name$|^region$|^spot_no$",
                           colnames(ground_truth_data$spot_composition))
 }

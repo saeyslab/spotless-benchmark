@@ -8,7 +8,7 @@ par = R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 cat("Reading input data from", par$input_path, "\n")
 input_obj <- readRDS(par$input_path)
 
-if (par$input_type != "seurat"){
+if (class(input_obj) != "Seurat"){
   seurat_obj <- CreateSeuratObject(counts = input_obj$counts)
 } else {
   seurat_obj <- input_obj

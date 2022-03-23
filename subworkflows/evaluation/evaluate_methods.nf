@@ -20,7 +20,7 @@ process computeMetrics {
 
         """
         Rscript $params.rootdir/subworkflows/evaluation/metrics.R \
-        --props_file $props_file --sp_input $sp_input --sp_type $params.sp_type \
+        --props_file $props_file --sp_input $sp_input \
         --output $metrics_file $annot_remap
         echo $metrics_file
         """

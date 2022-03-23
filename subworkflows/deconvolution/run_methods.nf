@@ -221,8 +221,8 @@ workflow runMethods {
         methods_list = Arrays.asList(methods.split(','))
         if ( !methods_list.disjoint(python_methods) ){
 
-            sc_input_pair = convert_sc(sc_input_ch, params.sc_type)
-            sp_input_pair = convert_sp(sp_input_ch, params.sp_type)
+            sc_input_pair = convert_sc(sc_input_ch)
+            sp_input_pair = convert_sp(sp_input_ch)
 
             if ( methods =~ /stereoscope/ ) {
                 buildStereoscopeModel(sc_input_pair)
