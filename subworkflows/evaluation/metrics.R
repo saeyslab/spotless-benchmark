@@ -66,6 +66,7 @@ if (!is.null(par$remap)){
                    rowSums(known_props[,conversion$old_annot[conversion$new_annot == new_celltype],
                         drop=FALSE])})
 }
+ncells <- ncol(deconv_matrix)
 
 # Correlation and RMSE
 corr_spots <- mean(diag(cor(t(known_props), t(deconv_matrix))))
