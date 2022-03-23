@@ -1,0 +1,3 @@
+deconv_args:
+  stereoscope: "-n 5000"
+  cell2location: "-t digest"
