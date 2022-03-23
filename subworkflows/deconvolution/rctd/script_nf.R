@@ -16,7 +16,8 @@ cat("Converting to Reference object...\n")
 cell_types <- stringr::str_replace_all(seurat_obj_scRNA[[par$annot, drop=TRUE]],
                                        "[/ .]", "") # Replace prohibited characters
 names(cell_types) <- colnames(seurat_obj_scRNA)
-reference_obj <- Reference(counts = GetAssayData(seurat_obj_scRNA, slot = "counts"),
+DefaultAssay(seurat_obj_scRNA) <- "RNA"
+reference_obj <- Reference(counts = GetAssayData(seurat_obj_scRNA),
                            cell_types = as.factor(cell_types))
 
 cat("Reading input spatial data from", par$sp_input, "\n")

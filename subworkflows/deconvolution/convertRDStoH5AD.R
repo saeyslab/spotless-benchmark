@@ -14,7 +14,8 @@ if (par$input_type != "seurat"){
   seurat_obj <- input_obj
 }
 
-DefaultAssay(seurat_obj) <- "RNA"
+# Use raw counts
+DefaultAssay(seurat_obj) <- names(seurat_obj@assays)[grep("RNA|Spatial", names(seurat_obj@assays))[1]]
 
 # SeuratDisk cannot work with a Seurat object older than v3.1.2
 if (compareVersion(as.character(seurat_obj@version), "3.1.2") == -1){

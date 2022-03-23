@@ -25,7 +25,8 @@ sc.pdata <- new("AnnotatedDataFrame",
                 data = data.frame(
                 celltype = seurat_obj_scRNA[[par$annot, drop=TRUE]],
                 samples = sampleIDs))
-sc.data <- as.matrix(GetAssayData(seurat_obj_scRNA, slot = "counts"))
+DefaultAssay(seurat_obj_scRNA) <- "RNA"
+sc.data <- as.matrix(GetAssayData(seurat_obj_scRNA))
 eset_obj_scRNA <- ExpressionSet(assayData=sc.data, phenoData=sc.pdata)
 
 cat("Reading input spatial data from", par$sp_input, "\n")
