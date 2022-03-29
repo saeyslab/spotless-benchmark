@@ -7,6 +7,9 @@ par <- list(
   # Seurat::FindAllMarkers
   logfc.threshold = 0.25, # limit testing to genes with X-fold difference
   min.pct = 0.1,          # genes must be expressed in this fraction of cells ot be considered
+
+  # Seurat::SCTransform
+  conserve.memory = FALSE,
   
   # SPOTlight params
   cl_n = 100,             # number of cells per cell type to use
@@ -22,7 +25,7 @@ args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 par[names(args)] <- args
 # Convert numbers to numeric type
 par[grepl("^[0-9\\.]+$", par)] <- as.numeric(par[grepl("^[0-9\\.]+$", par)]) 
-
+print(par)
 ## START ##
 cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
 seurat_obj_scRNA <- readRDS(par$sc_input)
@@ -31,7 +34,8 @@ cat("Found", ncelltypes, "cell types in the reference.\n")
 
 if (DefaultAssay(seurat_obj_scRNA) != "SCT") {
     cat("Preprocessing input scRNA-seq reference...\n")
-    seurat_obj_scRNA <- SCTransform(seurat_obj_scRNA, verbose = FALSE)
+    seurat_obj_scRNA <- SCTransform(seurat_obj_scRNA, verbose = FALSE,
+                                    conserve.memory = par$conserve.memory)
 }
 Idents(object = seurat_obj_scRNA) <- seurat_obj_scRNA[[par$annot, drop=TRUE]]
 
@@ -44,15 +48,19 @@ cluster_markers_all <- FindAllMarkers(object = seurat_obj_scRNA,
                                               min.pct = par$min.pct)
 
 cat("Reading input spatial data from", par$sp_input, "\n")
-set.seed(123)
-synthetic_visium_data <- readRDS(par$sp_input)
-seurat_obj_visium <- CreateSeuratObject(counts = synthetic_visium_data$counts, assay = "Spatial")
-seurat_obj_visium <- SCTransform(seurat_obj_visium, assay = "Spatial", verbose = FALSE)
+spatial_data <- readRDS(par$sp_input)
+
+if (class(spatial_data) != "Seurat"){
+  seurat_obj_visium <- CreateSeuratObject(counts = spatial_data$counts, assay = "Spatial")
+} else {
+  seurat_obj_visium <- spatial_data
+  DefaultAssay(seurat_obj_visium) <- names(seurat_obj_visium@assays)[grep("RNA|Spatial",names(seurat_obj_visium@assays))[1]]
+}
 
 cat("Running deconvolution tool...\n")
 start_time <- Sys.time()
 spotlight_deconv <- SPOTlight::spotlight_deconvolution(se_sc = seurat_obj_scRNA,
-                                                       counts_spatial = seurat_obj_visium@assays$Spatial@counts,
+                                                       counts_spatial = GetAssayData(seurat_obj_visium, slot="counts"),
                                                        clust_vr = par$annot, cluster_markers = cluster_markers_all,
                                                        cl_n = par$cl_n,         # Number of cells per cell type to use
                                                        hvg = par$hvg,           # Number of HVGs to use

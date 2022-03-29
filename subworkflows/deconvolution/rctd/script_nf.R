@@ -21,11 +21,24 @@ reference_obj <- Reference(counts = GetAssayData(seurat_obj_scRNA),
                            cell_types = as.factor(cell_types))
 
 cat("Reading input spatial data from", par$sp_input, "\n")
-synthetic_visium_data <- readRDS(par$sp_input)
+spatial_data <- readRDS(par$sp_input)
 
 cat("Converting spatial data to SpatialRNA object...\n")
-spatialRNA_obj_visium <- RCTD:::SpatialRNA(counts = synthetic_visium_data$counts,
+if (class(spatial_data) != "Seurat"){
+  spatialRNA_obj_visium <- RCTD:::SpatialRNA(counts = spatial_data$counts,
                                            use_fake_coords = TRUE)
+} else { # If it is Seurat object, check if there is images slot
+    use_fake_coords <- length(spatial_data@images) == 0
+    coords <- NULL
+    if (length(spatial_data@images)){
+        coords <- GetTissueCoordinates(spatial_data)
+    }
+    
+    spatialRNA_obj_visium <- RCTD:::SpatialRNA(coords = coords,
+                                    counts = GetAssayData(spatial_data),
+                                    use_fake_coords = use_fake_coords)
+}
+
 
 cat("Running RCTD with", par$num_cores, "cores...\n")
 start_time <- Sys.time()
