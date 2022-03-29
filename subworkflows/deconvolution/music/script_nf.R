@@ -63,22 +63,19 @@ DefaultAssay(seurat_obj_scRNA) <- "RNA"
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
 cat("Found ", ncelltypes, "cell types in the reference.\n")
 
-cat("Converting to ExpressionSet object...\n")
 if (prod(dim(seurat_obj_scRNA)) > 2**31){
-  cat("Reference object is too large. Downsampling to 10000 cells per cell type...")
+  cat("Reference is too large. Downsampling to 10000 cells per cell type...\n")
   new_cells <- get_downsampled_cells(seurat_obj_scRNA, par$annot)
   features_keep <- rownames(seurat_obj_scRNA)
-  cat("Reference object now has", length(new_cells), "cells.")
+  cat("Reference now has", length(new_cells), "cells.")
   
   # Use as.numeric to prevent integer overflow (`length` returns integer)
   if (as.numeric(length(features_keep))*as.numeric(length(new_cells)) > 2**31){
-    cat("Reference object is still too large. Downsampling genes...")
+    cat("Reference is still too large. Downsampling genes...\n")
     
     # Preprocess reference object to get HVGs and log normalized data
     seurat_obj_scRNA <- seurat_obj_scRNA %>% NormalizeData %>% 
       FindVariableFeatures(nfeatures = 3000) #%>%
-      #ScaleData %>% RunPCA(features = VariableFeatures(object = .)) %>%
-      #RunUMAP(dims=1:20)
     
     var_genes <- VariableFeatures(seurat_obj_scRNA)
     expressed_genes_list <- unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]) %>%
@@ -88,12 +85,12 @@ if (prod(dim(seurat_obj_scRNA)) > 2**31){
      
     features_keep <- union(var_genes, expressed_genes_list %>%
                              unlist() %>% unique())
-    cat("Reference object now has", length(features_keep), "genes.")
+    cat("Reference now has", length(features_keep), "genes.\n")
     
     if (as.numeric(length(features_keep))*as.numeric(length(new_cells)) > 2**31){
-      cat("Reference object is still larger than 2^31 with",
-          paste0(dim(seurat_obj_scRNA), collapse="x"), "elements.")
-      stop("Please downsample the object yourself.")
+      cat("Reference is still larger than 2^31 with",
+          paste0(dim(seurat_obj_scRNA), collapse="x"), "elements.\n")
+      stop("Please downsample the dataset yourself.")
     }
   }
   seurat_obj_scRNA <- seurat_obj_scRNA[features_keep, new_cells]
@@ -106,6 +103,7 @@ if (par$sampleID == "none" || ! par$sampleID %in% colnames(seurat_obj_scRNA@meta
   sampleIDs <- seurat_obj_scRNA[[par$sampleID, drop=TRUE]]
 }
 
+cat("Converting to ExpressionSet object...\n")
 sc.pdata <- new("AnnotatedDataFrame",
                 data = data.frame(
                 celltype = seurat_obj_scRNA[[par$annot, drop=TRUE]],
@@ -123,6 +121,9 @@ if (class(spatial_data) != "Seurat"){
   DefaultAssay(spatial_data) <- names(spatial_data@assays)[grep("RNA|Spatial",names(spatial_data@assays))[1]]
   eset_obj_visium <- ExpressionSet(assayData=as.matrix(GetAssayData(spatial_data, slot="counts")))
 }
+
+rm(seurat_obj_scRNA, spatial_data)
+gc()
 
 cat("Running deconvolution tool...\n")
 start_time <- Sys.time()
