@@ -6,7 +6,24 @@ library(xbioc, quietly=TRUE)
 library(Biobase)
 library(magrittr)
 
-par = R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+par <- list(
+  # Downsampling cells
+  downsample_cells = TRUE, # If dense matrix is too big, downsample cells
+  target_n_cells = 10000,  # Max no. of cells per cell type
+
+  # Downsampling genes
+  downsample_genes = TRUE, # If dense matrix is too big, downsample genes
+  n_hvgs = 3000,           # Number of highly variable genes to keep
+  pct = 0.1,               # Percentage of cells which genes have to be expressed
+  assay_oi = "RNA"
+)
+
+# Replace default values by user input
+args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+par[names(args)] <- args
+# Convert numbers to numeric type
+par[grepl("^[0-9\\.]+$", par)] <- as.numeric(par[grepl("^[0-9\\.]+$", par)]) 
+print(par)
 
 ## HELPER FUNCTIONS TO DOWNSAMPLE REFERENCE SCRNA-SEQ OBJECT ##
 # When the reference exceeds 2**31 elements, cells and genes
@@ -15,7 +32,7 @@ par = R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 # This function returns a vector of genes that are expressed in at least
 # pct fraction of the celltype of interest
 get_expressed_genes <- function(celltype_oi, seurat_obj, annot_col,
-                                assay_oi="RNA", pct=0.1){
+                                assay_oi, pct){
   # Subset expression matrix to contain only celltype of interest
   cells_oi <- colnames(seurat_obj)[seurat_obj[[annot_col]] == celltype_oi]
   exprs_mat <- seurat_obj[[assay_oi]]@data %>% .[, cells_oi]
@@ -46,7 +63,7 @@ get_expressed_genes <- function(celltype_oi, seurat_obj, annot_col,
 # This function returns a list of cell indices such that each cell type
 # contains a maximum of target_n_cells
 get_downsampled_cells <- function(seurat_obj, annot_col,
-                                  target_n_cells = 10000){
+                                  target_n_cells){
   index_keep <- sapply(unique(seurat_obj[[annot_col, drop=TRUE]]),
                        function(celltype){
     indices_oi <- which(seurat_obj[[annot_col]] == celltype)
@@ -64,35 +81,44 @@ ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
 cat("Found ", ncelltypes, "cell types in the reference.\n")
 
 if (prod(dim(seurat_obj_scRNA)) > 2**31){
-  cat("Reference is too large. Downsampling to 10000 cells per cell type...\n")
-  new_cells <- get_downsampled_cells(seurat_obj_scRNA, par$annot)
+  cat("Reference is too large.\n")
+
+  new_cells <- colnames(seurat_obj_scRNA)
   features_keep <- rownames(seurat_obj_scRNA)
-  cat("Reference now has", length(new_cells), "cells.")
+
+  if (par$downsample_cells){
+    cat("Downsampling to", par$target_n_cells, "cells per cell type...\n")
+    new_cells <- get_downsampled_cells(seurat_obj_scRNA, par$annot, par$target_n_cells)
+    cat("Reference now has", length(new_cells), "cells.\n")
+  }
   
-  # Use as.numeric to prevent integer overflow (`length` returns integer)
-  if (as.numeric(length(features_keep))*as.numeric(length(new_cells)) > 2**31){
-    cat("Reference is still too large. Downsampling genes...\n")
-    
+  if (par$downsample_genes){
+    cat("Downsampling genes by keeping", par$n_hvgs, "HVGS ")
+    cat("and genes that are expressed in", par$pct, "fraction per cell type.\n")
+
     # Preprocess reference object to get HVGs and log normalized data
     seurat_obj_scRNA <- seurat_obj_scRNA %>% NormalizeData %>% 
-      FindVariableFeatures(nfeatures = 3000) #%>%
+      FindVariableFeatures(nfeatures = par$n_hvgs)
     
     var_genes <- VariableFeatures(seurat_obj_scRNA)
     expressed_genes_list <- unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]) %>%
       lapply(., function(celltype) {
-        get_expressed_genes(celltype, seurat_obj_scRNA, par$annot)
-      })
-     
+        get_expressed_genes(celltype, seurat_obj_scRNA, par$annot,
+                            par$assay_oi, par$pct)
+    })
+    
     features_keep <- union(var_genes, expressed_genes_list %>%
                              unlist() %>% unique())
     cat("Reference now has", length(features_keep), "genes.\n")
     
-    if (as.numeric(length(features_keep))*as.numeric(length(new_cells)) > 2**31){
-      cat("Reference is still larger than 2^31 with",
-          paste0(dim(seurat_obj_scRNA), collapse="x"), "elements.\n")
-      stop("Please downsample the dataset yourself.")
-    }
   }
+  
+  # Use as.numeric to prevent integer overflow (`length` returns integer)
+  if (as.numeric(length(features_keep))*as.numeric(length(new_cells)) > 2**31){
+    stop(paste0("Reference is still larger than 2^31 with ",
+          paste0(dim(seurat_obj_scRNA), collapse="x"), " elements."))
+  }
+    
   seurat_obj_scRNA <- seurat_obj_scRNA[features_keep, new_cells]
 }
 
@@ -136,7 +162,7 @@ cat("Printing results...\n")
 deconv_matrix <- music_deconv$Est.prop.weighted[,1:ncelltypes]
 
 # Remove all spaces and dots from cell names, sort them
-colnames(deconv_matrix) <- stringr::str_replace_all(colnames(deconv_matrix), "[/ .]", "")
+colnames(deconv_matrix) <- stringr::str_replace_all(colnames(deconv_matrix), "[/ .&-]", "")
 deconv_matrix <- deconv_matrix[,sort(colnames(deconv_matrix), method="shell")]
 
 write.table(deconv_matrix, file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
