@@ -1,6 +1,6 @@
 nextflow.enable.dsl=2
 include { convertRDStoH5AD as convert_sc ; convertRDStoH5AD as convert_sp } from '../helper_processes'
-include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L } from '../helper_processes'
+include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L; formatTSVFile as formatDestVI } from '../helper_processes'
 
 process runMusic {
     tag "music_$output_suffix"
@@ -191,6 +191,66 @@ process fitCell2locationModel {
         """
 }
 
+process buildDestVIModel {
+    tag 'destvi_build'
+    label "retry"
+    label "longer_time"
+    label ( params.gpu ? "use_gpu" : "use_cpu" )
+    container 'csangara/sp_destvi:latest'
+    echo true
+
+    input:
+        // rds input is actually not needed
+        tuple path (sc_input), path (sc_input_rds)
+    output:
+        tuple path ("adata.h5ad"), path ("model.pt")
+
+    script:
+        epochs = ( params.epoch_build ==~ /default/ ? "" : "-e $params.epoch_build")
+        args = ( params.deconv_args.destvi.build ? params.deconv_args.destvi.build : "" )
+        cuda_device = ( params.gpu ? params.cuda_device : "cpu" )
+        println ("Building DestVI model with ${ (params.gpu) ? "GPU" : "CPU" }...")
+        """
+        source activate scvi-env
+        python $params.rootdir/subworkflows/deconvolution/destvi/build_model.py \
+            $sc_input $cuda_device -a $params.annot -o \$PWD/model $epochs $args
+        mv model/* .
+        """
+
+}
+
+process fitDestVIModel {
+    tag "destvi_$sp_file_basename"
+    label "retry"
+    label "longer_time"
+    label ( params.gpu ? "use_gpu" : "use_cpu" )
+    container 'csangara/sp_destvi:latest'
+    echo true
+
+    input:
+        tuple path (sp_input), path (sp_input_rds)
+        tuple path (h5ad_file), path (model_file)
+    output:
+        tuple val('destvi'), path("$output"), path (sp_input_rds)
+    script:
+        sp_file_basename = file(sp_input).getSimpleName()
+        output = "proportions_destvi_${sp_file_basename}${params.runID_props}.preformat"
+        epochs = ( params.epoch_fit ==~ /default/ ? "" : "-e $params.epoch_fit")
+        args = ( params.deconv_args.destvi.fit ? params.deconv_args.destvi.fit : "" )
+        cuda_device = ( params.gpu ? params.cuda_device : "cpu" )
+
+        println ("Received files $h5ad_file and $model_file")
+        println ("Fitting DestVI model with ${ (params.gpu) ? "GPU" : "CPU" }...")
+        
+        """
+        source activate scvi-env
+        mkdir model; mv -t model/ $h5ad_file $model_file
+        python $params.rootdir/subworkflows/deconvolution/destvi/fit_model.py \
+            $sp_input $cuda_device $epochs $args -o \$PWD 
+        mv proportions.tsv $output
+        """
+}
+
 workflow runMethods {
     take:
         sc_input_ch
@@ -198,7 +258,7 @@ workflow runMethods {
 
     main:
         // String matching to check which method to run
-        all_methods = "music,rctd,spotlight,stereoscope,cell2location"
+        all_methods = "music,rctd,spotlight,stereoscope,cell2location,destvi"
         methods = ( params.methods ==~ /all/ ? all_methods : params.methods )
         output_ch = Channel.empty() // collect output channels
 
@@ -221,7 +281,7 @@ workflow runMethods {
         // Python methods
         // First check if there are python methods in the input params
         // before performing conversion of data to h5ad
-        python_methods = ["stereoscope","cell2location"]
+        python_methods = ["stereoscope","cell2location","destvi"]
         methods_list = Arrays.asList(methods.split(','))
         if ( !methods_list.disjoint(python_methods) ){
 
@@ -258,6 +318,22 @@ workflow runMethods {
                                       c2l_combined_ch.model)
                 formatC2L(fitCell2locationModel.out)
                 output_ch = output_ch.mix(formatC2L.out)
+            }
+
+            if ( methods =~ /destvi/ ) {
+                buildDestVIModel(sc_input_pair)
+
+                // Repeat model output for each spatial file
+                buildDestVIModel.out.combine(sp_input_pair)
+                .multiMap { h5ad_file, model_file, sp_file_h5ad, sp_file_rds ->
+                            model: tuple h5ad_file, model_file
+                            sp_input: tuple sp_file_h5ad, sp_file_rds }
+                .set{ destvi_combined_ch }
+
+                fitDestVIModel(destvi_combined_ch.sp_input,
+                               destvi_combined_ch.model)
+                formatDestVI(fitDestVIModel.out) 
+                output_ch = output_ch.mix(formatDestVI.out)
             }
         }
 
