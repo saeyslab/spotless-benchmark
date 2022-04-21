@@ -52,7 +52,7 @@ cat("Printing results...\n")
 deconv_matrix <- as.matrix(sweep(RCTD_deconv@results$weights, 1, rowSums(RCTD_deconv@results$weights), '/'))
 
 # Remove all spaces and dots from cell names, sort them
-colnames(deconv_matrix) <- stringr::str_replace_all(colnames(deconv_matrix), "[/ .]", "")
+colnames(deconv_matrix) <- stringr::str_replace_all(colnames(deconv_matrix), "[/ .&-]", "")
 deconv_matrix <- deconv_matrix[,sort(colnames(deconv_matrix), method="shell")]
 
 write.table(deconv_matrix, file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
