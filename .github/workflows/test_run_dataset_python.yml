@@ -35,7 +35,7 @@ jobs:
 
       - name: Run pipeline with test data
         run: |
-          nextflow run main.nf -profile test,docker --mode run_dataset --methods all
+          nextflow run main.nf -profile test,docker --mode run_dataset --methods cell2location,stereoscope,destvi
 
       - name: Upload proportions and metrics
         uses: actions/upload-artifact@v2
@@ -64,4 +64,4 @@ jobs:
         shell: bash
         run: |
           echo $(ls)
-          Rscript unit-test/test_run_dataset.R all
+          Rscript unit-test/test_run_dataset.R cell2location,stereoscope
