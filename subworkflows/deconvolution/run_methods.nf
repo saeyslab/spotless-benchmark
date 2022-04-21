@@ -4,6 +4,7 @@ nextflow.enable.dsl=2
 include { runMusic } from './music/run_method.nf'
 include { runRCTD } from './rctd/run_method.nf'
 include { runSpotlight } from './spotlight/run_method.nf'
+include { runSpatialDWLS } from './spatialdwls/run_method.nf'
 include { buildCell2locationModel; fitCell2locationModel} from './cell2location/run_method.nf'
 include { buildStereoscopeModel; fitStereoscopeModel } from './stereoscope/run_method.nf'
 include { buildDestVIModel; fitDestVIModel } from './destvi/run_method.nf'
@@ -20,7 +21,7 @@ workflow runMethods {
 
     main:
         // String matching to check which method to run
-        all_methods = "music,rctd,spotlight,stereoscope,cell2location,destvi"
+        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi"
         methods = ( params.methods ==~ /all/ ? all_methods : params.methods )
         output_ch = Channel.empty() // collect output channels
 
@@ -39,6 +40,11 @@ workflow runMethods {
         if ( methods =~ /spotlight/ ){
             runSpotlight(pair_input_ch)
             output_ch = output_ch.mix(runSpotlight.out)
+        }
+
+        if ( methods =~ /spatialdwls/ ){
+            runSpatialDWLS(pair_input_ch)
+            output_ch = output_ch.mix(runSpatialDWLS.out)
         }
         // Python methods
         // First check if there are python methods in the input params
