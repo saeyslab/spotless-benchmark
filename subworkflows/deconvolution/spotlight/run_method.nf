@@ -1,6 +1,7 @@
 process runSpotlight {
     tag "spotlight_$output_suffix"
     label "longer_time"
+    label "retry"
     container 'csangara/sp_spotlight:latest'
     publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
