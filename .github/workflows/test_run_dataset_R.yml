@@ -66,4 +66,4 @@ jobs:
         run: |
           echo $(ls)
           Rscript unit-test/test_run_dataset.R \
-          rctd,spotlight,spatialdwls
+          rctd,music,spatialdwls
