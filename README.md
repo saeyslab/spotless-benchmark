@@ -1,28 +1,18 @@
 # Spotless: A benchmark pipeline for deconvolution tools
-This is a repository for benchmarking spatial deconvolution and mapping tools with a Nextflow pipeline.
+This is a repository for running spatial deconvolution tools through a Nextflow pipeline.
 
-You can either run the pipeline with the gold/silver/bronze standards or run it with your own data. In either case, you need to [install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html), and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
+**Quickstart guide**
+1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
+2. Clone this repository. (If Git LFS isn't installed, you will have download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
+3. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`. (The other two profiles are used inside computing clusters, namely *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
+4. From the `spotless-benchmark/` directory: `nextflow run main.nf -profile local,docker --methods music --annot subclass`
 
-In the future, you will be able to run this pipeline directly from NextFlow. For now you must clone the repository to run the pipeline.
+If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). If not, please write us a GitHub issue and we'll get back to you as soon as possible.
 
-‼**You need to modify/create a profile to run the pipeline**‼
+## Running the pipeline
+You can run the pipeline (`main.nf`) in three modes, `run_standard` (reproducing our analysis with gold/bronze standards), `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it), and `run_dataset` (running deconvolution tools on your own dataset, and possibly benchmarking it).
 
-Currently, there are three profiles: *local* uses the local environment to execute the pipeline, *prism* uses a Sun Grid Engine cluster, and *hpc* uses a Slurm cluster.
-
-To run the pipeline locally, modify `params.rootdir` in the file *nextflow.config* as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`. To use containers, you also need to modify the bind mounts of `docker.runOptions`. Then you can run the pipeline with `nextflow run main.nf -profile local,docker`. By default the proportions and metrics are saved at `deconv_proportions/` and `results/`.
-
-## Pipeline overview
-The complete pipeline (`main.nf`) has the following steps:
-1) Accepting the input or generating synthetic data from the input (`data_generation/generate_data.nf`)
-2) Running the deconvolution methods (`deconvolution/run_methods.nf`)
-3) Computing the metrics (`evaluation/evaluate_methods.nf`)
-
-Each step can be run separately through their respective scripts in the `subworkflows/` folder as indicated by the parentheses. We will first explain the three different modes that you can use `main.nf`, and then show how you can use each subworkflow separately.
-
-## Running the complete pipeline
-You can run `main.nf` with three modes, `run_standard` (reproducing our analysis with standards), `run_dataset` (benchmarking your own synthetic dataset), and `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it).
-
-### Reproducing the pipeline on standards
+### *run_standard*: reproducing our analysis
 First, download the datasets from Zenodo and place them in the `standards/` folder. The file is 5GB.
 ```
 cd spotless-benchmark
@@ -41,8 +31,34 @@ nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard bronze_standard_1-1 -c standards/standard.config
 ```
 
-### Benchmarking your own dataset
-Running the pipeline with the `run_dataset` mode requires a single-cell Seurat object (`sc_input`), the path to the spatial dataset(s) (`sp_input`), and the cell type annotation column (`annot`, default: celltype). We can run the standards in this way also.
+### *generate_and_run*: generating and benchmarking your own synthetic datasets
+`generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`params.synvis.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthvisium* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. You can generate the data only (synthetic datasets will be copied to `params.outdir.synvis`) or run the whole pipeline immediately after.
+```
+# Only generate data
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
+
+# Generate and run the whole pipeline
+nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds \
+-params-file synthvisium_params.yaml
+```
+The arguments to synthvisium are best provided in a separate yaml/JSON file. Check out `subworkflows/synthvisium.yaml` for a detailed description of arguments. Minimally, you need four arguments:
+```
+# synthvisium_params.yaml
+synvis:
+  sc_input: standards/reference/bronze_standard_1.rds             # single-cell reference input
+  clust_var: celltype                                             # name of metadata column with cell type annotation
+  reps: 3                                                         # number of replicates per dataset type (abundance pattern)
+  type: artificial_diverse_distinct,artificial_uniform_distinct   # dataset types
+```
+This will return 3 replicates for each dataset type, resulting in 6 files. You can also adjust other parameters such as the number of spots and mean or standard deviation per spot. Note that in this example, the same file was used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
+
+### *run_dataset*: running/benchmarking deconvolution tools on your own dataset
+The `run_dataset` mode requires a single-cell Seurat object (`params.sc_input`), the path to the spatial dataset(s) (`params.sp_input`), and the cell type annotation column (`params.annot`, default: celltype). For real data, use the `skip_metrics` flag to skip the evaluation step.
+```
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input <PATH_TO_SC_FILE> --sp_input <PATH_TO_SP_FILE> \
+--annot <ANNOT_COL> --skip_metrics
+```
+We can run the standards in this way also.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/gold_standard_1/*.rds" \
 --sc_input standards/reference/gold_standard_1.rds
@@ -52,28 +68,40 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "stan
 ```
 ‼ Don't forget to put any directories with [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns) in quotes.
 
-‼ By default the spatial data is assumed to be a list of counts and the known proportions. See **"Synthvisium object structure"** for the structure, or check out the rds files in `unit-test/` for sample single-cell and spatial files.
+‼ The spatial data can be a Seurat object (with either "RNA" or "Spatial" assay) or a named list of counts (see **Synthvisium object structure** or `unit-test/test_sp_data.rds`).
 
-### Generating synthetic datasets and benchmarking them
-`generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`synvis.sc_input`) and one to use as input in deconvolution methods (`sc_input`). It first makes use of `subworkflows/data_generation/generate_data.nf` to generate synthetic data with *synthvisium*. The arguments are assumed to be stored in a dictionary, so it may be easier to provide this in a separate yaml/JSON file. The four required arguments are:
+## Pipeline arguments (Advanced use)
+You can find the default arguments of the pipeline in the `nextflow.config` file, under the `params` scope. These can be overwritten by parameters provided in the command line or in an external JSON/YAML file (see exact priorities [here](https://www.nextflow.io/docs/latest/config.html)).
+* `methods`: deconvolution methods to run in the pipeline, must be in small laters and comma-separated with no space, e.g.,  <br /> `--methods music,rctd` (default: music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi)
+* `mode`: as explained above, the different modes in which the pipeline can be run (run_standard, run_dataset, generate_and_run)
+* `annot`: the cell type annotation column in the input scRNA-seq Seurat object (default: celltype)
+* `outdir`: location to save the proportions, metrics, and synthetic data (default: `deconv_proportions/`, `results/`, `synthetic_data/`). Best to define this under your profiles.
+* `sampleID`: the column containing batch information for the input scRNA-seq Seurat object (default: none) 
+* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. Can also be passed with the command line, e.g., `--deconv_args.cell2location "-p 10"` (**only for Nextflow version 21, for version 20 provide this in a separate file!**)
+* `synvis`: synthvisium arguments, see `subworkflows/synthvisium.yaml`
+* `gpu`: add this flag to use host GPU, see below
+* `verbose`: add this flag to print input files
+* `skip_metrics`: add this flag to skip the final step which calculates evaluation metrics
+* `runID_props`, `runID_metrics`: a suffix added to the proportions and metrics file output by the pipeline
+* `remap_annot`: if you want to use another celltype annotation to calculate the metrics, see below
+
+### GPU usage
+Stereoscope, cell2location and DestVI can make use of a GPU to shorten their runtimes. You can do this by providing the `--gpu` flag when running the pipeline. If you have a specific GPU you want to use, you will have to provide the index with `cuda_device` (default: 0). This works from inside the containers, so you still do not have to install the programs locally. However, the containers were built on top of a [NVIDIA base image](https://hub.docker.com/r/nvidia/cuda) with CUDA version 10.2, so your GPU must be compatible with this CUDA version.
 ```
-# synthvisium_params.yaml
-synvis:
-  sc_input: standards/reference/bronze_standard_1.rds
-  clust_var: celltype
-  reps: 3
-  type: artificial_diverse_distinct,artificial_uniform_distinct
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 \
+-c standards/standard.config --methods stereoscope,cell2location --gpu #--cuda_device 1
 ```
-These parameters will return 3 replicates for each dataset type, resulting in 6 files. You can also adjust other parameters such as the number of spots and mean or standard deviation per spot (see `subworkflows/data_generation/generate_synthetic_data.R`). You can generate the data only (synthetic datasets will be copied to `outdir.synvis`), or run the whole pipeline immediately after.
+
+## Running selected parts of the pipeline
+It is also possible to only run a subworkflow instead of the whole pipeline.
+
+### Generating synthvisium data
+See __*generate_and_run*: generating and benchmarking your own synthetic datasets__.
+
+Briefly, running the following code will save an rds file to `params.outdir.synvis`:
 ```
-# Only generate data
 nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
-
-# Generate and run the whole pipeline
-nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds \
--params-file synthvisium_params.yaml
 ```
-In the second case, the same file will be used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
 
 #### Synthvisium object structure
 The output of synthvisium is a named list of matrices and lists. There are three necessary components:
@@ -83,45 +111,18 @@ The output of synthvisium is a named list of matrices and lists. There are three
 
 You can look at any of the files in `standard/bronze_standard` for a better idea.
 
-## Subworkflows
-### Generating synthvisium data
-See **"Generating synthetic datasets and benchmarking them"**.
-
 ### Running methods
-If you just want to run the deconvolution methods without benchmarking, you will still have to structure your spatial dataset into a named list with a `counts` component, containing a gene x spot count matrix. Your scRNA-seq object has to be a Seurat object. You can then run all methods with
-
 ```
 nextflow run subworkflows/deconvolution/run_methods.nf -profile <profile_name> \
 --sc_input <scRNAseq_dataset> --sp_input <spatial_dataset> --annot <celltype annotation column>
 ```
+By default, all methods are run (equivalent to giving an argument `--method music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi`). To run only certain methods, make sure the values are comma-separated without any spaces.
 
 ### Computing metrics
-It is possible to add more metrics in the `subworkflows/evaluation/metrics.R` yourself, then recalculate the metrics without running the entire pipeline. You have to provide the ground truth datasets, and the script will look for the proportions at `outdir.props`.
-
+It is possible to add more metrics in the `subworkflows/evaluation/metrics.R` yourself, then recalculate the metrics without running the entire pipeline. You have to provide the ground truth datasets (`params.sp_input`), and the script will look for the proportions at `params.outdir.props`.
 ```
 nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name> \
   --sp_input "standards/gold_standard_1/*.rds"
-```
-
-## Pipeline arguments (Advanced use)
-You can find the default arguments of the pipeline in the `nextflow.config` file, under the `params` scope. These can be overwritten by parameters provided in the command line or in an external JSON/YAML file (see exact priorities [here](https://www.nextflow.io/docs/latest/config.html)).
-* `methods`: deconvolution methods to run in the pipeline, must be in small laters and comma-separated with no space, e.g.,  <br /> `--methods music,rctd` (default: all)
-* `mode`: as explained above, the different modes in which the pipeline can be run (run_standard, run_dataset, generate_and_run)
-* `annot`: the cell type annotation column in the input scRNA-seq Seurat object (default: subclass)
-* `outdir`: location to save the proportions, metrics, and synthetic data (default: `deconv_proportions/`, `results/`, `synthetic_data/`). Best to define this under your profiles.
-* `sampleID`: the column containing batch information for the input scRNA-seq Seurat object (default: none) 
-* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. Can also be passed with the command line, e.g., `--deconv_args.cell2location "-p 10"` (**only for Nextflow version 21, for version 20 provide this in a separate file!**)
-* `synvis`: synthvisium arguments, see "Generating synthvisium data"
-* `gpu`: add this flag to use host GPU, see below
-* `verbose`: add this flag to print input files
-* `runID_props`, `runID_metrics`: a suffix added to the proportions and metrics file output by the pipeline
-* `remap_annot`: if you want to use another celltype annotation to calculate the metrics, see below
-
-### GPU usage
-Stereoscope and cell2location can make use of a GPU to shorten their runtimes. You can do this by providing the `--gpu` flag when running the pipeline. If you have a specific GPU you want to use, you will have to provide the index with `cuda_device` (default: 0). This works from inside the containers, so you still do not have to install the programs locally (the containers were built on top of a [NVIDIA base image](https://hub.docker.com/r/nvidia/cuda)).
-```
-nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 \
--c standards/standard.config --methods stereoscope,cell2location --gpu #--cuda_device 1
 ```
 
 ### Remapping cell type annotations
