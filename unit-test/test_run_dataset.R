@@ -1,6 +1,7 @@
 library(testthat)
 
-methods_all <- c("cell2location", "music", "rctd", "spotlight", "stereoscope")
+methods_all <- c("cell2location", "destvi", "music", "rctd",
+                 "spatialdwls", "spotlight", "stereoscope")
 methods <- strsplit(commandArgs(trailingOnly=TRUE), ",")[[1]]
 
 if (methods[1] == "all"){ methods <- methods_all }
@@ -31,6 +32,7 @@ for (method in methods){
   expect_equal(rowSums(output_props), rep(1, 16), tolerance=1e-6)
   expect_equal(sum(output_props$L23IT), sum(expected_props$L23IT), tolerance=1e-3)
   expect_equal(output_props[15,1:10], expected_props[15,1:10], tolerance=1e-3)
+
   
   # Check 3
   cat(">>> Checking whether metrics file is formatted correctly...\n")
@@ -47,7 +49,9 @@ for (method in methods){
   expected_metrics <- read.table(paste0("unit-test/test_run_dataset/",
                                         "metrics_", method, "_test_sp_data"),
                                  sep=" ", header=TRUE)
+
   expect_equal(output_metrics, expected_metrics, tolerance=1e-3) 
+
 }
 
 # Check 5 - trace file
