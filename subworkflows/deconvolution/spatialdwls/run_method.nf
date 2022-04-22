@@ -13,10 +13,11 @@ process runSpatialDWLS {
     script:
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_spatialdwls_${output_suffix}${params.runID_props}"
+        args = (params.deconv_args.spatialdwls ? params.deconv_args.spatialdwls : "")
         """
         Rscript $params.rootdir/subworkflows/deconvolution/spatialdwls/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
-            --annot $params.annot --output $output
+            --annot $params.annot --output $output $args
         """
 
 }

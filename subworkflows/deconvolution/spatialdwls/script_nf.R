@@ -4,8 +4,24 @@ library(Seurat)
 library(Giotto)
 library(magrittr)
 
+par <- list(
+  n_topmarkers = 100,     # Number of top marker genes per cell type to use
+
+  # Nearest network
+  nn.dims = 10,           # Number of PCs to use
+  nn.k = 4,               # Number of neighbors to use
+
+  # Leiden cluster
+  cluster.res = 0.4,      # Cluster resolution
+  cluster.n_iter = 1000   # Iterations
+)
+
 # Replace default values by user input
-par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+par[names(args)] <- args
+# Convert numbers to numeric type
+par[grepl("^[0-9\\.]+$", par)] <- as.numeric(par[grepl("^[0-9\\.]+$", par)]) 
+print(par)
 
 ## START ##
 cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
@@ -28,19 +44,24 @@ spatial_data <- readRDS(par$sp_input)
 cat("Converting spatial data to Giotto object...\n")
 if (class(spatial_data) != "Seurat"){
   giotto_obj_spatial <- createGiottoObject(raw_exprs = spatial_data$counts)
-} else {
+} else { # If it is Seurat object, check if there is images slot
+  coords <- NULL
+  if (length(spatial_data@images)){
+      coords <- GetTissueCoordinates(spatial_data)
+  }
   DefaultAssay(spatial_data) <- names(spatial_data@assays)[grep("RNA|Spatial",names(spatial_data@assays))[1]]
   giotto_obj_spatial <- createGiottoObject(
-    raw_exprs = GetAssayData(spatial_data, slot="counts")
-    #spatial_locs = TODO
+    raw_exprs = GetAssayData(spatial_data, slot="counts"),
+    spatial_locs = coords
   )
 }
 
 cat ("Preprocessing and clustering spatial data...")
 giotto_obj_spatial <- normalizeGiotto(giotto_obj_spatial) %>% 
     calculateHVG() %>% runPCA() %>%
-    createNearestNetwork(dimensions_to_use = 1:10, k = 4) %>%
-    doLeidenCluster(resolution = 0.4, n_iterations = 1000)
+    createNearestNetwork(dimensions_to_use = 1:par$nn.dims, k = par$nn.k) %>%
+    doLeidenCluster(resolution = par$cluster.res,
+                    n_iterations = par$cluster.n_iter)
 
 cat("Finding marker genes from single-cell data...")
 markers <- findMarkers_one_vs_all(giotto_obj_scRNA,
@@ -48,7 +69,7 @@ markers <- findMarkers_one_vs_all(giotto_obj_scRNA,
                                   method="gini", expression_values="normalized")
 # Use top 100 markers as marker genes
 top_markers <- lapply(unique(markers$cluster),
-                      function(celltype) markers[markers$cluster == celltype, ][1:100,]$genes)
+                      function(celltype) markers[markers$cluster == celltype, ][1:par$n_topmarkers,]$genes)
 
 
 signature_matrix <- makeSignMatrixPAGE(sign_names = unique(markers$cluster),
