@@ -99,7 +99,9 @@ It is also possible to only run a subworkflow instead of the whole pipeline.
 See __*generate_and_run*: generating and benchmarking your own synthetic datasets__.
 
 Briefly, running the following code will save an rds file to `params.outdir.synvis`:
-```nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml```
+```
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
+```
 
 #### Synthvisium object structure
 The output of synthvisium is a named list of matrices and lists. There are three necessary components:
