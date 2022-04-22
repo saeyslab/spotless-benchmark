@@ -36,7 +36,7 @@ jobs:
       - name: Run pipeline with test data
         run: |
           nextflow run main.nf -profile test,docker --mode run_dataset \
-          --methods rctd,music,spatialdwls
+          --methods spotlight
 
       - name: Upload proportions and metrics
         uses: actions/upload-artifact@v2
@@ -65,5 +65,4 @@ jobs:
         shell: bash
         run: |
           echo $(ls)
-          Rscript unit-test/test_run_dataset.R \
-          rctd,spotlight,spatialdwls
+          Rscript unit-test/test_run_dataset.R spotlight
