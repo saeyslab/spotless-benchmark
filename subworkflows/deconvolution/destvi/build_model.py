@@ -19,6 +19,9 @@ prs.add_argument('-a','--annotation_column', default = 'celltype',
 prs.add_argument('-e', '--epochs', default=300, type = int,
                 help = "number of epochs to train the model")
 
+prs.add_argument('-n', '--n_hvgs', default=2000, type = int,
+                help = "number of highly variable genes to use")
+
 args = prs.parse_args()
 cuda_device = args.cuda_device
 
@@ -57,10 +60,21 @@ sc_adata = sc.read_h5ad(args.sc_data_path)
 
 # Filter genes
 print("Before filtering: {} genes.".format(sc_adata.shape[1]))
-sc.pp.filter_genes(sc_adata, min_counts=100)
-print("After filtering: {} genes.".format(sc_adata.shape[1]))
-
+G = args.n_hvgs
+sc.pp.filter_genes(sc_adata, min_counts=10)
 sc_adata.layers["counts"] = sc_adata.X.copy()
+
+sc.pp.highly_variable_genes(
+    sc_adata,
+    n_top_genes=G,
+    subset=True,
+    layer="counts",
+    flavor="seurat_v3"
+)
+sc.pp.normalize_total(sc_adata, target_sum=10e4)
+sc.pp.log1p(sc_adata)
+sc_adata.raw = sc_adata
+print("After filtering: {} genes.".format(sc_adata.shape[1]))
 
 print("Preparing anndata for the regression model...")
 CondSCVI.setup_anndata(sc_adata, layer="counts", labels_key=args.annotation_column)
