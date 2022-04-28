@@ -17,6 +17,9 @@ prs.add_argument('-o','--out_dir', default = os.getcwd() ,
 
 prs.add_argument('-e', '--epochs', default=2500, type = int, help = "number of epochs to fit the model")
 
+prs.add_argument('-f', '--feature_column', default="features", type = str,
+                help="var column name to look for gene names (must be the same in sc data)")
+
 args = prs.parse_args()
 
 cuda_device = args.cuda_device
@@ -48,10 +51,16 @@ print("Reading in spatial data from " + sp_data_path + "...")
 st_adata = sc.read_h5ad(sp_data_path)
 st_adata.layers["counts"] = st_adata.X.copy()
 
-print("Reading in the model...")
+print("Reading in the sc model...")
 sc_model = CondSCVI.load(args.model_path)
 
+if st_adata.shape[1] != sc_model.adata.shape[1]:
+    print("The number of genes do not match. Subsetting spatial data...")
+    features = sc_model.adata.var[args.feature_column]
+    st_adata = st_adata[:, st_adata.var[args.feature_column].isin(features)].copy()
+
 # Prepare anndata
+print("Setting up spatial model...")
 DestVI.setup_anndata(st_adata, layer="counts")
 
 # Set up model

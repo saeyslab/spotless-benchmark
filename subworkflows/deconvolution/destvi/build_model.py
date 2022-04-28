@@ -57,7 +57,7 @@ sc_adata = sc.read_h5ad(args.sc_data_path)
 
 # Filter genes
 print("Before filtering: {} genes.".format(sc_adata.shape[1]))
-sc.pp.filter_genes(sc_adata, min_counts=10)
+sc.pp.filter_genes(sc_adata, min_counts=100)
 print("After filtering: {} genes.".format(sc_adata.shape[1]))
 
 sc_adata.layers["counts"] = sc_adata.X.copy()
