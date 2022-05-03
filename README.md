@@ -8,11 +8,10 @@ This is a repository for running spatial deconvolution tools through a Nextflow 
 (The other two profiles are used inside computing clusters, namely *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
 4. While in the `spotless-benchmark/` directory:
 ```
-# Docker installed
-nextflow run main.nf -profile local,docker --methods music --annot subclass
+nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/test_sc_data.rds \
+--sp_input unit-test/test_sp_data.rds --annot subclass
 
-# Singularity installed
-nextflow run main.nf -profile local,singularity --methods music --annot subclass
+# If singularity is installed, use -profile local,singularity
 ```
 
 This runs only one method, MuSiC, as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). If not, please write us a GitHub issue and we'll get back to you as soon as possible.
