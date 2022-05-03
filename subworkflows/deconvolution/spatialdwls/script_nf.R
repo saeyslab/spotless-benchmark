@@ -43,12 +43,21 @@ spatial_data <- readRDS(par$sp_input)
 
 cat("Converting spatial data to Giotto object...\n")
 if (class(spatial_data) != "Seurat"){
+  # Somehow if the spot names consist only of numbers, there is an error downstream
+  if (all(grepl("^[0-9]+$", colnames(spatial_data$counts)))){
+    colnames(spatial_data$counts) <- paste0("spot_", colnames(spatial_data$counts))
+  }
   giotto_obj_spatial <- createGiottoObject(raw_exprs = spatial_data$counts)
 } else { # If it is Seurat object, check if there is images slot
   coords <- NULL
   if (length(spatial_data@images)){
       coords <- GetTissueCoordinates(spatial_data)
   }
+
+  if (all(grepl("^[0-9]+$", Cells(spatial_data)))){ # Same as above
+    spatial_data <- RenameCells(spatial_data, add.cell.id = "spot")
+  }
+  
   DefaultAssay(spatial_data) <- names(spatial_data@assays)[grep("RNA|Spatial",names(spatial_data@assays))[1]]
   giotto_obj_spatial <- createGiottoObject(
     raw_exprs = GetAssayData(spatial_data, slot="counts"),
@@ -67,10 +76,11 @@ cat("Finding marker genes from single-cell data...")
 markers <- findMarkers_one_vs_all(giotto_obj_scRNA,
                                   cluster_column = par$annot,
                                   method="gini", expression_values="normalized")
-# Use top 100 markers as marker genes
-top_markers <- lapply(unique(markers$cluster),
-                      function(celltype) markers[markers$cluster == celltype, ][1:par$n_topmarkers,]$genes)
-
+# Use top 100 markers as marker genes (or as much as there is)
+top_markers <- lapply(unique(markers$cluster), function(celltype) {
+                        top_n <- markers[markers$cluster == celltype, ][1:par$n_topmarkers,]$genes
+                        top_n[!is.na(top_n)]
+                      })
 
 signature_matrix <- makeSignMatrixPAGE(sign_names = unique(markers$cluster),
                                        sign_list = top_markers)
