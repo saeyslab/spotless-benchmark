@@ -13,6 +13,7 @@ if (class(input_obj) != "Seurat"){
 } else {
   seurat_obj <- input_obj
 }
+rm(input_obj)
 
 # Use raw counts
 DefaultAssay(seurat_obj) <- names(seurat_obj@assays)[grep("RNA|Spatial", names(seurat_obj@assays))[1]]
@@ -20,9 +21,23 @@ DefaultAssay(seurat_obj) <- names(seurat_obj@assays)[grep("RNA|Spatial", names(s
 # SeuratDisk cannot work with a Seurat object older than v3.1.2
 if (compareVersion(as.character(seurat_obj@version), "3.1.2") == -1){
   print("Seurat object is too old, creating a new one...")
-  seurat_obj <- CreateSeuratObject(counts = GetAssayData(seurat_obj), assay = DefaultAssay(seurat_obj),
+  seurat_obj <- CreateSeuratObject(counts = GetAssayData(seurat_obj, slot="counts"),
+                                   assay = DefaultAssay(seurat_obj),
                                    meta.data=seurat_obj@meta.data)
 }
+
+# If the object has been preprocessed before, SeuratDisk is going to place the
+# raw counts in the .raw.X instead of .X, which wouldn't work downstream
+# because the Python methods access .X instead of .raw.X
+# So we check if the scale matrix exists, and if the counts and data slots are different
+if (!isTRUE(all.equal(GetAssayData(seurat_obj, slot="counts"), GetAssayData(seurat_obj, slot="data"))) ||
+    all(dim(GetAssayData(seurat_obj, slot="scale.data")) > 0)){
+  cat("The Seurat object has been preprocessed. Creating a new object...")
+  seurat_obj <- CreateSeuratObject(counts = GetAssayData(seurat_obj, slot="counts"),
+                                   assay = DefaultAssay(seurat_obj),
+                                   meta.data=seurat_obj@meta.data)
+}
+gc()
 
 file_name <- stringr::str_split(basename(par$input_path), "\\.")[[1]][1]
 
