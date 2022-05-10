@@ -1,0 +1,6 @@
+deconv_args:
+  stereoscope: "-n 5000 -stb 500 -scb 500"
+  cell2location:
+    build: "-t digest"
+  spotlight: "--conserve.memory TRUE"
+  music: "--pct 0.05"
