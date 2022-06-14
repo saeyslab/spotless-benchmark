@@ -68,7 +68,7 @@ process fitModel {
 }
 ```
 
-**Note:** In the cell2location/stereoscope/DestVI processes you will instead see `input: tuple path (sp_input), path (sp_input_rds)`. This is because although we internally converted the RDS file to a H5AD file, the original RDS file is still needed for metric computation. Hence, you will also need to follow this format while implementing your own method.
+**Note:** In the cell2location/stereoscope/DestVI processes you will instead see `input: tuple path (sp_input), path (sp_input_rds)`. This is because although we internally converted the RDS file to a H5AD file, the original RDS file is still needed for metric computation. So you will also need to follow this format while implementing your own method.
 
 Then, you can also add the method in `subworkflow/deconvolution/run_methods.nf`:
    - In the `include` statement at the beginning of the file (`include { runMethod } from './method_name/run_method.nf'`)
@@ -76,7 +76,7 @@ Then, you can also add the method in `subworkflow/deconvolution/run_methods.nf`:
    - In `python_methods` (`python_methods = ['stereoscope', ... 'method_name']`)
    - In the  `runMethods` workflow
 
-Adding your process to the `runMethods` workflow is slightly more complicated than the R case, since we want to be able to run multiple spatial datasets by building the model only once. In Nextflow, a channel can only be used once, so we will need to replicate the model channel to the amount of spatial datasets. Let's see how this was done in the case of cell2location:
+Adding your process to the `runMethods` workflow is slightly more complicated than the R case, since we want to be able to run multiple spatial datasets by building the model only once. In Nextflow, a channel can only be used once, so we will need to replicate the model channel to the amount of spatial datasets. As an example, we will see how this was done in the case of cell2location:
 
 ```
 buildCell2locationModel(sc_input_pair)				--> build model using single-cell dataset
