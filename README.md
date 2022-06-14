@@ -1,9 +1,9 @@
-# Spotless: A benchmark pipeline for deconvolution tools
-This is a repository for running spatial deconvolution tools through a Nextflow pipeline.
+# Spotless: A benchmark pipeline for <br> spatial deconvolution tools
+This is a repository for running spatial deconvolution tools through a Nextflow pipeline. Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SPOTlight, and stereoscope have been implemented. To add your own method, see [Guideline_for_adding_deconvolution_tools.md](Guideline_for_adding_deconvolution_tools.md).
 
 **Quickstart guide**
 1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
-2. Clone this repository. (If Git LFS isn't installed, you will have download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
+2. Clone this repository. (If Git LFS isn't installed, you will have to download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
 3. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`.
 (The other two profiles are used inside computing clusters, namely *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
 4. While in the `spotless-benchmark/` directory:
@@ -14,7 +14,9 @@ nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/
 # If singularity is installed, use -profile local,singularity
 ```
 
-This runs only one method, MuSiC, as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). If not, please write us a GitHub issue and we'll get back to you as soon as possible.
+This runs only MuSiC as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). 
+
+To run more methods, type the method names separated with a comma but no spaces, e.g., `--methods rctd,music`.
 
 ## Running the pipeline
 You can run the pipeline (`main.nf`) in three modes, `run_standard` (reproducing our analysis with gold/bronze standards), `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it), and `run_dataset` (running deconvolution tools on your own dataset, and possibly benchmarking it).
@@ -79,7 +81,7 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "stan
 
 ## Pipeline arguments (Advanced use)
 You can find the default arguments of the pipeline in the `nextflow.config` file, under the `params` scope. These can be overwritten by parameters provided in the command line or in an external JSON/YAML file (see exact priorities [here](https://www.nextflow.io/docs/latest/config.html)).
-* `methods`: deconvolution methods to run in the pipeline, must be in small laters and comma-separated with no space, e.g.,  <br /> `--methods music,rctd` (default: music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi)
+* `methods`: deconvolution methods to run in the pipeline, must be comma-separated with no space, e.g.,  <br /> `--methods music,rctd` (case-insensitive, default: all)
 * `mode`: as explained above, the different modes in which the pipeline can be run (run_standard, run_dataset, generate_and_run)
 * `annot`: the cell type annotation column in the input scRNA-seq Seurat object (default: celltype)
 * `outdir`: location to save the proportions, metrics, and synthetic data (default: `deconv_proportions/`, `results/`, `synthetic_data/`). Best to define this under your profiles.
