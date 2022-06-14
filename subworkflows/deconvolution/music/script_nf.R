@@ -15,7 +15,10 @@ par <- list(
   downsample_genes = TRUE, # If dense matrix is too big, downsample genes
   n_hvgs = 3000,           # Number of highly variable genes to keep
   pct = 0.1,               # Percentage of cells which genes have to be expressed
-  assay_oi = "RNA"
+  assay_oi = "RNA",
+
+  # Filtering spatial object
+  filter_spots = "none"
 )
 
 # Replace default values by user input
@@ -116,7 +119,7 @@ if (prod(dim(seurat_obj_scRNA)) > 2**31){
   # Use as.numeric to prevent integer overflow (`length` returns integer)
   if (as.numeric(length(features_keep))*as.numeric(length(new_cells)) > 2**31){
     stop(paste0("Reference is still larger than 2^31 with ",
-          paste0(dim(seurat_obj_scRNA), collapse="x"), " elements."))
+          as.numeric(length(features_keep)), "x", as.numeric(length(new_cells)), " elements."))
   }
     
   seurat_obj_scRNA <- seurat_obj_scRNA[features_keep, new_cells]
@@ -146,6 +149,12 @@ if (class(spatial_data) != "Seurat"){
 } else {
   DefaultAssay(spatial_data) <- names(spatial_data@assays)[grep("RNA|Spatial",names(spatial_data@assays))[1]]
   eset_obj_visium <- ExpressionSet(assayData=as.matrix(GetAssayData(spatial_data, slot="counts")))
+}
+
+if (par$filter_spots != "none"){
+  cat("Filtering out spots with fewer than", par$filter_spots, "counts...")
+  cat("Spots removed:", names(which(colSums(exprs(eset_obj_visium)) <= par$filter_spots)))
+  eset_obj_visium <- eset_obj_visium[, colSums(exprs(eset_obj_visium)) > par$filter_spots]
 }
 
 rm(seurat_obj_scRNA, spatial_data)

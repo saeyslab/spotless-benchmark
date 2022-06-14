@@ -1,6 +1,7 @@
 process runMusic {
     tag "music_$output_suffix"
-    label "retry"
+    errorStrategy { task.exitStatus in 137..140 ? 'retry' : 'terminate' }
+    maxRetries 2
     container 'csangara/sp_music:latest'
     publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
