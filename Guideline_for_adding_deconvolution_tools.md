@@ -33,30 +33,64 @@ nextflow run main.nf --methods nnls -profile local \
 --annot subclass 
 ```
 
+### Extra information for Python methods
+For simple algorithms like NNLS the workflow is exactly the same, but the inputs are expected to be h5ad files instead of Seurat objects. 
+However, most Python methods make use of Bayesian probabilistic models (i.e., cell2location, stereoscope, and DestVI)  and comprise model building and model fitting steps. Hence, you would need two scripts and two Nextflow processes.
 
-======== EXTRA INFORMATION FOR PYTHON METHODS =========
-For NNLS the workflow is exactly the same, but we expect the input to be h5ad files instaed of Seurat objects.
-Nonetheless, most Python methods include model building and training, so you would need two files to do so.
-Typically, the model building only takes the single-cell h5ad file as input along with the annotation column, while the model fitting takes the trained model along with the spatial dataset.
-When running a benchmark, we sometimes have 10 spatial datasets for 1 single-cell dataset. To save time, we will only build the model once and use it for all spatial datasets. Hence, the model output channel has to be replicated. Let's break down the code of cell2location
+Typically, the model building script (`build_model.py`) only takes the single-cell object and annotation column as input, while the model fitting script (`fit_model.py)` takes the model and spatial dataset as input. The Nextflow processes in `run_method.nf` would minimally look something like
 
+```
+process buildModel {
+    input:
+        path (sc_input)
+    output:
+        path (model)
 
-buildCell2locationModel(sc_input_pair)					--> build model using only single-cell dataset
+    script:
+        """
+        python build_model.py $sc_input --annot $params.annot
+	# Assume the script outputs a file called "model" containing the built model
+        """
+
+}
+
+process fitModel {
+    input:
+        path (sp_input)
+        path (model)
+    output:
+        path (output_props)
+    script:
+        """
+        python fit_model.py $sp_input $model
+	# Assume the script outputs a file called "output_props" containing output proportions
+        """
+}
+```
+
+**Note:** In the cell2location/stereoscope/DestVI processes you will instead see `input: tuple path (sp_input), path (sp_input_rds)`. This is because although we internally converted the RDS file to a H5AD file, the original RDS file is still needed for metric computation. Hence, you will also need to follow this format while implementing your own method.
+
+Then, you can also add the method in `subworkflow/deconvolution/run_methods.nf`:
+   - In the `include` statement at the beginning of the file (`include { runMethod } from './method_name/run_method.nf'`)
+   - In parameters `all_methods` (`all_methods = "music,rctd, ... ,dstg,nnls,method_name"`)
+   - In `python_methods` (`python_methods = ['stereoscope', ... 'method_name']`)
+   - In the  `runMethods` workflow
+
+Adding your process to the `runMethods` workflow is slightly more complicated than the R case, since we want to be able to run multiple spatial datasets by building the model only once. In Nextflow, a channel can only be used once, so we will need to replicate the model channel to the amount of spatial datasets. Let's see how this was done in the case of cell2location:
+
+```
+buildCell2locationModel(sc_input_pair)				--> build model using single-cell dataset
 
 // Repeat model output for each spatial file
-buildCell2locationModel.out.combine(sp_input_pair)			--> .out is the model, copy the model for each spatial dataset there is
-.multiMap { model_sc_file, sp_file_h5ad, sp_file_rds ->			--> we have the model file, and two spatial files (h5ad and original Seurat object)
-            model: model_sc_file					--> the model file is now called "model"
-            sp_input: tuple sp_file_h5ad, sp_file_rds }			--> the spatial files are grouped as a tuple, accessed via "sp_input)
-.set{ c2l_combined_ch }							--> the new variable is now named c2l_combined_ch
+buildCell2locationModel.out.combine(sp_input_pair)		--> .out refers to the model file; we "combine" (cartesian product) the model channel with each spatial input channel
+.multiMap { model_sc_file, sp_file_h5ad, sp_file_rds ->		--> we will remap this combined channel which contains three components (the model file, H5AD spatial file, and RDS spatial file)
+            model: model_sc_file				--> in the redefined channel, the model file can be accessed via "model"
+            sp_input: tuple sp_file_h5ad, sp_file_rds }		--> the spatial files are grouped as a tuple, accessed via "sp_input"
+.set{ c2l_combined_ch }						--> name this channel as c2l_combined_ch
 
-fitCell2locationModel(c2l_combined_ch.sp_input,				--> fit the model using sp_input tuple
-                      c2l_combined_ch.model)				--> and the model file
-formatC2L(fitCell2locationModel.out)					--> format the TSV file outputted by the cell2location model
+fitCell2locationModel(c2l_combined_ch.sp_input,			--> fit the model using sp_input tuple and the model file
+                      c2l_combined_ch.model)			    
+		      
+formatC2L(fitCell2locationModel.out)				--> format the TSV file output by the cell2location model
 output_ch = output_ch.mix(formatC2L.out)
-
-The reason we need to use multiMap to reformat the sp_input as a tuple is to match the input we defined in fitCell2locationModel (in run_method.nf)
-input:
-	tuple path (sp_input), path (sp_input_rds)
-	path (model)
-Note that we always pass the sp_input_rds file because we need it downstream for metrics computation.
+```
