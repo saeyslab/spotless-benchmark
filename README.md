@@ -1,5 +1,5 @@
 # Spotless: A benchmark pipeline for deconvolution tools
-This is a repository for running spatial deconvolution tools through a Nextflow pipeline. Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SPOTlight, and stereoscope have been implemented. A guideline on how to add your own method will be coming soon.
+This is a repository for running spatial deconvolution tools through a Nextflow pipeline. Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SPOTlight, and stereoscope have been implemented. To add your own method, see [Guideline_for_adding_deconvolution_tools.md](Guideline_for_adding_deconvolution_tools.md).
 
 **Quickstart guide**
 1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
