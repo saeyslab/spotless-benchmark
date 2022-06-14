@@ -5,7 +5,8 @@ include { computeMetrics } from './subworkflows/evaluation/evaluate_methods'
 include { generateSyntheticData } from './subworkflows/data_generation/generate_data'
 
 bronze_standards = ((1..7)*8).sort().withIndex().collect{ it, i -> "bronze_standard_$it-${ -> i%8+1}".toString() }
-all_standards = ["gold_standard_1", "gold_standard_2"] + bronze_standards
+bronze_standards_coarse = (1..7).collect{ it -> "bronze_standard_$it"}
+all_standards = ["gold_standard_1", "gold_standard_2"] + bronze_standards + bronze_standards_coarse
 all_modes = ["run_standard", "run_dataset", "generate_and_run"]
 
 
