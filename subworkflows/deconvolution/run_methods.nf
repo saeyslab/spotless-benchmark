@@ -9,6 +9,7 @@ include { buildCell2locationModel; fitCell2locationModel} from './cell2location/
 include { buildStereoscopeModel; fitStereoscopeModel } from './stereoscope/run_method.nf'
 include { buildDestVIModel; fitDestVIModel } from './destvi/run_method.nf'
 include { runDSTG } from './dstg/run_method.nf'
+include { runNNLS } from './nnls/run_method.nf'
 
 // Helper functions
 include { convertRDStoH5AD as convert_sc ; convertRDStoH5AD as convert_sp } from '../helper_processes'
@@ -22,8 +23,8 @@ workflow runMethods {
 
     main:
         // String matching to check which method to run
-        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg"
-        methods = ( params.methods ==~ /all/ ? all_methods : params.methods )
+        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls"
+        methods = ( params.methods.toLowerCase() ==~ /all/ ? all_methods : params.methods.toLowerCase() )
         output_ch = Channel.empty() // collect output channels
 
         // R methods
@@ -52,6 +53,11 @@ workflow runMethods {
             runDSTG(pair_input_ch)
             formatDSTG(runDSTG.out) 
             output_ch = output_ch.mix(formatDSTG.out)
+        }
+
+        if ( methods =~ /nnls/ ){
+            runNNLS(pair_input_ch)
+            output_ch = output_ch.mix(runNNLS.out)
         }
 
         // Python methods
