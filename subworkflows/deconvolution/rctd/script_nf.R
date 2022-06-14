@@ -33,9 +33,9 @@ if (class(spatial_data) != "Seurat"){
     if (length(spatial_data@images)){
         coords <- GetTissueCoordinates(spatial_data)
     }
-    
+    DefaultAssay(spatial_data) <- names(spatial_data@assays)[grep("RNA|Spatial",names(spatial_data@assays))[1]]
     spatialRNA_obj_visium <- RCTD:::SpatialRNA(coords = coords,
-                                    counts = GetAssayData(spatial_data),
+                                    counts = GetAssayData(spatial_data, slot="counts"),
                                     use_fake_coords = use_fake_coords)
 }
 
