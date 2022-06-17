@@ -24,11 +24,13 @@ process runDSTG {
         
         source activate dstg
         # Script doesn't run unless we're inside the directory
-        cd ${params.deconv_args.dstg.dir}/DSTG/DSTG/
+        cp -R ${params.deconv_args.dstg.dir}/DSTG/DSTG .
+        cd DSTG/
+        rm synthetic_data/*
 
         # Input: sc file, spatial file, and labels file
-        Rscript convert_data.R \$WORKDIR/${sc_filename}_matrix.rds \
-        \$WORKDIR/${output_suffix}_matrix.rds \$WORKDIR/${sc_filename}_label.rds
+        Rscript convert_data.R ../${sc_filename}_matrix.rds \
+        ../${output_suffix}_matrix.rds ../${sc_filename}_label.rds
 
         # Train the model
         python train.py
@@ -42,7 +44,7 @@ process runDSTG {
         # Convert csv to tsv and move file to work directory
         sed -i -E 's/("([^"]*)")?,/\\2\t/g' DSTG_Result/predict_output.csv
         head DSTG_Result/predict_output.csv
-        mv DSTG_Result/predict_output.csv \$WORKDIR/$output
+        mv DSTG_Result/predict_output.csv ../$output
         
         # touch \$WORKDIR/$output
         """
