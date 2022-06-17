@@ -43,7 +43,7 @@ workflow runMethods {
                                                    convert_sp(sp_input_ch).flatten().filter( ~/.*rds*/ )
 
             pair_input_ch = sc_input_R.combine(sp_input_R)
-            pair_input_ch.view()
+
             if ( methods =~ /music/ ){
                 runMusic(pair_input_ch)
                 output_ch = output_ch.mix(runMusic.out)
@@ -81,20 +81,13 @@ workflow runMethods {
         
         if ( !methods_list.disjoint(python_methods) ){
             // If the input file is RDS, convert to H5AD
-            println("sp_input")
-            sp_input_ch.view()
             sc_input_conv = sc_input_type ==~ /rds/ ? convert_sc(sc_input_ch).flatten().filter( ~/.*h5ad*/ ) :
                                                       sc_input_ch
 
             // If the spatial file is H5AD, create dummy file
             sp_input_pair = sp_input_type ==~ /rds/ ? 
                             convert_sp(sp_input_ch) : createDummyFile(sp_input_ch)
-            // sp_input_ch.combine(createDummyFile.out)
-            // TODO: MULTIPLE SPATIAL INPUT FILES
-            println("sc input conv")
-            sc_input_conv.view()
-            println("sp input conv")
-            sp_input_pair.view()
+
             if ( methods =~ /stereoscope/ ) {
                 buildStereoscopeModel(sc_input_conv)
 
