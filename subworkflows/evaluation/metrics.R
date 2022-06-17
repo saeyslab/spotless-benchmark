@@ -34,7 +34,7 @@ ground_truth_data <- readRDS(par$sp_input)
 
 if (class(ground_truth_data) == "list"){ 
   celltype_cols <- !grepl("^name$|^region$|^spot_no$",
-                          colnames(ground_truth_data$spot_composition))
+                          colnames(ground_truth_data$relative_spot_composition))
 }
 
 ncells <- sum(celltype_cols)
