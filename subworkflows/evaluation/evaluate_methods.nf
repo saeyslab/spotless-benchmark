@@ -31,7 +31,7 @@ process computeMetrics {
 workflow {
     sp_input_ch = Channel.fromPath(params.sp_input)
     
-    all_methods = "music,rctd,spotlight,stereoscope,cell2location"
+    all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls"
     methods = ( params.methods ==~ /all/ ? all_methods : params.methods )
     methods_list = Channel.from(Arrays.asList(methods.split(',')))
 
