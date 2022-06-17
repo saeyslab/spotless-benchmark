@@ -20,7 +20,6 @@ workflow {
         // RUN STANDARD PIPELINE
         if (params.mode ==~ /run_standard/ ){
             // Check pipeline name
-            println(all_standards)
             if (!all_standards.contains(params.standard)){
                 throw new Exception("Error: standard '$params.standard' does not exist.")
             }
@@ -54,11 +53,22 @@ workflow {
             }
         }
 
+        sc_input_type = file(params.sc_input).getExtension() =~ /h5/ ? "h5ad" : "rds"
+        sp_input_type = params.sp_input.split("\\.").last() =~ /h5/ ? "h5ad" : "rds"
+        
+        println("The single-cell data is of ${sc_input_type} format and the spatial data is of ${sp_input_type} format.")
+
+        if (sp_input_type ==~ /h5ad/ && !params.skip_metrics){
+            throw new Exception("Metric calculation is not supported for spatial h5ad files as input, please use --skip_metrics if you wish to run the pipeline.")
+        }
+
+        // Prepare the input
         sc_input_ch = Channel.fromPath(params.sc_input) // Can only have 1 file
         // Can have one or more files
         sp_input_ch = (params.mode ==~ /generate_and_run/ ? generateSyntheticData.out : Channel.fromPath(params.sp_input))
 
-        runMethods(sc_input_ch, sp_input_ch)
+        runMethods(sc_input_ch, sp_input_ch, sc_input_type, sp_input_type)
+        
         if (!params.skip_metrics){
             computeMetrics(runMethods.out)
         }

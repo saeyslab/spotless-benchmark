@@ -12,66 +12,91 @@ include { runDSTG } from './dstg/run_method.nf'
 include { runNNLS } from './nnls/run_method.nf'
 
 // Helper functions
-include { convertRDStoH5AD as convert_sc ; convertRDStoH5AD as convert_sp } from '../helper_processes'
+include { convertBetweenRDSandH5AD as convert_sc ; convertBetweenRDSandH5AD as convert_sp } from '../helper_processes'
 include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L; formatTSVFile as formatDestVI; formatTSVFile as formatDSTG } from '../helper_processes'
-
+include { createDummyFile } from '../helper_processes'
 
 workflow runMethods {
     take:
         sc_input_ch
         sp_input_ch
+        sc_input_type
+        sp_input_type
 
     main:
         // String matching to check which method to run
         all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls"
+        r_methods = ["music", "rctd", "spatialdwls", "spotlight", "dstg", "nnls"]
+        python_methods = ["stereoscope","cell2location","destvi"]
+
         methods = ( params.methods.toLowerCase() ==~ /all/ ? all_methods : params.methods.toLowerCase() )
+        methods_list = Arrays.asList(methods.split(','))
+        
         output_ch = Channel.empty() // collect output channels
 
         // R methods
-        pair_input_ch = sc_input_ch.combine(sp_input_ch)
-        if ( methods =~ /music/ ){
-            runMusic(pair_input_ch)
-            output_ch = output_ch.mix(runMusic.out)
-        }
+        if ( !methods_list.disjoint(r_methods) ){
+            // If the input file is H5AD, convert to RDS
+            sc_input_R = sc_input_type ==~ /rds/ ? sc_input_ch :
+                                                   convert_sc(sc_input_ch).flatten().filter( ~/.*rds*/ )
+            sp_input_R = sp_input_type ==~ /rds/ ? sp_input_ch :
+                                                   convert_sp(sp_input_ch).flatten().filter( ~/.*rds*/ )
 
-        if ( methods =~ /rctd/ ){
-            runRCTD(pair_input_ch)
-            output_ch = output_ch.mix(runRCTD.out)
-        }
-        
-        if ( methods =~ /spotlight/ ){
-            runSpotlight(pair_input_ch)
-            output_ch = output_ch.mix(runSpotlight.out)
-        }
+            pair_input_ch = sc_input_R.combine(sp_input_R)
+            pair_input_ch.view()
+            if ( methods =~ /music/ ){
+                runMusic(pair_input_ch)
+                output_ch = output_ch.mix(runMusic.out)
+            }
 
-        if ( methods =~ /spatialdwls/ ){
-            runSpatialDWLS(pair_input_ch)
-            output_ch = output_ch.mix(runSpatialDWLS.out)
-        }
+            if ( methods =~ /rctd/ ){
+                runRCTD(pair_input_ch)
+                output_ch = output_ch.mix(runRCTD.out)
+            }
+            
+            if ( methods =~ /spotlight/ ){
+                runSpotlight(pair_input_ch)
+                output_ch = output_ch.mix(runSpotlight.out)
+            }
 
-        if ( methods =~ /dstg/ ){
-            runDSTG(pair_input_ch)
-            formatDSTG(runDSTG.out) 
-            output_ch = output_ch.mix(formatDSTG.out)
-        }
+            if ( methods =~ /spatialdwls/ ){
+                runSpatialDWLS(pair_input_ch)
+                output_ch = output_ch.mix(runSpatialDWLS.out)
+            }
 
-        if ( methods =~ /nnls/ ){
-            runNNLS(pair_input_ch)
-            output_ch = output_ch.mix(runNNLS.out)
-        }
+            if ( methods =~ /dstg/ ){
+                runDSTG(pair_input_ch)
+                formatDSTG(runDSTG.out) 
+                output_ch = output_ch.mix(formatDSTG.out)
+            }
 
+            if ( methods =~ /nnls/ ){
+                runNNLS(pair_input_ch)
+                output_ch = output_ch.mix(runNNLS.out)
+            }
+        }
         // Python methods
         // First check if there are python methods in the input params
         // before performing conversion of data to h5ad
-        python_methods = ["stereoscope","cell2location","destvi"]
-        methods_list = Arrays.asList(methods.split(','))
+        
         if ( !methods_list.disjoint(python_methods) ){
+            // If the input file is RDS, convert to H5AD
+            println("sp_input")
+            sp_input_ch.view()
+            sc_input_conv = sc_input_type ==~ /rds/ ? convert_sc(sc_input_ch).flatten().filter( ~/.*h5ad*/ ) :
+                                                      sc_input_ch
 
-            sc_input_pair = convert_sc(sc_input_ch)
-            sp_input_pair = convert_sp(sp_input_ch)
-
+            // If the spatial file is H5AD, create dummy file
+            sp_input_pair = sp_input_type ==~ /rds/ ? 
+                            convert_sp(sp_input_ch) : createDummyFile(sp_input_ch)
+            // sp_input_ch.combine(createDummyFile.out)
+            // TODO: MULTIPLE SPATIAL INPUT FILES
+            println("sc input conv")
+            sc_input_conv.view()
+            println("sp input conv")
+            sp_input_pair.view()
             if ( methods =~ /stereoscope/ ) {
-                buildStereoscopeModel(sc_input_pair)
+                buildStereoscopeModel(sc_input_conv)
 
                 // Repeat model output for each spatial file
                 buildStereoscopeModel.out.combine(sp_input_pair)
@@ -87,7 +112,7 @@ workflow runMethods {
             }
 
             if ( methods =~ /cell2location/ ) {
-                buildCell2locationModel(sc_input_pair)
+                buildCell2locationModel(sc_input_conv)
 
                 // Repeat model output for each spatial file
                 buildCell2locationModel.out.combine(sp_input_pair)
@@ -103,7 +128,7 @@ workflow runMethods {
             }
 
             if ( methods =~ /destvi/ ) {
-                buildDestVIModel(sc_input_pair)
+                buildDestVIModel(sc_input_conv)
 
                 // Repeat model output for each spatial file
                 buildDestVIModel.out.combine(sp_input_pair)

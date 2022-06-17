@@ -1,22 +1,22 @@
 nextflow.enable.dsl=2
 
-process convertRDStoH5AD {
-    tag "convert_${rds_file_basename}"
+process convertBetweenRDSandH5AD {
+    tag "convert_${file_basename}"
     container 'csangara/seuratdisk:latest'
     label 'retry'
 
     input:
-        path (rds_file)
+        path (file_to_convert)
     
     output:
         // Needs to return rds file for computing metrics
-        tuple path ("${rds_file_basename}.h5ad"), path (rds_file)
+        tuple path ("${file_basename}.h5ad"), path ("${file_basename}.rds")
 
     script:
-        rds_file_basename = file(rds_file).getSimpleName()
+        file_basename = file(file_to_convert).getSimpleName()
         """
-        Rscript $params.rootdir/subworkflows/deconvolution/convertRDStoH5AD.R \
-        --input_path $rds_file
+        Rscript $params.rootdir/subworkflows/deconvolution/convertBetweenRDSandH5AD.R \
+        --input_path $file_to_convert
         """
 }
 
@@ -41,5 +41,58 @@ process formatTSVFile {
         deconv_matrix <- deconv_matrix[,sort(colnames(deconv_matrix), method="shell")]
         write.table(deconv_matrix, file="$new_tsv_file", sep="\t", quote=FALSE, row.names=FALSE)
         """
+
+}
+
+process createDummyFile {
+    tag "dummy_${file_name}"
+    memory "1 MB"
+    cpus 1
+
+    input:
+        path (h5ad_file)
+    output:
+        tuple path (h5ad_file), path ("${file_name}.rds")
+
+    script:
+        file_name = file(h5ad_file).getSimpleName()
+        """
+        touch ${file_name}.rds
+        """
+}
+
+// This is for if you want to convert files outside the normal workflow
+process convertProcessForWorkflow {
+    tag "convert_${file_basename}"
+    container 'csangara/seuratdisk:latest'
+    publishDir { "${file_directory}/" },
+               mode: 'copy', pattern: "*.${ext_to_include}"
+    label 'retry'
+
+    input:
+        path (file_to_convert)
+    
+    output:
+        // Needs to return rds file for computing metrics
+        tuple path ("${file_basename}.h5ad"), path ("${file_basename}${output_file_ext}.rds")
+
+    script:
+        file_basename = file(file_to_convert).getSimpleName()
+        file_directory = params.convert_input =~ /\*/ ? file(params.convert_input)[0].getParent() :
+                                                        file(params.convert_input).getParent()
+        ext_to_include = file(file_to_convert).getExtension().toLowerCase() =~ /h5/ ? "rds" : "h5ad"
+        output_file_ext = ext_to_include ==~ /rds/ ? "_fromH5AD" : ""
+        println("Saving ${ext_to_include} file to ${file_directory}")
+        """
+        Rscript $params.rootdir/subworkflows/deconvolution/convertBetweenRDSandH5AD.R \
+        --input_path $file_to_convert --output_file_ext $output_file_ext
+        """
+}
+
+workflow convertWorkflow {
+    println("Input files:")
+    params.convert_input =~ /\*/ ? file(params.convert_input).each{println "$it"} : println (file(params.convert_input))
+    input_files = Channel.fromPath(params.convert_input)
+    convertProcessForWorkflow(input_files)
 
 }
