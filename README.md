@@ -45,7 +45,7 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "stan
 ‼ Metric calculation is only possible with an rds file following the [synthvisium object structure](#synthvisium-object-structure) (see `unit-test/test_sp_data.rds`).
 
 ### *generate_and_run*: generating and benchmarking your own synthetic datasets
-`generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`params.synvis.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthvisium* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. You can generate the data only (synthetic datasets will be copied to `params.outdir.synvis`) or run the whole pipeline immediately after.
+`generate_and_run` takes two single-cell objects, one to generate the synthetic data (`params.synvis.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthvisium* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. You can generate the data only (synthetic datasets will be copied to `params.outdir.synvis`) or run the whole pipeline immediately after.
 ```
 # Only generate data
 nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
@@ -119,9 +119,8 @@ nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_nam
 
 #### Synthvisium object structure
 The output of synthvisium is a named list of matrices and lists. There are three necessary components:
-1) **counts**: a gene x spot count matrix (preferably raw counts)
-2) **spot_composition**: a spot x (number of cell types + 2) proportion matrix. The two extra columns contains the row names of the spot and the region the spot belongs to (you can just make dummy columns)
-3) **relative_spot_composition**: a spot x (number of cell types + 2) relative proportion matrix. The extra columns are the same as above.
+1) **counts**: a gene $\times$ spot count matrix (preferably raw counts)
+2) **relative_spot_composition**: a spot $\times$ cell types relative proportion matrix
 
 You can look at any of the files in `standard/bronze_standard` for a better idea.
 
