@@ -14,12 +14,56 @@ nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/
 # If singularity is installed, use -profile local,singularity
 ```
 
-This runs only MuSiC as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). 
+This MuSiC as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). 
 
 To run more methods, type the method names separated with a comma but no spaces, e.g., `--methods rctd,music`.
 
 ## Running the pipeline
-You can run the pipeline (`main.nf`) in three modes, `run_standard` (reproducing our analysis with gold/bronze standards), `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it), and `run_dataset` (running deconvolution tools on your own dataset, and possibly benchmarking it).
+You can run the pipeline (`main.nf`) in three modes, `run_dataset` (running deconvolution tools on your own dataset), `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it), and `run_standard` (reproducing our analysis with gold/bronze standards).
+
+**Inputs:**
+- Single-cell reference dataset: a Seurat (.rds) or Anndata (.h5ad) object containing cell type annotations
+- Spatial datset: a Seurat (.rds) object, Anndata (.h5ad) object, or named list of counts (see [Synthvisium object structure](#synthvisium-object-structure)) 
+
+**Output:**
+- A spot $\times$ cell type proportion matrix (.tsv) 
+- Evaluation metrics (.tsv; only if synthetic data was generated with synthvisium)
+
+### *run_dataset*: running/benchmarking deconvolution tools on your own dataset
+The `run_dataset` mode requires a single-cell object (`params.sc_input`), the path to the spatial dataset(s) (`params.sp_input`), and the cell type annotation column (`params.annot`, default: celltype). For real data, use the `skip_metrics` flag to skip the evaluation step.
+```
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input <PATH_TO_SC_FILE> --sp_input <PATH_TO_SP_FILE> \
+--annot <ANNOT_COL> --skip_metrics
+```
+We can run the standards in this way also.
+```
+nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/gold_standard_1/*.rds" \
+--sc_input standards/reference/gold_standard_1.rds --annot celltype
+```
+‼ Don't forget to put any directories with [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns) in quotes.
+
+‼ Metric calculation is only possible with an rds file following the [synthvisium object structure](#synthvisium-object-structure) (see `unit-test/test_sp_data.rds`).
+
+### *generate_and_run*: generating and benchmarking your own synthetic datasets
+`generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`params.synvis.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthvisium* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. You can generate the data only (synthetic datasets will be copied to `params.outdir.synvis`) or run the whole pipeline immediately after.
+```
+# Only generate data
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
+
+# Generate and run the whole pipeline
+nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds \
+-params-file synthvisium_params.yaml
+```
+The arguments to synthvisium are best provided in a separate yaml/JSON file. Check out `conf/synthvisium.yaml` for a detailed description of arguments. Minimally, you need four arguments:
+```
+# synthvisium_params.yaml
+synvis:
+  sc_input: standards/reference/bronze_standard_1.rds             # single-cell reference input
+  clust_var: celltype                                             # name of metadata column with cell type annotation
+  reps: 3                                                         # number of replicates per dataset type (abundance pattern)
+  type: artificial_diverse_distinct,artificial_uniform_distinct   # dataset types
+```
+This will return 3 replicates for each dataset type, resulting in 6 files. You can also adjust other parameters such as the number of spots and mean or standard deviation per spot. Note that in this example, the same file was used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
 
 ### *run_standard*: reproducing our analysis
 First, download the datasets from Zenodo and place them in the `standards/` folder. The file is 5GB.
@@ -39,45 +83,6 @@ All folder names (except `reference`) can be used as the *standard_name*. For in
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 -c standards/standard.config
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard bronze_standard_1-1 -c standards/standard.config
 ```
-
-### *generate_and_run*: generating and benchmarking your own synthetic datasets
-`generate_and_run` takes two single-cell Seurat objects, one to generate the synthetic data (`params.synvis.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthvisium* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. You can generate the data only (synthetic datasets will be copied to `params.outdir.synvis`) or run the whole pipeline immediately after.
-```
-# Only generate data
-nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
-
-# Generate and run the whole pipeline
-nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds \
--params-file synthvisium_params.yaml
-```
-The arguments to synthvisium are best provided in a separate yaml/JSON file. Check out `subworkflows/synthvisium.yaml` for a detailed description of arguments. Minimally, you need four arguments:
-```
-# synthvisium_params.yaml
-synvis:
-  sc_input: standards/reference/bronze_standard_1.rds             # single-cell reference input
-  clust_var: celltype                                             # name of metadata column with cell type annotation
-  reps: 3                                                         # number of replicates per dataset type (abundance pattern)
-  type: artificial_diverse_distinct,artificial_uniform_distinct   # dataset types
-```
-This will return 3 replicates for each dataset type, resulting in 6 files. You can also adjust other parameters such as the number of spots and mean or standard deviation per spot. Note that in this example, the same file was used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
-
-### *run_dataset*: running/benchmarking deconvolution tools on your own dataset
-The `run_dataset` mode requires a single-cell Seurat object (`params.sc_input`), the path to the spatial dataset(s) (`params.sp_input`), and the cell type annotation column (`params.annot`, default: celltype). For real data, use the `skip_metrics` flag to skip the evaluation step.
-```
-nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input <PATH_TO_SC_FILE> --sp_input <PATH_TO_SP_FILE> \
---annot <ANNOT_COL> --skip_metrics
-```
-We can run the standards in this way also.
-```
-nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/gold_standard_1/*.rds" \
---sc_input standards/reference/gold_standard_1.rds
-
-nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/bronze_standard_1-1/*.rds" \
---sc_input standards/reference/bronze_standard_1_brain_cortex.rds
-```
-‼ Don't forget to put any directories with [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns) in quotes.
-
-‼ The spatial data can be a Seurat object (with either "RNA" or "Spatial" assay) or a named list of counts (see **Synthvisium object structure** or `unit-test/test_sp_data.rds`).
 
 ## Pipeline arguments (Advanced use)
 You can find the default arguments of the pipeline in the `nextflow.config` file, under the `params` scope. These can be overwritten by parameters provided in the command line or in an external JSON/YAML file (see exact priorities [here](https://www.nextflow.io/docs/latest/config.html)).
