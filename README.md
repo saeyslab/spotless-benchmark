@@ -14,20 +14,20 @@ nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/
 # If singularity is installed, use -profile local,singularity
 ```
 
-This MuSiC as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). 
+This runs MuSiC as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). 
 
 To run more methods, type the method names separated with a comma but no spaces, e.g., `--methods rctd,music`.
 
 ## Running the pipeline
 You can run the pipeline (`main.nf`) in three modes, `run_dataset` (running deconvolution tools on your own dataset), `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it), and `run_standard` (reproducing our analysis with gold/bronze standards).
 
-**Inputs:**
-- Single-cell reference dataset: a Seurat (.rds) or Anndata (.h5ad) object containing cell type annotations
-- Spatial datset: a Seurat (.rds) object, Anndata (.h5ad) object, or named list of counts (see [Synthvisium object structure](#synthvisium-object-structure)) 
+**Input:**
+- Single-cell reference dataset: a Seurat (.rds) or Anndata (.h5ad) object containing cell type annotations in the object metadata
+- Spatial dataset: a Seurat (.rds) object, Anndata (.h5ad) object, or named list of counts (see [Synthvisium object structure](#synthvisium-object-structure)) 
 
 **Output:**
 - A spot $\times$ cell type proportion matrix (.tsv) 
-- Evaluation metrics (.tsv; only if synthetic data was generated with synthvisium)
+- Evaluation metrics (only if synthetic data follows the synthvisium object structure)
 
 ### *run_dataset*: running/benchmarking deconvolution tools on your own dataset
 The `run_dataset` mode requires a single-cell object (`params.sc_input`), the path to the spatial dataset(s) (`params.sp_input`), and the cell type annotation column (`params.annot`, default: celltype). For real data, use the `skip_metrics` flag to skip the evaluation step.
@@ -35,7 +35,7 @@ The `run_dataset` mode requires a single-cell object (`params.sc_input`), the pa
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input <PATH_TO_SC_FILE> --sp_input <PATH_TO_SP_FILE> \
 --annot <ANNOT_COL> --skip_metrics
 ```
-We can run the standards in this way also.
+We can also run the standards in this way.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/gold_standard_1/*.rds" \
 --sc_input standards/reference/gold_standard_1.rds --annot celltype
@@ -45,18 +45,18 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "stan
 ‼ Metric calculation is only possible with an rds file following the [synthvisium object structure](#synthvisium-object-structure) (see `unit-test/test_sp_data.rds`).
 
 ### *generate_and_run*: generating and benchmarking your own synthetic datasets
-`generate_and_run` takes two single-cell objects, one to generate the synthetic data (`params.synvis.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthvisium* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. You can generate the data only (synthetic datasets will be copied to `params.outdir.synvis`) or run the whole pipeline immediately after.
+`generate_and_run` takes two single-cell objects, one to generate the synthetic data (`params.synvis.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthvisium* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. Synthetic datasets will be copied to `params.outdir.synvis`. You can generate the data only or run the whole pipeline immediately after.
 ```
 # Only generate data
-nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file conf/synthvisium.yaml
 
 # Generate and run the whole pipeline
 nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds \
--params-file synthvisium_params.yaml
+-params-file conf/synthvisium.yaml
 ```
 The arguments to synthvisium are best provided in a separate yaml/JSON file. Check out `conf/synthvisium.yaml` for a detailed description of arguments. Minimally, you need four arguments:
 ```
-# synthvisium_params.yaml
+# conf/synthvisium.yaml
 synvis:
   sc_input: standards/reference/bronze_standard_1.rds             # single-cell reference input
   clust_var: celltype                                             # name of metadata column with cell type annotation
@@ -114,7 +114,7 @@ See __*generate_and_run*: generating and benchmarking your own synthetic dataset
 
 Briefly, running the following code will save an rds file to `params.outdir.synvis`:
 ```
-nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file synthvisium_params.yaml
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file conf/synthvisium.yaml
 ```
 
 #### Synthvisium object structure
@@ -129,10 +129,10 @@ You can look at any of the files in `standard/bronze_standard` for a better idea
 nextflow run subworkflows/deconvolution/run_methods.nf -profile <profile_name> \
 --sc_input <scRNAseq_dataset> --sp_input <spatial_dataset> --annot <celltype annotation column>
 ```
-By default, all methods are run (equivalent to giving an argument `--method music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi`). To run only certain methods, make sure the values are comma-separated without any spaces.
+By default, all methods are run (equivalent to giving an argument `--methods music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg`). To run only certain methods, make sure the values are comma-separated without any spaces.
 
 ### Computing metrics
-It is possible to add more metrics in the `subworkflows/evaluation/metrics.R` yourself, then recalculate the metrics without running the entire pipeline. You have to provide the ground truth datasets (`params.sp_input`), and the script will look for the proportions at `params.outdir.props`.
+It is possible to add more metrics in the `subworkflows/evaluation/metrics.R` yourself, then recalculate the metrics without running the entire pipeline. You have to provide the ground truth datasets with the synthvisium object structure (`params.sp_input`), and the script will look for the proportions at `params.outdir.props`.
 ```
 nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name> \
   --sp_input "standards/gold_standard_1/*.rds"
