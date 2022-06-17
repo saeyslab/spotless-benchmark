@@ -1,4 +1,6 @@
 nextflow.enable.dsl=2
+// Helper functions
+include { convertBetweenRDSandH5AD as convert_sc } from '../helper_processes'
 
 // Initialization: possible dataset types
 synvis_types_map = [aud: "artificial_uniform_distinct", add: "artificial_diverse_distinct",
@@ -32,6 +34,12 @@ process generate_synthetic_data {
 
 workflow generateSyntheticData {
     main:
+        // Check input type - if h5ad, convert to rds
+        sc_input_type = file(params.synvis.sc_input).getExtension() =~ /h5/ ? "h5ad" : "rds"
+        println("The synthvisium data is of ${sc_input_type} format.")
+        sc_input_ch = Channel.fromPath(params.synvis.sc_input)
+        sc_input_conv = sc_input_type =~ /h5ad/ ? convert_sc(sc_input_ch).flatten().filter( ~/.*rds*/ ) : sc_input_ch
+        
         // Filter out invalid input, write out full name of abbreviations, filter out duplicates
         synvis_type_input = params.synvis.type.split(',').findAll{ synvis_types_flat.contains(it) }
                                             .collect{ ( synvis_types_fullnames.contains(it) ? it : synvis_types_map[it]) }
@@ -46,9 +54,9 @@ workflow generateSyntheticData {
         println("Arguments: ${ (synvis_args_input) ? synvis_args_input: "None (default)" }")
 
         // Duplicates sc_input by converting it to a list then turning it back into a dataflow
-        sc_input_ch = (Channel.fromPath(params.synvis.sc_input).toList()*synvis_type_input.size).flatMap()
+        sc_input_dup = (sc_input_conv.toList()*synvis_type_input.size).flatMap()
         
-        generate_synthetic_data(sc_input_ch, Channel.from(synvis_type_input),
+        generate_synthetic_data(sc_input_dup, Channel.from(synvis_type_input),
                                synvis_args_input, 1..params.synvis.reps.toInteger())
     emit:
         generate_synthetic_data.out
