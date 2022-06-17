@@ -53,7 +53,7 @@ workflow {
             }
         }
 
-        sc_input_type = file(params.sc_input).getExtension() =~ /h5/ ? "h5ad" : "rds"
+        sc_input_type = params.sc_input.split("\\.").last() =~ /h5/ ? "h5ad" : "rds"
         sp_input_type = params.sp_input.split("\\.").last() =~ /h5/ ? "h5ad" : "rds"
         
         println("The single-cell data is of ${sc_input_type} format and the spatial data is of ${sp_input_type} format.")
