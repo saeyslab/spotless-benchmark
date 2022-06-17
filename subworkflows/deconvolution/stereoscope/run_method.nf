@@ -7,8 +7,7 @@ process buildStereoscopeModel {
     echo true
 
     input:
-        // rds input actually is not needed
-        tuple path (sc_input), path (sc_input_rds)
+        path (sc_input)
     output:
         tuple path ("R*.tsv"), path ("logits*.tsv")
 

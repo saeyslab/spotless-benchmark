@@ -7,8 +7,7 @@ process buildDestVIModel {
     echo true
 
     input:
-        // rds input is actually not needed
-        tuple path (sc_input), path (sc_input_rds)
+        path (sc_input)
     output:
         tuple path ("adata.h5ad"), path ("model.pt")
 

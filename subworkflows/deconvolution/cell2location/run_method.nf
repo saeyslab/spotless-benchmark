@@ -7,8 +7,7 @@ process buildCell2locationModel {
     echo true
 
     input:
-        // rds input is actually not needed
-        tuple path (sc_input), path (sc_input_rds)
+        path (sc_input)
     output:
         path "sc.h5ad"
 
