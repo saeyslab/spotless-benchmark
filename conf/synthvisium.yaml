@@ -1,12 +1,24 @@
+# sc_input:    path to single-cell object
+# clust_var:   annotation column in scRNA-seq object
+# n_regions:   number of synthetic regions to be generated
+# region_var:  column with regional metadata, if any (only for "real" dataset types)
+# dataset_id:  character vector to define how you want to identify the dataset
+# n_spots_min: minimum number of spots allowed per region
+# n_spots_max: maximum number of spots allowed per region
+# n_spots:     number of spots generated (only in the "prior_from_data" dataset type)
+# visium_mean: mean of normal dist. used for downsampling each spot
+# visium_sd:   sd of normal dist. used for downsampling each spot
+
 synvis:
-  sc_input:
-  clust_var:
-  type: add,aud,prior
+  sc_input: /home/chananchidas/spotless-benchmark/data/rds/liver_mouseStSt_nuclei_7celltypes.h5ad
+  clust_var: annot
+  type: prior,aud
   reps: 1
-  n_regions: 4
+  n_regions: 5
   dataset_id: "1"
-  n_spots_min: 10
-  n_spots_max: 100
-  n_spots: 20
+  n_spots_min: 100
+  n_spots_max: 200
+  n_spots: 1000
   visium_mean: 30000
-  visium_sd: 5000
+  visium_sd: 7500
+
