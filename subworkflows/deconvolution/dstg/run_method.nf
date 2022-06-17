@@ -14,7 +14,7 @@ process runDSTG {
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_dstg_${output_suffix}${params.runID_props}"
         sc_filename = file(sc_input).getSimpleName()
-        println(params.deconv_args)
+        
         """
         WORKDIR=\$PWD
         

@@ -28,6 +28,12 @@ RUN git clone https://github.com/Su-informatics-lab/DSTG.git && \
     sed -i "20i\    lab_data2 = lab_data2.set_axis(data_train1.columns.values.tolist(), axis=1)" DSTG/DSTG/utils.py && \
     # In our test data we only have 100 spots, which is less than number of neighbors, so add a test for that
     sed -i  "s/combine)/combine,/" DSTG/DSTG/graph.py &&\
+    # Changes so DSTG works with smaller amount of spots
+    sed -i "82i\    n_spots = count_list2[1].shape[1]" DSTG/DSTG/graph.py && \
+    sed -i "s/k_filter=100/k_filter=100 if n_spots >= 100 else n_spots/" DSTG/DSTG/graph.py && \
+    sed -i "s/k=30/k=30 if len(spots2) >= 30 else len(spots2)- 1/" DSTG/DSTG/gutils.py && \
+    sed -i "s/num_cc=30/num_cc=30 if counts2.shape[1] >=30 else counts2.shape[1]/" DSTG/DSTG/gutils.py && \
+    sed -i "s/dims=range(30)/dims=range(30) if len(spots2) >=30 else range(len(spots2))/" DSTG/DSTG/gutils.py && \
     sed -i "56i\                       k_filter=200 if n_spots >= 200 else n_spots)" DSTG/DSTG/graph.py && \
     sed -i "51i\    n_spots = count_list[1].shape[1]" DSTG/DSTG/graph.py && \
     # Filter out count matrix for genes that have 0 counts across all spots
