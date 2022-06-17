@@ -79,7 +79,7 @@ Then, you can also add the method in `subworkflow/deconvolution/run_methods.nf`:
 Adding your process to the `runMethods` workflow is slightly more complicated than the R case, since we want to be able to run multiple spatial datasets by building the model only once. In Nextflow, a channel can only be used once, so we will need to replicate the model channel to the amount of spatial datasets. As an example, we will see how this was done in the case of cell2location:
 
 ```
-buildCell2locationModel(sc_input_pair)				--> build model using single-cell dataset
+buildCell2locationModel(sc_input_conv)				--> build model using single-cell dataset
 
 // Repeat model output for each spatial file
 buildCell2locationModel.out.combine(sp_input_pair)		--> .out refers to the model file; we "combine" (cartesian product) the model channel with each spatial input channel
