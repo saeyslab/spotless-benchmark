@@ -25,10 +25,13 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86
     && /bin/bash /tmp/miniconda.sh -b -p /opt/conda \
     && rm /tmp/miniconda.sh
 RUN /opt/conda/condabin/conda init bash
-RUN /opt/conda/condabin/conda create -n stereoscope python=3.7 numba jupyter scanpy numpy pandas matplotlib scikit-learn \
-umap-learn anndata scipy Pillow libgcc --channel bioconda --channel conda-forge
+COPY environment.yml /tmp/
+# Channel priority allows quicker install
+RUN /opt/conda/condabin/conda config --set channel_priority strict && \
+    /opt/conda/condabin/conda env create -f /tmp/environment.yml && \
+    /opt/conda/condabin/conda clean --all --yes --quiet
 ENV PATH /opt/conda/envs/stereoscope/bin:/opt/conda/bin:$PATH
 SHELL ["/bin/bash", "-c"]
-RUN source activate stereoscope && pip install torch loompy && \
- git clone https://github.com/almaan/stereoscope && cd stereoscope && ./setup.py install
+RUN source activate stereoscope && \
+ git clone https://github.com/csangara/stereoscope && cd stereoscope && ./setup.py install
 RUN echo "source activate stereoscope" >> ~/.bashrc

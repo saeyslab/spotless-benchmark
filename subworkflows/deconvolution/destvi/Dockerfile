@@ -28,5 +28,5 @@ RUN /opt/conda/condabin/conda init bash
 RUN /opt/conda/condabin/conda create -n scvi-env python=3.9
 ENV PATH /opt/conda/envs/scvi-env/bin:/opt/conda/bin:$PATH
 SHELL ["/bin/bash", "-c"]
-RUN source activate scvi-env && pip install scvi-tools[tutorials] 
+RUN source activate scvi-env && pip install torch torchvision torchaudio scvi-tools[tutorials]==0.16.0
 RUN echo "source activate scvi-env" >> ~/.bashrc

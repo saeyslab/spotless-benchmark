@@ -1,0 +1,6 @@
+pandas<=1.4.2
+python-igraph<=0.9.10
+networkx<=2.8
+python-louvain<=0.16
+leidenalg
+scikit-learn<=1.0.2

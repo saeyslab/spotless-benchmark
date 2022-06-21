@@ -1,7 +1,7 @@
 FROM csangara/seurat:4.1.0
 #ENV PATH="/root/miniconda3/bin:${PATH}"
 #ARG PATH="/root/miniconda3/bin:${PATH}"
-RUN R -e "install.packages(c('philentropy', 'BiocManager')); BiocManager::install('scuttle')"
+RUN R -e "options(repos = list(CRAN = 'http://mran.revolutionanalytics.com/snapshot/2022-06-17')); install.packages(c('philentropy', 'BiocManager')); BiocManager::install('scuttle')"
 RUN apt-get update && apt-get install -y wget git && rm -rf /var/lib/apt/lists/*
 
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh \
@@ -14,7 +14,7 @@ ENV PATH /opt/conda/envs/dstg/bin:/opt/conda/bin:$PATH
 SHELL ["/bin/bash", "-c"]
 RUN source activate dstg && pip install git+https://github.com/Su-informatics-lab/DSTG.git@7374fc7aef1471b1c21c4d903a8821ad20bcd2ca
 RUN echo "source activate dstg" >> ~/.bashrc
-RUN git clone https://github.com/Su-informatics-lab/DSTG.git && \
+RUN git clone https://github.com/csangara/DSTG.git && \
     # Since we installed tensorflow 2.x, need to import it as v1 compatible
     grep -rl 'import tensorflow' DSTG/DSTG/* | xargs -i@ sed -i 's/import tensorflow/import tensorflow.compat.v1/g' @ && \
     # Due to version conflicts, need to change Float64 to np.float64

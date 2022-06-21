@@ -29,9 +29,11 @@ dependencies:
   - mkl-service >= 2.3.0
   - pygpu >= 0.7.6
   - cython >= 0.29.17
+  - sphinx <= 4.3.0
   - pip:
       - pyro-ppl>=1.7.0
       - scvi-tools>=0.12.2
       - torch>=1.9.0
       - pymc3>=3.8,<3.10
       - arviz==0.10.0
+      - torchmetrics==0.6.0
