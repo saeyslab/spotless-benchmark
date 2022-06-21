@@ -94,8 +94,10 @@ except ValueError:
     print("There seems to be an issue with the conversion. Renaming columns...")
     os.remove(output_folder + "/adata.h5ad")
     os.rmdir(output_folder)
-    sc_model.adata.var = sc_model.adata.var.drop(columns='_index')
-    sc_model.adata.__dict__['_raw'].__dict__['_var'] = sc_model.adata.__dict__['_raw'].__dict__['_var'] .drop(columns='_index')
+    # sc_model.adata.var = sc_model.adata.var.drop(columns='_index')
+    #adata_scrna_raw.__dict__['_raw'].__dict__['_var'] = adata_scrna_raw.__dict__['_raw'].__dict__['_var'].rename(columns={'_index': 'features'})
+        
+    #sc_model.adata.__dict__['_raw'].__dict__['_var'] = sc_model.adata.__dict__['_raw'].__dict__['_var'].drop(columns='_index')
     sc_model.save(output_folder, save_anndata=True)
 
 
