@@ -1,0 +1,5 @@
+# Build Seurat-Disk 0.0.0.9019 with Seurat 4.0.5
+FROM csangara/seurat:4.0.5
+RUN apt-get update -y && apt-get install -y libglpk-dev
+RUN R -e "options(repos =  list(CRAN = 'http://mran.revolutionanalytics.com/snapshot/2021-03-24')); install.packages(c('remotes', 'R.utils', 'hdf5r'))"
+RUN R -e "options(repos =  list(CRAN = 'http://mran.revolutionanalytics.com/snapshot/2021-03-24')); remotes::install_github('mojaveazure/seurat-disk@163f1aade5bac38ed1e9e9c912283a7e74781610')"

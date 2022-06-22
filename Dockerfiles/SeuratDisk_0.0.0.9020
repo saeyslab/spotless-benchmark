@@ -1,0 +1,8 @@
+# Build SeuratDisk 0.0.0.9020 with Seurat 4.0.5
+FROM csangara/seurat:4.0.5
+RUN apt-get update -y && \
+    apt-get install -y libglpk-dev software-properties-common && \
+    add-apt-repository -y ppa:ubuntugis/ppa && \
+    apt-get install -y libgeos++-dev libgeos-3.9.1 libgeos-c1v5 libgeos-dev libgeos-doc
+RUN R -e "options(repos = list(CRAN = 'http://mran.revolutionanalytics.com/snapshot/2022-06-19')); install.packages(c('hdf5r'))"
+RUN R -e "options(repos = list(CRAN = 'http://mran.revolutionanalytics.com/snapshot/2022-06-19')); remotes::install_github('mojaveazure/seurat-disk@9b89970eac2a3bd770e744f63c7763419486b14c')"
