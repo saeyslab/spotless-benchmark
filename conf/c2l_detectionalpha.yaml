@@ -1,0 +1,15 @@
+# sp_input: "/mnt/d/spotless-benchmark/standards/gold_standard_1/Eng2019_cortex_svz*.rds"
+# sc_input: "/mnt/d/spotless-benchmark/standards/gold_standard_1/reference/reference_cortex_svz.rds"
+
+deconv_args:
+  stereoscope: "-gl /data/gent/438/vsc43831/spotless-benchmark/unit-test/hvgs_2000.txt -stb 500 -scb 500 -ste 10 -sce 10"
+  cell2location:
+    fit: "-d 20"
+  spotlight: ""
+  music: ""
+  destvi:
+    build: ""
+
+sampleID: "Field.of.View"
+runID_props: "_d20"
+runID_metrics: "_d20"
