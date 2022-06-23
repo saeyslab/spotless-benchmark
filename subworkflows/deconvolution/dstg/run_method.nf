@@ -37,16 +37,15 @@ process runDSTG {
 
         # Add line numbers to output
         awk -v ln=1 '{print ln++  ","  \$0 }' DSTG_Result/predict_output.csv > tmp && mv tmp DSTG_Result/predict_output.csv
-        head DSTG_Result/predict_output.csv
+        
         # Add cell type labels
         { head -n 1 Datadir/Real_Label2.csv ; cat DSTG_Result/predict_output.csv; } > tmp && mv tmp DSTG_Result/predict_output.csv
-        head DSTG_Result/predict_output.csv
+        
         # Convert csv to tsv and move file to work directory
         sed -i -E 's/("([^"]*)")?,/\\2\t/g' DSTG_Result/predict_output.csv
-        head DSTG_Result/predict_output.csv
+
         mv DSTG_Result/predict_output.csv ../$output
-        
-        # touch \$WORKDIR/$output
+    
         """
 
 }
