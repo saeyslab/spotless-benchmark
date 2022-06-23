@@ -1,7 +1,17 @@
 ## Method parameters
-Parameters for each method can be provided in a *yaml* or *config* file containing a dictionary called `deconv_args`, with the keys being the method name in lowercase.
-Note that the `params.sampleID` will automatically be fed to applicable methods once it is given as a pipeline parameter, so there is no need to feed it individually to methods, e.g., within
-`params.deconv_args.music`. We will however mention below which method can handle sample information for the sake of completeness.
+
+- [cell2location](#cell2location)
+- [DestVI](#destvi)
+- [MuSiC](#music)
+- [Seurat](#seurat)
+- [spatialDWLS](#spatialdwls)
+- [SPOTlight](#spotlight)
+- [stereoscope](#stereoscope)
+
+(RCTD and DSTG have no adjustable parameters.)
+
+### Usage 
+Parameters for each method can be provided in a *yaml* or *config* file containing a dictionary called `deconv_args`, with the keys being the method name **in lowercase**.
 
 ```
 # example.yaml
@@ -12,6 +22,7 @@ deconv_args:
   cell2location:
     build: "-t tech"
     fit: "-p 500"
+  spatialdwls: "--n_topmarkers 50"
 ```
 
 ```
@@ -19,8 +30,14 @@ deconv_args:
 // To run: nextflow run main.nf -profile <PROFILE> -c example.config
 
 params.deconv_args = [stereoscope: "-stb 500 -scb 500",
-                      cell2location: [build: "-t tech", fit: "-p 500"]]
+                      cell2location: [build: "-t tech", fit: "-p 500"],
+                      spatialdwls: "--n_topmarkers 50"]
 ```
+Note that `params.sampleID` will automatically be fed to applicable methods once it is given as a pipeline parameter, so there is no need to feed it individually to methods, e.g., through `params.deconv_args.music`. We nonetheless included this information in the parameter list for the sake of completeness.
+
+
+
+---
 
 #### cell2location
 Model building (`params.deconv_args.cell2location.build`)
@@ -43,9 +60,6 @@ Model building (`params.deconv_args.destvi.build`)
 Model fitting (`params.deconv_args.destvi.fit`)
 - `-e`: number of epochs to fit the model (default: 2500)
 
-#### DSTG
-No adjustable parameters
-
 #### MuSiC
 - `--sampleID`: metadata column in single-cell reference containing sample information (default: none)
 - `--downsample_cells`: whether or not to downsample cells if the dense matrix is too large. The downsampling process will keep a maximum number of target_n_cells per cell type. (default: TRUE)
@@ -53,11 +67,19 @@ No adjustable parameters
 - `--downsample_genes`: whether or not to downsample genes if the dense matrix is too large. The downsampling process will keep `n_hvgs` highly variable genes and filter out genes that are not expressed by at least `pct` fraction of cells per each cell type. (default: TRUE)
 - `--n_hvgs`: number of highly variable genes to keep after gene downsampling (default: 3000)
 - `--pct`: for the gene downsampling process, the fraction of cells per cell type in which genes have to be expressed in order to be kept (default: 0.1)
-- `--assay_oi`: expression matrix to look for when downsampling genes (default: "RNA")
-- `--filter_spots`: minimum UMI count per spatial spot needed, otherwise it will be filtered out (default: "none")
+- `--assay_oi`: expression matrix to look for when downsampling genes (default: RNA)
+- `--filter_spots`: minimum UMI count per spatial spot needed, otherwise it will be filtered out (default: none)
 
-#### RCTD
-No adjustable parameters
+#### Seurat
+- `--tech`: split the reference object based on this metadata column and integrate them, use only if the reference comes from different technologies (default: none)
+- `--norm.method`: normalization method, either "vst" or "SCT" (default: vst)
+- `--n_hvgs`: number of variable features to use (default: 2000)
+- `--n_int_features`: number of variable features used for integration (default: 2000)
+- `--npcs`: number of principal components (default: 30)
+- `--dims`: number of dimensions for integration and other functions
+- `--reduction`: passed to FindTransferAnchors, either "pcaproject, "lsiproject", "rpca", or "cca" (default: pcaproject)
+- `--k.score`: passed to FindTransferAnchors (default: 30)
+- `--k.weight`: passed to TransferData (default: 50)
 
 #### spatialDWLS
 - `--n_topmarkers`: number of top marker genes per cell type to use (default: 100)
