@@ -91,7 +91,7 @@ You can find the default arguments of the pipeline in the `nextflow.config` file
 * `annot`: the cell type annotation column in the input scRNA-seq Seurat object (default: celltype)
 * `outdir`: location to save the proportions, metrics, and synthetic data (default: `deconv_proportions/`, `results/`, `synthetic_data/`). Best to define this under your profiles.
 * `sampleID`: the column containing batch information for the input scRNA-seq Seurat object (default: none) 
-* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. Can also be passed with the command line, e.g., `--deconv_args.cell2location "-p 10"` (**only for Nextflow version 21, for version 20 provide this in a separate file!**)
+* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. For a list of  parameters for each method, see `subworkflows/deconvolution/README.md`.
 * `synvis`: synthvisium arguments, see `subworkflows/synthvisium.yaml`
 * `gpu`: add this flag to use host GPU, see below
 * `verbose`: add this flag to print input files
