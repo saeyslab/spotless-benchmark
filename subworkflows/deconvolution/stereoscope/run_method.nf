@@ -21,8 +21,29 @@ process buildStereoscopeModel {
         source activate stereoscope
         export CUDA_VISIBLE_DEVICES=$params.cuda_device
 
+        echo "Arguments: $args"
+        if [[ "$args" == *"-gl"* ]] && [[ "$args" == *"-hvg"* ]]
+        then
+          echo "ERROR: Both gene list and hvg option is provided. You can only choose one."
+          exit 1
+
+        elif [[ "$args" == *"-hvg"* ]]
+        then
+          echo "Computing HVGs..."
+          python $params.rootdir/subworkflows/deconvolution/stereoscope/compute_HVGs.py \
+            --sc_cnt $sc_input $args
+          
+          # Remove -hvg from argument, add -gl
+          re='(.*)-hvg[ ]*[0-9]+(.*)'
+          [[ "$args" =~ \$re ]]
+          new_args="\${BASH_REMATCH[1]}\${BASH_REMATCH[2]} -gl hvgs.txt"
+
+        else
+          new_args="$args"
+        fi
+
         stereoscope run --sc_cnt $sc_input --label_colname $params.annot \
-            $epochs $args $gpu_flag -o \$PWD
+            $epochs \$new_args $gpu_flag -o \$PWD
         """
 }
 
@@ -45,6 +66,7 @@ process fitStereoscopeModel {
         epochs = ( params.epoch_fit ==~ /default/ ? "" : "-ste $params.epoch_fit")
         args = ( params.deconv_args.stereoscope ? params.deconv_args.stereoscope : "" )
         gpu_flag = ( params.gpu ? "--gpu" : "" )
+        args = args.replaceFirst(/-hvg[ ]*[0-9]+/, "") // Replace HVG in original argument
 
         println ("Received model files $r_file and $logits_file")
         println ("Fitting stereoscope model with ${ (params.gpu) ? "GPU" : "CPU" }...")
