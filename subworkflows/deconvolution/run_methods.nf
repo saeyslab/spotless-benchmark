@@ -10,6 +10,7 @@ include { buildStereoscopeModel; fitStereoscopeModel } from './stereoscope/run_m
 include { buildDestVIModel; fitDestVIModel } from './destvi/run_method.nf'
 include { runDSTG } from './dstg/run_method.nf'
 include { runNNLS } from './nnls/run_method.nf'
+include { runSeurat } from './seurat/run_method.nf'
 
 // Helper functions
 include { convertBetweenRDSandH5AD as convert_sc ; convertBetweenRDSandH5AD as convert_sp } from '../helper_processes'
@@ -25,8 +26,8 @@ workflow runMethods {
 
     main:
         // String matching to check which method to run
-        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls"
-        r_methods = ["music", "rctd", "spatialdwls", "spotlight", "dstg", "nnls"]
+        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls,seurat"
+        r_methods = ["music", "rctd", "spatialdwls", "spotlight", "dstg", "nnls", "seurat"]
         python_methods = ["stereoscope","cell2location","destvi"]
 
         methods = ( params.methods.toLowerCase() ==~ /all/ ? all_methods : params.methods.toLowerCase() )
@@ -74,6 +75,11 @@ workflow runMethods {
                 runNNLS(pair_input_ch)
                 output_ch = output_ch.mix(runNNLS.out)
             }
+
+            if ( methods =~ /seurat/ ){
+                runSeurat(pair_input_ch)
+                output_ch = output_ch.mix(runSeurat.out)
+            }
         }
         // Python methods
         // First check if there are python methods in the input params
@@ -97,7 +103,7 @@ workflow runMethods {
                             model: tuple r_file, logits_file
                             sp_input: tuple sp_file_h5ad, sp_file_rds }
                 .set{ stereo_combined_ch }
-
+                
                 fitStereoscopeModel(stereo_combined_ch.sp_input,
                                     stereo_combined_ch.model)
                 formatStereoscope(fitStereoscopeModel.out) 
