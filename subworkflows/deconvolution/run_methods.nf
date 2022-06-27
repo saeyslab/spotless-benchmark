@@ -11,10 +11,11 @@ include { buildDestVIModel; fitDestVIModel } from './destvi/run_method.nf'
 include { runDSTG } from './dstg/run_method.nf'
 include { runNNLS } from './nnls/run_method.nf'
 include { runSeurat } from './seurat/run_method.nf'
+include { getCellComposition; runTangram } from './tangram/run_method.nf'
 
 // Helper functions
 include { convertBetweenRDSandH5AD as convert_sc ; convertBetweenRDSandH5AD as convert_sp } from '../helper_processes'
-include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L; formatTSVFile as formatDestVI; formatTSVFile as formatDSTG } from '../helper_processes'
+include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L; formatTSVFile as formatDestVI; formatTSVFile as formatDSTG; formatTSVFile as formatTangram } from '../helper_processes'
 include { createDummyFile } from '../helper_processes'
 
 workflow runMethods {
@@ -26,9 +27,9 @@ workflow runMethods {
 
     main:
         // String matching to check which method to run
-        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls,seurat"
+        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls,seurat,tangram"
         r_methods = ["music", "rctd", "spatialdwls", "spotlight", "dstg", "nnls", "seurat"]
-        python_methods = ["stereoscope","cell2location","destvi"]
+        python_methods = ["stereoscope","cell2location","destvi","tangram"]
 
         methods = ( params.methods.toLowerCase() ==~ /all/ ? all_methods : params.methods.toLowerCase() )
         methods_list = Arrays.asList(methods.split(','))
@@ -128,7 +129,7 @@ workflow runMethods {
 
             if ( methods =~ /destvi/ ) {
                 buildDestVIModel(sc_input_conv)
-
+                
                 // Repeat model output for each spatial file
                 buildDestVIModel.out.combine(sp_input_pair)
                 .multiMap { h5ad_file, model_file, sp_file_h5ad, sp_file_rds ->
@@ -140,6 +141,26 @@ workflow runMethods {
                                destvi_combined_ch.model)
                 formatDestVI(fitDestVIModel.out) 
                 output_ch = output_ch.mix(formatDestVI.out)
+            }
+
+            if ( methods =~ /tangram/ ){
+                // Get cell counts from spatial file
+                getCellComposition(sp_input_pair)
+
+                // Repeat cell composition and spatial file for each single-cell file
+                getCellComposition.out.combine(sc_input_conv)
+                .multiMap { cell_count_file, sp_file_h5ad, sp_file_rds, sc_file ->
+                            sc_input: sc_file
+                            sp_input: tuple sp_file_h5ad, sp_file_rds
+                            cell_count: cell_count_file }
+                .set{ tangram_combined_ch }
+
+                runTangram(tangram_combined_ch.sc_input,  tangram_combined_ch.sp_input,
+                           tangram_combined_ch.cell_count)
+                formatTangram(runTangram.out)
+                output_ch = output_ch.mix(formatTangram.out)
+
+
             }
         }
 
