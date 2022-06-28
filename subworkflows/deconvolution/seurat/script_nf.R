@@ -115,11 +115,17 @@ transfer_anchors <- FindTransferAnchors(reference = scRNA.integrated, query = sp
 # Transfer predictions
 # There is no weight.reduction of "rpca"
 par$reduction <- ifelse(par$reduction == "rpca", "pcaproject", par$reduction)
-predictions <- TransferData(anchorset = transfer_anchors,
-                            refdata = scRNA.integrated[[par$annot, drop=TRUE]],
-                            dims = 1:par$dims,
-                            k.weight = par$k.weight,
-                            weight.reduction = par$reduction)
+
+# k.weight error: see https://github.com/satijalab/seurat/issues/4427 
+for (i in 0:4){
+  k.weight = par$k.weight - (i*5)
+  predictions <- try(TransferData(anchorset = transfer_anchors,
+                              refdata = scRNA.integrated[[par$annot, drop=TRUE]],
+                              dims = 1:par$dims,
+                              k.weight = k.weight,
+                              weight.reduction = par$reduction), silent=TRUE)
+  if (attr(predictions, "class") == "data.frame") { break }
+}
 
 # Remove first and last column
 deconv_matrix <- predictions %>% select(-predicted.id, -prediction.score.max) %>%
