@@ -1,7 +1,6 @@
 process buildSTRIDEModel {
     tag 'stride_build'
     label "retry"
-    label "longer_time"
     container 'csangara/sp_stride:latest'
     echo true
 
@@ -21,7 +20,8 @@ process buildSTRIDEModel {
 
         STRIDE deconvolve --sc-count $sc_input --sc-celltype annot.txt \
             --st-count dummy_st.h5ad $args
-        # Too many files
+
+        # The model/ folder contains multiple files, so zip it
         zip -r model.zip model
         zip txt_files.zip Model_selection.txt Gene_dict.txt
         """
@@ -30,7 +30,6 @@ process buildSTRIDEModel {
 process fitSTRIDEModel {
     tag "stride_$sp_file_basename"
     label "retry"
-    label "longer_time"
     container 'csangara/sp_stride:latest'
     echo true
 

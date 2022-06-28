@@ -118,12 +118,15 @@ par$reduction <- ifelse(par$reduction == "rpca", "pcaproject", par$reduction)
 
 # k.weight error: see https://github.com/satijalab/seurat/issues/4427 
 for (i in 0:4){
+  # Try until k.weight is low enough
   k.weight = par$k.weight - (i*5)
   predictions <- try(TransferData(anchorset = transfer_anchors,
                               refdata = scRNA.integrated[[par$annot, drop=TRUE]],
                               dims = 1:par$dims,
                               k.weight = k.weight,
                               weight.reduction = par$reduction), silent=TRUE)
+  
+  # Only exit loop when the predictions is a "data.frame" and not "try-error" class
   if (attr(predictions, "class") == "data.frame") { break }
 }
 
