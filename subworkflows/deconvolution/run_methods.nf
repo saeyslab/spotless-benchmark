@@ -12,10 +12,12 @@ include { runDSTG } from './dstg/run_method.nf'
 include { runNNLS } from './nnls/run_method.nf'
 include { runSeurat } from './seurat/run_method.nf'
 include { getCellComposition; runTangram } from './tangram/run_method.nf'
+include { buildSTRIDEModel; fitSTRIDEModel } from './stride/run_method.nf'
 
 // Helper functions
 include { convertBetweenRDSandH5AD as convert_sc ; convertBetweenRDSandH5AD as convert_sp } from '../helper_processes'
-include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L; formatTSVFile as formatDestVI; formatTSVFile as formatDSTG; formatTSVFile as formatTangram } from '../helper_processes'
+include { formatTSVFile as formatStereoscope; formatTSVFile as formatC2L; formatTSVFile as formatDestVI; formatTSVFile as formatDSTG;
+          formatTSVFile as formatTangram; formatTSVFile as formatSTRIDE } from '../helper_processes'
 include { createDummyFile } from '../helper_processes'
 
 workflow runMethods {
@@ -27,9 +29,9 @@ workflow runMethods {
 
     main:
         // String matching to check which method to run
-        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls,seurat,tangram"
+        all_methods = "music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,nnls,seurat,tangram,stride"
         r_methods = ["music", "rctd", "spatialdwls", "spotlight", "dstg", "nnls", "seurat"]
-        python_methods = ["stereoscope","cell2location","destvi","tangram"]
+        python_methods = ["stereoscope","cell2location","destvi","tangram","stride"]
 
         methods = ( params.methods.toLowerCase() ==~ /all/ ? all_methods : params.methods.toLowerCase() )
         methods_list = Arrays.asList(methods.split(','))
@@ -160,7 +162,22 @@ workflow runMethods {
                 formatTangram(runTangram.out)
                 output_ch = output_ch.mix(formatTangram.out)
 
+            }
 
+            if ( methods =~ /stride/ ) {
+                buildSTRIDEModel(sc_input_conv)
+
+                // Repeat model output for each spatial file
+                buildSTRIDEModel.out.combine(sp_input_pair)
+                .multiMap { zip_file, txt_files, sp_file_h5ad, sp_file_rds ->
+                            model: tuple zip_file, txt_files
+                            sp_input: tuple sp_file_h5ad, sp_file_rds }
+                .set{ stride_combined_ch }
+                
+                fitSTRIDEModel(stride_combined_ch.sp_input,
+                               stride_combined_ch.model)
+                formatSTRIDE(fitSTRIDEModel.out) 
+                output_ch = output_ch.mix(formatSTRIDE.out)
             }
         }
 

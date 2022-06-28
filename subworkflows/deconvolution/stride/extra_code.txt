@@ -1,0 +1,29 @@
+def read_h5ad(filename):
+    """Reads Anndata h5ad files, only supports gene expression"""
+    adata = scanpy.read_h5ad(filename)
+    return FeatureBCMatrix(numpy.array(adata.var_names),
+                           numpy.array(adata.var_names),
+                           numpy.array(adata.obs_names),
+                           numpy.transpose(adata.X))
+
+    elif sc_count_file.endswith(".h5ad"):    
+        sc_count = read_h5ad(sc_count_file)
+        sc_count_mat = sc_count.matrix
+        sc_count_genes = sc_count.names.tolist()
+        sc_count_cells = sc_count.barcodes.tolist()
+        if type(sc_count_genes[0]) == bytes:
+            sc_count_genes = [i.decode() for i in sc_count_genes]
+        if type(sc_count_cells[0]) == bytes:
+            sc_count_cells = [i.decode() for i in sc_count_cells]
+        h5_filename = sc_count_file
+
+
+    elif st_count_file.endswith(".h5ad"):    
+        st_count = read_h5ad(st_count_file)
+        st_count_mat = st_count.matrix
+        st_count_genes = st_count.names.tolist()
+        st_count_spots = st_count.barcodes.tolist()
+        if type(st_count_genes[0]) == bytes:
+            st_count_genes = [i.decode() for i in st_count_genes]
+        if type(st_count_spots[0]) == bytes:
+            st_count_spots = [i.decode() for i in st_count_spots]
