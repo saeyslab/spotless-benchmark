@@ -2,11 +2,7 @@ library(hdf5r)
 library(dplyr)
 library(magrittr)
 
-par <- list(
-  ncells_per_spot = 10         # If using uniform prior, how many cells are there per spot?
-)
-args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
-par[names(args)] <- args
+par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 print(par)
 check_rds <- TRUE
 
@@ -32,17 +28,15 @@ if (check_rds){
       select(total_counts) %>% set_rownames(colnames(sp_input_rds$counts))
   },
   error = function(e) {
-    # In case the rds is a dummy file, we give a uniform distribution of 10 cells each
-    print("This seems to be a dummy file. Checking h5ad file...")
-    n_spots <- sp_input_h5ad[["obs"]][["_index"]]$dims
-    print("Returning uniform distribution for each spot...")
-    data.frame(total_counts = rep(par$ncells_per_spot, n_spots),
-               row.names = sp_input_h5ad[["obs"]][["_index"]][])
+    # In case the rds is a dummy file, we give a uniform distribution
+    print("This seems to be a dummy file. Will output uniform distribution...")
+    to_write <- matrix("rna_count_based")
   }
   )
 }
 
 write.table(to_write, "composition.csv", quote = FALSE, sep=",")
+
 
 
 
