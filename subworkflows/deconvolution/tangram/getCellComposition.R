@@ -28,9 +28,9 @@ if (check_rds){
       select(total_counts) %>% set_rownames(colnames(sp_input_rds$counts))
   },
   error = function(e) {
-    # In case the rds is a dummy file, we give a uniform distribution
-    print("This seems to be a dummy file. Will output uniform distribution...")
-    to_write <- matrix("rna_count_based")
+    # In case it's a dummy file or there is no ground truth
+    print("Cell counts not found.")
+    to_write <- matrix("no_counts_found")
   }
   )
 }
