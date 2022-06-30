@@ -12,7 +12,7 @@ include { runDSTG } from './dstg/run_method.nf'
 include { runNNLS } from './nnls/run_method.nf'
 include { runSeurat } from './seurat/run_method.nf'
 include { getCellComposition; runTangram } from './tangram/run_method.nf'
-include { buildSTRIDEModel; fitSTRIDEModel } from './stride/run_method.nf'
+include { buildSTRIDEModel; fitSTRIDEModel; runSTRIDE } from './stride/run_method.nf'
 
 // Helper functions
 include { convertBetweenRDSandH5AD as convert_sc ; convertBetweenRDSandH5AD as convert_sp } from '../helper_processes'
@@ -149,22 +149,33 @@ workflow runMethods {
                 // Get cell counts from spatial file
                 getCellComposition(sp_input_pair)
 
+                if (deconv_args.tangram =~ /-m[ ]*constrained/) {
                 // Repeat cell composition and spatial file for each single-cell file
-                getCellComposition.out.combine(sc_input_conv)
-                .multiMap { cell_count_file, sp_file_h5ad, sp_file_rds, sc_file ->
-                            sc_input: sc_file
-                            sp_input: tuple sp_file_h5ad, sp_file_rds
-                            cell_count: cell_count_file }
-                .set{ tangram_combined_ch }
+                    getCellComposition.out.combine(sc_input_conv)
+                    .multiMap { cell_count_file, sp_file_h5ad, sp_file_rds, sc_file ->
+                                sc_input: sc_file
+                                sp_input: tuple sp_file_h5ad, sp_file_rds
+                                cell_count: cell_count_file }
+                    .set{ tangram_combined_ch }
+                } else {
+                    sc_input_conv.combine(sp_input_pair).combine([])
+                    .multiMap { sc_file, sp_file_h5ad, sp_file_rds, cell_count_file ->
+                                sc_input: sc_file
+                                sp_input: tuple sp_file_h5ad, sp_file_rds
+                                cell_count: cell_count_file }
+                    .set{ tangram_combined_ch }
 
+                }
                 runTangram(tangram_combined_ch.sc_input,  tangram_combined_ch.sp_input,
-                           tangram_combined_ch.cell_count)
+                            tangram_combined_ch.cell_count)
                 formatTangram(runTangram.out)
                 output_ch = output_ch.mix(formatTangram.out)
 
             }
 
             if ( methods =~ /stride/ ) {
+                
+                /*
                 buildSTRIDEModel(sc_input_conv)
 
                 // Repeat model output for each spatial file
@@ -177,6 +188,12 @@ workflow runMethods {
                 fitSTRIDEModel(stride_combined_ch.sp_input,
                                stride_combined_ch.model)
                 formatSTRIDE(fitSTRIDEModel.out) 
+                
+                */
+                
+                runSTRIDE(sc_input_conv.combine(sp_input_pair))
+                formatSTRIDE(runSTRIDE.out)
+                
                 output_ch = output_ch.mix(formatSTRIDE.out)
             }
         }

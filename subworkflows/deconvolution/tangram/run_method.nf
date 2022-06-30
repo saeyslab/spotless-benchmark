@@ -18,7 +18,7 @@ process getCellComposition {
 }
 
 process runTangram {
-    tag 'tangram'
+    tag "tangram_${output_suffix}"
     label "retry"
     label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
@@ -39,7 +39,6 @@ process runTangram {
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_tangram_${output_suffix}${params.runID_props}.preformat"
         println ("Running Tangram with ${ (params.gpu) ? "GPU" : "CPU" }...")
-        args = args.replaceFirst(/--ncells_per_spot[ ]*[0-9]+/, "") 
         """
         source activate tangram-env
 
