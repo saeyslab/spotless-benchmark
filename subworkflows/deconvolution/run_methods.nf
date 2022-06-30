@@ -146,10 +146,11 @@ workflow runMethods {
             }
 
             if ( methods =~ /tangram/ ){
-
+                // For constrained mode, need to run extra function
                 if (params.deconv_args.tangram =~ /-m[ ]*constrained/) {
-                    // Get cell counts from spatial file
+                    // Get cell counts from spatial file (or segment)
                     getCellComposition(sp_input_pair)
+
                     // Repeat cell composition and spatial file for each single-cell file
                     getCellComposition.out.combine(sc_input_conv)
                     .multiMap { cell_count_file, sp_file_h5ad, sp_file_rds, sc_file ->
@@ -157,17 +158,19 @@ workflow runMethods {
                                 sp_input: tuple sp_file_h5ad, sp_file_rds
                                 cell_count: cell_count_file }
                     .set{ tangram_combined_ch }
+                    
                     runTangram(tangram_combined_ch.sc_input,  tangram_combined_ch.sp_input,
                                tangram_combined_ch.cell_count)
                 } else {
-                    println("not constrained")
+                    // Only take single-cell and spatial file
                     sc_input_conv.combine(sp_input_pair)
                     .multiMap { sc_file, sp_file_h5ad, sp_file_rds ->
                                 sc_input: sc_file
                                 sp_input: tuple sp_file_h5ad, sp_file_rds}
                     .set{ tangram_combined_ch }
-                    runTangram(tangram_combined_ch.sc_input,  tangram_combined_ch.sp_input,
-                                [])
+
+                    // Cell count file as empty list
+                    runTangram(tangram_combined_ch.sc_input,  tangram_combined_ch.sp_input, [])
 
                 }
 

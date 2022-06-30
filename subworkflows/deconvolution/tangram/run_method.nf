@@ -9,10 +9,9 @@ process getCellComposition {
         tuple path ("composition.csv"), path(sp_input), path(sp_input_rds)
     
     script:
-        args = ( params.deconv_args.tangram ? params.deconv_args.tangram : "" )
         """
         Rscript $params.rootdir/subworkflows/deconvolution/tangram/getCellComposition.R \
-         --sp_input_h5ad $sp_input --sp_input_rds $sp_input_rds $args
+         --sp_input_h5ad $sp_input --sp_input_rds $sp_input_rds
         """
 
 }
@@ -20,7 +19,6 @@ process getCellComposition {
 process runTangram {
     tag "tangram_${output_suffix}"
     label "retry"
-    label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
     container 'csangara/sp_tangram:latest'
     echo true
@@ -28,7 +26,7 @@ process runTangram {
     input:
         path (sc_input)
         tuple path (sp_input), path(sp_input_rds)
-        path cell_counts_file
+        path cell_counts_file // optional file
 
     output:
         tuple val('tangram'), path("$output"), path (sp_input_rds)
