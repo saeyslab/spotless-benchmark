@@ -19,7 +19,7 @@ This runs MuSiC as a test. The first run might take a few minutes because the co
 To run more methods, type the method names separated with a comma but no spaces, e.g., `--methods rctd,music`.
 
 ## Running the pipeline
-You can run the pipeline (`main.nf`) in three modes, `run_dataset` (running deconvolution tools on your own dataset), `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it), and `run_standard` (reproducing our analysis with gold/bronze standards).
+You can run the pipeline (`main.nf`) in three modes, `run_dataset` (running deconvolution tools on your own dataset), `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it), and `run_standard` (reproducing our analysis with gold/silver standards).
 
 **Input:**
 - Single-cell reference dataset: a Seurat (.rds) or Anndata (.h5ad) object containing cell type annotations in the object metadata
@@ -51,14 +51,14 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "stan
 nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file conf/synthvisium.yaml
 
 # Generate and run the whole pipeline
-nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/bronze_standard_1.rds \
+nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/silver_standard_1.rds \
 -params-file conf/synthvisium.yaml
 ```
 The arguments to synthvisium are best provided in a separate yaml/JSON file. Check out `conf/synthvisium.yaml` for a detailed description of arguments. Minimally, you need four arguments:
 ```
 # conf/synthvisium.yaml
 synvis:
-  sc_input: standards/reference/bronze_standard_1.rds             # single-cell reference input
+  sc_input: standards/reference/silver_standard_1.rds             # single-cell reference input
   clust_var: celltype                                             # name of metadata column with cell type annotation
   reps: 3                                                         # number of replicates per dataset type (abundance pattern)
   type: artificial_diverse_distinct,artificial_uniform_distinct   # dataset types
@@ -78,10 +78,10 @@ Then run the pipeline with the `run_standard` mode.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard <standard_name> -c standards/standard.config
 ```
-All folder names (except `reference`) can be used as the *standard_name*. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex bronze standard, you would do
+All folder names (except `reference`) can be used as the *standard_name*. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex silver standard, you would do
 ```
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 -c standards/standard.config
-nextflow run main.nf -profile <profile_name> --mode run_standard --standard bronze_standard_1-1 -c standards/standard.config
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard silver_standard_1-1 -c standards/standard.config
 ```
 
 ## Pipeline arguments (Advanced use)
@@ -122,7 +122,7 @@ The output of synthvisium is a named list of matrices and lists. There are three
 1) **counts**: a gene $\times$ spot count matrix (preferably raw counts)
 2) **relative_spot_composition**: a spot $\times$ cell types relative proportion matrix
 
-You can look at any of the files in `standard/bronze_standard` for a better idea.
+You can look at any of the files in `standards/silver_standard` for a better idea.
 
 ### Running methods
 ```

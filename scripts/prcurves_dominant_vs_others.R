@@ -59,7 +59,7 @@ if (plot_type == "all_replicates"){
     }) %>% setNames(methods)
     
     # Load ground truth data
-    ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/bronze_standard_",
+    ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/silver_standard_",
                                         dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
     ncells <- ncol(ground_truth_data$spot_composition)-2
     
@@ -121,7 +121,7 @@ deconv_props <- lapply(tolower(methods), function (method){
 }) %>% setNames(methods)
   
 # Load ground truth data
-ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/bronze_standard_",
+ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/silver_standard_",
                              dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
 ncells <- ncol(ground_truth_data$spot_composition)-2
 
@@ -163,7 +163,7 @@ ggplot(curve_df, aes(x=x, y=y)) +
 #### CODE DUMP ####
 # Load ground truth data
 # avg_abundance <- lapply(1:10, function (r) {
-#   ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/bronze_standard_",
+#   ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/silver_standard_",
 #                                       dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
 #   ncells <- ncol(ground_truth_data$spot_composition)-2
 #   known_props <- ground_truth_data$relative_spot_composition[,1:ncells]
