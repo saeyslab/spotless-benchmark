@@ -7,6 +7,8 @@
 - [spatialDWLS](#spatialdwls)
 - [SPOTlight](#spotlight)
 - [stereoscope](#stereoscope)
+- [STRIDE](#stride)
+- [Tangram](#tangram)
 
 (RCTD and DSTG have no adjustable parameters.)
 
@@ -95,8 +97,8 @@ Model fitting (`params.deconv_args.destvi.fit`)
 - `--cl_n`: number of cells per cell type to use (default: 100)
 - `--hvg`: number of HVGs to use (default: 3000)
 - `--ntop`: how many of the marker genes to use, use all by default (default: NULL)
-- `--transf`: whether to perform unit-variance per cell and spot (default: "uv")
-- `--method`: factorization method (default: "nsNMF")
+- `--transf`: whether to perform unit-variance per cell and spot (default: uv)
+- `--method`: factorization method (default: nsNMF)
 - `--min_cont`: remove cells contributing to a spot below a certain threshold (default: 0)
 
 #### stereoscope
@@ -119,3 +121,17 @@ Model fitting (`params.deconv_args.destvi.fit`)
 - `-fb`: freeze beta parameter (default: False)
 
 **Notes:** `-gl` and `-hvg` cannot be passed together, and `-hvg` will not work if there are spaces in your file name.
+
+#### STRIDE
+- `--gene-use`: location of the gene list file used to train the model, or "All" (longer runtime). By default the differential marker genes for each celltype will be used.
+- `--sc-scale-factor`: the scale factor for cell-level normalization (default: 75% quantile of nCount)
+- `--st-scale-factor`: the scale factor for spot-level normalization (default: 75% quantile of nCount for ST)
+- `--normalize`: flag indicating that the single-cell and spatial count matrices should be normalized (based on SD for each gene)
+- `--ntopics`: number of topics to train and test the model. Multiple numbers should be separated by space (e.g., --ntopics 6 7 8). STRIDE will automatically select the optimal topic number (default: checks ntopics from number_of_celltypes to 3 $\times$ number_of_celltypes)
+
+
+#### Tangram
+- `-e`: number of epochs to train the model (default: 1000)
+- `-n`: number of top marker genes to use (default: 100)
+- `-m`: mode of running the deconvolution, either "cells", "clusters", or "constrained" (default: clusters)
+- `-d`: density prior of the deconvolution, either "rna_count_based" or "uniform" (default: rna_count_based)
