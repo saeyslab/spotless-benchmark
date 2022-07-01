@@ -1,5 +1,5 @@
 # Spotless: A benchmark pipeline for <br> spatial deconvolution tools
-This is a repository for running spatial deconvolution tools through a Nextflow pipeline. Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SPOTlight, and stereoscope have been implemented. To add your own method, see [Guideline_for_adding_deconvolution_tools.md](Guideline_for_adding_deconvolution_tools.md).
+This is a repository for running spatial deconvolution tools through a Nextflow pipeline. Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SpatialDWLS, SPOTlight, stereoscope, STRIDE, Seurat, and Tangram have been implemented. To add your own method, see [Guideline_for_adding_deconvolution_tools.md](Guideline_for_adding_deconvolution_tools.md).
 
 **Quickstart guide**
 1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
@@ -16,29 +16,28 @@ nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/
 
 This runs MuSiC as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). 
 
-To run more methods, type the method names separated with a comma but no spaces, e.g., `--methods rctd,music`.
+To run more methods, type the method names separated with a comma but no spaces, e.g., `--methods rctd,music`. To adjust method parameters, see `subworkflows/deconvolution/README.md`.
 
 ## Running the pipeline
-You can run the pipeline (`main.nf`) in three modes, `run_dataset` (running deconvolution tools on your own dataset), `generate_and_run` (generating synthetic datasets from your scRNA-seq data and benchmarking it), and `run_standard` (reproducing our analysis with gold/silver standards).
-
 **Input:**
 - Single-cell reference dataset: a Seurat (.rds) or Anndata (.h5ad) object containing cell type annotations in the object metadata
 - Spatial dataset: a Seurat (.rds) object, Anndata (.h5ad) object, or named list of counts (see [Synthvisium object structure](#synthvisium-object-structure)) 
 
 **Output:**
-- A spot $\times$ cell type proportion matrix (.tsv) 
+- A spot $\times$ cell type proportion matrix (tab-separated file) 
 - Evaluation metrics (only if synthetic data follows the synthvisium object structure)
 
+You can run the pipeline (`main.nf`) in three modes, `run_dataset` (the default mode, runs deconvolution tools on your own dataset), `generate_and_run` (generates synthetic datasets from your scRNA-seq data and benchmarks it), and `run_standard` (for reproducing our analysis with gold/bronze standards).
 ### *run_dataset*: running/benchmarking deconvolution tools on your own dataset
 The `run_dataset` mode requires a single-cell object (`params.sc_input`), the path to the spatial dataset(s) (`params.sp_input`), and the cell type annotation column (`params.annot`, default: celltype). For real data, use the `skip_metrics` flag to skip the evaluation step.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sc_input <PATH_TO_SC_FILE> --sp_input <PATH_TO_SP_FILE> \
---annot <ANNOT_COL> --skip_metrics
+--annot <ANNOT_COL> --methods <METHODS> --skip_metrics
 ```
 We can also run the standards in this way.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "standards/gold_standard_1/*.rds" \
---sc_input standards/reference/gold_standard_1.rds --annot celltype
+--sc_input standards/reference/gold_standard_1.rds --annot celltype --methods <METHODS>
 ```
 ‼ Don't forget to put any directories with [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns) in quotes.
 
@@ -52,7 +51,7 @@ nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_nam
 
 # Generate and run the whole pipeline
 nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/silver_standard_1.rds \
--params-file conf/synthvisium.yaml
+-params-file conf/synthvisium.yaml --methods <METHODS>
 ```
 The arguments to synthvisium are best provided in a separate yaml/JSON file. Check out `conf/synthvisium.yaml` for a detailed description of arguments. Minimally, you need four arguments:
 ```
@@ -76,7 +75,8 @@ rm standards.tar.gz
 ```
 Then run the pipeline with the `run_standard` mode.
 ```
-nextflow run main.nf -profile <profile_name> --mode run_standard --standard <standard_name> -c standards/standard.config
+nextflow run main.nf -profile <profile_name> --mode run_standard --standard <standard_name> -c standards/standard.config \
+--methods <METHODS>
 ```
 All folder names (except `reference`) can be used as the *standard_name*. For instance, to run the gold standard of seqFISH+ cortex dataset or the brain cortex silver standard, you would do
 ```
@@ -91,7 +91,7 @@ You can find the default arguments of the pipeline in the `nextflow.config` file
 * `annot`: the cell type annotation column in the input scRNA-seq Seurat object (default: celltype)
 * `outdir`: location to save the proportions, metrics, and synthetic data (default: `deconv_proportions/`, `results/`, `synthetic_data/`). Best to define this under your profiles.
 * `sampleID`: the column containing batch information for the input scRNA-seq Seurat object (default: none) 
-* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a syntax example, check out `conf/test.config`. For a list of  parameters for each method, see `subworkflows/deconvolution/README.md`.
+* `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a more detailed explanation and list of parameters for each method, see `subworkflows/deconvolution/README.md`.
 * `synvis`: synthvisium arguments, see `subworkflows/synthvisium.yaml`
 * `gpu`: add this flag to use host GPU, see below
 * `verbose`: add this flag to print input files
@@ -100,7 +100,7 @@ You can find the default arguments of the pipeline in the `nextflow.config` file
 * `remap_annot`: if you want to use another celltype annotation to calculate the metrics, see below
 
 ### GPU usage
-Stereoscope, cell2location and DestVI can make use of a GPU to shorten their runtimes. You can do this by providing the `--gpu` flag when running the pipeline. If you have a specific GPU you want to use, you will have to provide the index with `cuda_device` (default: 0). This works from inside the containers, so you still do not have to install the programs locally. However, the containers were built on top of a [NVIDIA base image](https://hub.docker.com/r/nvidia/cuda) with CUDA version 10.2, so your GPU must be compatible with this CUDA version.
+Stereoscope, cell2location, DestVI, and Tangram can make use of a GPU to shorten their runtimes. You can do this by providing the `--gpu` flag when running the pipeline. If you have a specific GPU you want to use, you will have to provide the index with `cuda_device` (default: 0). This works from inside the containers, so you still do not have to install the programs locally. However, the containers were built on top of a [NVIDIA base image](https://hub.docker.com/r/nvidia/cuda) with CUDA version 10.2, so your GPU must be compatible with this CUDA version.
 ```
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 \
 -c standards/standard.config --methods stereoscope,cell2location --gpu #--cuda_device 1
@@ -127,9 +127,10 @@ You can look at any of the files in `standards/silver_standard` for a better ide
 ### Running methods
 ```
 nextflow run subworkflows/deconvolution/run_methods.nf -profile <profile_name> \
---sc_input <scRNAseq_dataset> --sp_input <spatial_dataset> --annot <celltype annotation column>
+--sc_input <scRNAseq_dataset> --sp_input <spatial_dataset> --annot <celltype annotation column> \
+--methods <METHODS>
 ```
-By default, all methods are run (equivalent to giving an argument `--methods music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg`). To run only certain methods, make sure the values are comma-separated without any spaces.
+By default, all methods are run (equivalent to giving an argument `--methods music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,tangram,seurat,stride`). To run only certain methods, make sure the values are comma-separated without any spaces.
 
 ### Computing metrics
 It is possible to add more metrics in the `subworkflows/evaluation/metrics.R` yourself, then recalculate the metrics without running the entire pipeline. You have to provide the ground truth datasets with the synthvisium object structure (`params.sp_input`), and the script will look for the proportions at `params.outdir.props`.
