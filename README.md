@@ -65,13 +65,11 @@ synvis:
 This will return 3 replicates for each dataset type, resulting in 6 files. You can also adjust other parameters such as the number of spots and mean or standard deviation per spot. Note that in this example, the same file was used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
 
 ### *run_standard*: reproducing our analysis
-First, download the datasets from Zenodo and place them in the `standards/` folder. The file is 5GB.
+Download the datasets from Zenodo and extract the file.
 ```
 cd spotless-benchmark
-wget https://zenodo.org/record/5727614/files/standards.tar.gz?download=1 -O standards.tar.gz
-tar -xf standards.tar.gz -C standards/
-mv standards/data/* standards/ ; rmdir standards/data # file structure to be fixed in the future
-rm standards.tar.gz
+wget https://zenodo.org/record/6786528/files/standards.tar.gz?download=1 -O standards.tar.gz
+tar -xvzf standards.tar.gz 
 ```
 Then run the pipeline with the `run_standard` mode.
 ```
