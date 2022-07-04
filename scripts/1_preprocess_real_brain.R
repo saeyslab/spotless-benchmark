@@ -1,3 +1,19 @@
+#### PREPROCESS REAL DATASET - BRAIN ####
+# This script saves single-cell reference files from the Allen Brain Atlas as Seurat objects
+# and transfers region annotations to Visium slides
+
+# SINGLE-CELL REFERENCE FILES
+# 10x: https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-whole-cortex-and-hippocampus-10x
+# SMART-seq: https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-whole-cortex-and-hippocampus-smart-seq
+# For metadata files, download "Table of cell metadata" and "2D coordinates"
+# For count matrices, down "Gene expression matrix (HDF5)"
+
+# VISIUM FILES
+# https://www.10xgenomics.com/resources/datasets/${dataset}
+# Coronal: dataset=mouse-brain-section-coronal-1-standard
+# Sagittal: for location=[anterior,posterior], i=[1,2]
+# dataset=mouse-brain-serial-section-${i}-sagittal-${location}-1-standard-1-1-0
+
 library(imager)
 library(Seurat)
 library(dplyr)
@@ -16,7 +32,7 @@ queryWithAcronym <- function(region_acronym){
 }
 
 # Given the metadata file and regions in "region_label" column,
-# Return the proper region names
+# Return the full region names
 getRegionNamesFromAcronym <- function(metadata){
   region_df <- sapply(unique(metadata$region_label), function (region) {
     region_split <- strsplit(region, "[-_]")[[1]]
@@ -37,7 +53,7 @@ getRegionNamesFromAcronym <- function(metadata){
   return (proper_region_names)
 }
 
-#### METADATA FILES ####
+#### SINGLE-CELL METADATA FILES ####
 path <- "~/spotless-benchmark/data/raw_data/"
 ctxhip10x_metadata <- merge(
   read.csv(paste0(path, "mousebrain_ABA_CTXHIP_10x/metadata.csv")),
@@ -49,13 +65,27 @@ ctxhipss_metadata <- merge(
   read.csv(paste0(path, "mousebrain_ABA_CTXHIP_SmartSeq/tsne.csv")),
   by = "sample_name")
 
-######### BRAIN DECONVOLUTION ANALYSIS ######### 
-#### 1. TRANSFERRING REGION ANNOTATIONS TO VISIUM DATA ####
+#### 1. BRAIN VISIUM 10X H5 TO SEURAT OBJECT ####
+sections <- c("coronal",
+              "sagittal_posterior1", "sagittal_posterior2",
+              "sagittal_anterior1", "sagittal_anterior2")
+
+for (section in sections){
+  visium_seuratobj <- Load10X_Spatial(paste0("spotless-benchmark/data/raw_data/mousebrain_visium_10xdemo/", section))
+  #saveRDS(visium_seuratobj, paste0("spotless-benchmark/data/rds/mousebrain_visium_10xdemo_", section, ".rds"))
+}
+
+
+#### 2. TRANSFERRING REGION ANNOTATIONS TO VISIUM DATA ####
 # Load transformed atlas map (from QuickNII or VisuAlign)
+# https://www.frontiersin.org/articles/10.3389/fninf.2019.00075/full
+# To use VisuAlign output: https://www.nitrc.org/forum/message.php?msg_id=32830
+
 #coronal_visualign_map <- load.image("Documents/coronal_image/atlasmap/coronal_s001-Rainbow_2017.png")
 coronal_visualign_map <- load.image("Documents/coronal_image/new_atlasmap/coronal_s001_nl_rev.png")
+
 # Load Visium image
- coronal_visium_img_hires <- load.image("Documents/coronal_visium_10x/spatial/tissue_hires_image.png")
+coronal_visium_img_hires <- load.image("Documents/coronal_visium_10x/spatial/tissue_hires_image.png")
 
 # Resize the atlas map as the Visium image size
 dim(coronal_visium_img_hires)[1:2]
@@ -69,7 +99,7 @@ plot(coronal_visualign_map_resize)
 coronal_visium <- Load10X_Spatial("Documents/coronal_visium_10x/",
                                   filename="Visium_Adult_Mouse_Brain_filtered_feature_bc_matrix.h5")
 coronal_visium_coords <- GetTissueCoordinates(coronal_visium, scale='hires') %>%
-  mutate(x=round(imagecol), y=round(imagerow))
+                            mutate(x=round(imagecol), y=round(imagerow))
 ggplot(coronal_visium_coords, aes(y=imagerow, x=imagecol)) +
   geom_point(size=0.5) + coord_fixed(ratio=1)
 
@@ -88,14 +118,6 @@ rainbow_map <- rainbow_map %>% mutate(rgb.val=rgb(red, green, blue, maxColorValu
 length(unique(rainbow_map$rgb.val))
 length(unique(df$rgb.val))
 unique(df$rgb.val) %in% unique(rainbow_map$rgb.val)
-
-# Checked to see if the normalization was the source of color mismatch, but nope
-# rainbow_map_renorm <- rainbow_map %>% cbind(renorm(rainbow_map[,c("red", "green", "blue")], max=1) %>%
-#                                       setNames(paste0(colnames(.), "_norm"))) %>%
-#   mutate(rgb.val_norm=rgb(red_norm, green_norm, blue_norm)) %>%
-#   cbind(renorm(rainbow_map[,paste0(c("red", "green", "blue"), "_norm")], max=255) %>%
-#           setNames(paste0(colnames(.), "2"))) %>%
-#   mutate(rgb.val_norm2=rgb(red_norm2, green_norm2, blue_norm2, maxColorValue = 255))
 
 # Merge coordinates with the atlas map
 coords_to_color <- merge(x = coronal_visium_coords %>% select(x, y) %>% tibble::rownames_to_column(var="spot"),
@@ -131,7 +153,7 @@ region_label_metadata <- sapply(stringr::str_split(unique(ctxhip10x_metadata$reg
 # }) %>% do.call(rbind, .)
 #
 
-##  Getting hierarchies of the Visium region labels
+# Getting hierarchies of the Visium region labels
 # We query depth 6-8 because the region labels from scRNA-seq are from depth 6-8
 # unique(region_label_metadata$depth) 
 depth_start <- 6
@@ -224,7 +246,7 @@ ggplot(ctxhip10x_metadata %>% filter(region_label == "HIP"), aes( y=subclass_lab
 SpatialFeaturePlot(coronal_visium, "Lct")
 unique(coronal_visium_subset$parent_acronym)
 
-#### 2. PREPARING COUNT DATA AS SEURAT OBJECT ####
+#### 3. PREPARING COUNT DATA AS SEURAT OBJECT ####
 library(hdf5r)
 library(Matrix)
 library(SeuratDisk)
@@ -274,7 +296,6 @@ ctxhip10x_seuratobj <- CreateSeuratObject(ctxhip10x_mat, project = "CTXHIP10x",
                                           meta.data = ctxhip10x_metadata_sampled %>% tibble::column_to_rownames(var="sample_name"))
 # saveRDS(ctxhip10x_seuratobj, "spotless-benchmark/data/rds/ctxhip10x_151060cells.rds")
 
-# Some checks
 # Check the distribution between the original and sampled metadata
 region_subclass_10xtab <- table(ctxhip10x_metadata$region_label,
                                 ctxhip10x_metadata$subclass_label)
@@ -294,28 +315,12 @@ ggplot(df, aes(x=source, y=n, fill=region)) + geom_bar(stat="identity", position
                                                            axis.text.y = element_blank(),
                                                            panel.grid = element_blank()) +
   scale_fill_manual(values=col_vector)
-#ggsave("Documents/region_distribution_sampling.png", height=30, width=45, units="cm")
-
-# Distribution of regions per cell type
-ggplot(df %>% filter(source=="original"), aes(y=celltype, fill=region,x=n)) +
-  geom_bar(stat="identity", position="fill", width=0.5) + theme_bw() +
-  theme(legend.position="bottom", legend.direction = "horizontal",
-        panel.grid=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
-  guides(fill = guide_legend(nrow = 2)) + facet_wrap(~group, ncol=2, scales="free") +
-  scale_fill_manual(values=col_vector)
-
-# Distribution of cell type per region
-ggplot(df %>% filter(source=="original"), aes(y=region, fill=celltype,x=n)) +
-  geom_bar(stat="identity", position="fill", width=0.5) + theme_bw() +
-  theme(legend.position="bottom", legend.direction = "horizontal",
-        panel.grid=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
-  guides(fill = guide_legend(nrow = 2)) + scale_fill_manual(values=col_vector)
-#ggsave("Documents/region_distribution.png", height=15, width=30, units="cm")
+# ggsave("Documents/region_distribution_sampling.png", height=30, width=45, units="cm")
 
 ## SMART-Seq ##
-# The Smart-Seq data was provided as a Seurat object, but it's somehow really big
+# The Smart-Seq data was also provided as a Seurat object, but I'm more sure if we create our own
 # load("spotless-benchmark/data/raw_data/mousebrain_ABA_CTXHIP_SmartSeq/Seurat.ss.rda") #ss.seurat
-# saveRDS(ss.seurat, "spotless-benchmark/data/rds/ctxhipss.rds") # Went up to 6 GB and I canceled it
+# saveRDS(ss.seurat, "spotless-benchmark/data/rds/ctxhipss.rds")
 
 ctxhipss_hdf5 <- H5File$new(paste0(path, "mousebrain_ABA_CTXHIP_SmartSeq/expression_matrix.hdf5"), mode="r")
 
@@ -335,106 +340,3 @@ ctxhipss_mat <- ctxhipss_mat[, colnames(ctxhipss_mat) %in% ctxhipss_metadata$sam
 ctxhipss_seuratobj <- CreateSeuratObject(ctxhipss_mat, project = "CTXHIPss",
                                          meta.data = ctxhipss_metadata %>% tibble::column_to_rownames(var="sample_name"))
 # saveRDS(ctxhipss_seuratobj, "spotless-benchmark/data/rds/ctxhipss.rds")                              
-
-
-#### MISCELLANEOUS EXPLORATION ####
-# Plotting tSNEs of both datasets
-# Color by celltype
-ps <- lapply(list(ctxhip10x_metadata, ctxhipss_metadata), function(df) {
-  ggplot(df, aes(x=Lim1, y=Lim2, color=region_label)) +
-    geom_point(size=0.1) +
-    guides(color = guide_legend(override.aes = list(size=5))) +
-    theme_bw() + theme(panel.grid = element_blank(),
-                       axis.ticks = element_blank(),
-                       axis.text = element_blank())
-  xlab("tSNE1") + ylab("tSNE2")
-})
-p <- patchwork::wrap_plots(ps, guides = "collect")
-# ggsave("Documents/ctxhip_tsne_combined.png", plot = p,
-#        width = 40, height = 15, units="cm")
-
-# Color by region
-ps <- lapply(list(ctxhip10x_metadata, ctxhipss_metadata), function(df) {
-  ggplot(df, aes(x=Lim1, y=Lim2, color=region_label)) +
-    geom_point(size=0.1) +
-    guides(color = guide_legend(override.aes = list(size=5))) +
-    theme_bw() + theme(panel.grid = element_blank(),
-                       axis.ticks = element_blank(),
-                       axis.text = element_blank(),
-                       legend.position = "bottom",
-                       legend.direction = "horizontal") +
-    xlab("tSNE1") + ylab("tSNE2")
-})
-p <- patchwork::wrap_plots(ps)
-# ggsave("Documents/ctxhip_region_combined.png", plot = p,
-#        width = 40, height = 20, units="cm")
-
-# Correlation plots between regions
-region_subclass_10xtab <- table(ctxhip10x_metadata$region_label,
-                                ctxhip10x_metadata$subclass_label)
-region_names_10x <- getRegionNamesFromAcronym(ctxhip10x_metadata)
-corr_10x <- cor(t(region_subclass_10xtab)) %>% set_rownames(region_names_10x[rownames(.)]) %>%
-  data.frame %>% tibble::rownames_to_column() %>% mutate(rowname=stringr::str_wrap(rowname, width=60)) %>%
-  tibble::column_to_rownames()
-pheatmap(corr_10x, treeheight_col = 0, treeheight_row = 0, fontsize_row = 6)
-         #filename="Documents/correlation_10x.png", width=11, height=6)
-
-region_subclass_sstab <- table(ctxhipss_metadata$region_label,
-                               ctxhipss_metadata$subclass_label)
-region_names_ss <- getRegionNamesFromAcronym(ctxhipss_metadata)
-region_names_ss["ALM"] <- "Anterior lateral motor cortex" # Not in ontology
-corr_ss <- cor(t(region_subclass_sstab)) %>% set_rownames(region_names_ss[rownames(.)]) %>%
-  data.frame %>% tibble::rownames_to_column() %>% mutate(rowname=stringr::str_wrap(rowname, width=60)) %>%
-  tibble::column_to_rownames()
-pheatmap(corr_ss, treeheight_col = 0, treeheight_row = 0, fontsize_row = 6)
-         #filename="Documents/correlation_ss.png", width=11, height=6)
-
-# Other basic info
-setdiff(ctxhipss_metadata$region_label, ctxhip10x_metadata$region_label)   # Regions in SMART-seq not in 10x
-setdiff(ctxhip10x_metadata$region_label, ctxhipss_metadata$region_label)   # Regions in 10x not in SMART-Seq
-intersect(ctxhipss_metadata$region_label, ctxhip10x_metadata$region_label) # Common regions
-
-# Order abundance by hippocampus
-region_subclass_10xtab[,order(region_subclass_10xtab["HIP",], decreasing = TRUE)] 
-
-# Region composition?
-common_regions <- intersect(ctxhipss_metadata$region_label, ctxhip10x_metadata$region_label)
-df <- rbind(region_subclass_10xtab %>% .[(rownames(.) %in% common_regions),] %>% data.frame %>% mutate(tech="10x"),
-            region_subclass_sstab %>% .[(rownames(.) %in% common_regions),] %>% data.frame %>% mutate(tech="SMART-seq"))%>%
-  setNames(c("region", "celltype", "count", "tech"))
-
-qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
-col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
-ggplot(df, aes(x=tech, y=count, fill=celltype)) +
-  geom_bar(stat="identity", position="fill", width=0.5) + theme_bw() +
-  theme(legend.position="bottom", legend.direction = "horizontal",
-        panel.grid=element_blank(), axis.text.y = element_blank(), axis.ticks=element_blank()) +
-  guides(fill = guide_legend(nrow = 2)) + facet_wrap(~region, scales="free") +
-  scale_fill_manual(values=col_vector)
-
-
-#### BRAIN VISIUM - 10x DEMO ####
-sections <- c("coronal",
-              "sagittal_posterior1", "sagittal_posterior2",
-              "sagittal_anterior1", "sagittal_anterior2")
-
-for (section in sections){
-  visium_seuratobj <- Load10X_Spatial(paste0("spotless-benchmark/data/raw_data/mousebrain_visium_10xdemo/", section))
-  #saveRDS(visium_seuratobj, paste0("spotless-benchmark/data/rds/mousebrain_visium_10xdemo_", section, ".rds"))
-}
-
-visium_seuratobj <- readRDS("spotless-benchmark/data/rds/mousebrain_visium_10xdemo_sagittal_posterior1.rds")
-visium_seuratobj2 <- readRDS("spotless-benchmark/data/rds/mousebrain_visium_10xdemo_sagittal_posterior2.rds")
-
-DefaultAssay(visium_seuratobj) <- names(visium_seuratobj@assays)[grep("RNA|Spatial",names(visium_seuratobj@assays))[1]]
-eset_obj_visium <- ExpressionSet(assayData=as.matrix(GetAssayData(visium_seuratobj, slot="counts")))
-eset_obj_visium # 32285 * 3355
-
-
-eset_obj_visium[,colSums(exprs(eset_obj_visium)) > 100]
-
-for (section in sections){
-  print(section)
-  visium_seuratobj <- readRDS(paste0("spotless-benchmark/data/rds/mousebrain_visium_10xdemo_", section, ".rds"))
-  print(sum(colSums(GetAssayData(visium_seuratobj)) <= 100))
-}

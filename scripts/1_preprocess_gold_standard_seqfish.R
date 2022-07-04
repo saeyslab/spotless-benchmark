@@ -1,4 +1,5 @@
-#### PROCESS SEQFISH+ DATA ####
+#### PREPROCESS GOLD STANDARD (SEQFISH+ DATASET) ####
+# This script creates Visium-like spots from the seqFISH+ dataset and also the reference data
 # Count data: https://github.com/CaiGroup/seqFISH-PLUS/raw/master/sourcedata.zip
 # Annotations: https://github.com/CaiGroup/seqFISH-PLUS/raw/master/celltype_annotations.zip
 # Cluster annotations: https://static-content.springer.com/esm/art%3A10.1038%2Fs41586-019-1049-y/MediaObjects/41586_2019_1049_MOESM3_ESM.xlsx
@@ -27,6 +28,7 @@ get_spot_center <- function(start, spot_diameter, cc_distance, k){
   return (start+(spot_diameter/2)+(cc_distance*(k-1)))
 }
 
+# Combine excitatory neurons and interneuron subtypes
 get_coarse_annot <- function(celltype){
   conditions <- c(grepl("Excitatory layer", celltype), grepl("Interneuron", celltype))
   replacements <- c('Excitatory neurons', 'Interneurons')
@@ -71,7 +73,8 @@ if (dataset == "ob"){
 library(Seurat)
 seurat_obj <- CreateSeuratObject(counts=t(counts[metadata$celltype != "Unannotated",]),
                                  meta.data=metadata[metadata$celltype != "Unannotated",])
-saveRDS(seurat_obj, paste0("D:/spotless-benchmark/data/gold_standard_", standard_no, "/reference/reference_", dataset, ".rds"))
+# saveRDS(seurat_obj, paste0("~/spotless-benchmark/data/gold_standard_", standard_no, "/reference/reference_", dataset, ".rds"))
+
 # seurat_obj <- seurat_obj %>% ScaleData() %>% FindVariableFeatures() %>%
 #   RunPCA() %>%  RunUMAP(dims = 1:30)
 # DimPlot(seurat_obj, reduction = "umap", group.by="celltype_coarse", label=TRUE)
@@ -140,7 +143,6 @@ for (fov_no in 0:6){
     next;
   }
   #### FORMATTING GROUND TRUTH OBJECT ####
-  print("hello")
   # Follow same format as synthvisium
   # synthvisium_data <- readRDS("D:/spotless-benchmark/unit-test/test_sp_data.rds")
   
@@ -169,7 +171,6 @@ for (fov_no in 0:6){
     data.frame %>% slice(spot_composition$spot_no) %>% `rownames<-`(spot_composition$spot_no)
   
   ## 5. DATASET PROPERTIES ##
-  
   dataset_properties <- data.frame("technology"="seqFISH+",
                                    "dataset_source"=dataset_source,
                                    "dataset"=dataset,
