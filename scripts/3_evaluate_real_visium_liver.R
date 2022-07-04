@@ -6,7 +6,7 @@ library(reshape2)
 library(RColorBrewer)
 
 #### HELPER FUNCTIONS ####
-# Group fine annotations into corases annotations
+# Group fine annotations into coarse annotations
 get_coarse_annot <- function(celltype, data="resolve"){
   if (data == "resolve"){
     conditions <- c(grepl("LSEC|Vein_endothelial_cells", celltype), grepl("Stellate|Fibro", celltype))
@@ -21,6 +21,9 @@ get_coarse_annot <- function(celltype, data="resolve"){
 
 #### READ IN FULL LIVER DATA ####
 liver_seurat_obj <- readRDS("~/spotless-benchmark/data/rds/liver_mouseStSt_guilliams2022.rds")
+# liver_seurat_obj <- liver_seurat_obj %>% NormalizeData %>% FindVariableFeatures %>%
+#   ScaleData %>% RunPCA(features = VariableFeatures(object = .)) %>% RunUMAP(dims=1:20)
+
 n <- length(unique(liver_seurat_obj$annot))
 qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
 col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
@@ -39,6 +42,14 @@ liver_nuc <- liver_seurat_obj@meta.data %>%
   mutate(annot_new = sapply(annot, get_coarse_annot, "other")) %>%
   filter(digest=="nuclei", sample != "ABU21") %>%  group_by(sample, annot_new) %>%
   count() %>% group_by(sample) %>% mutate(props=n/sum(n))
+
+# Save separate files depending on digest
+cells_to_keep <- names(which(rowSums(table(liver_seurat_obj$annot, liver_seurat_obj$digest) > 50) == 3))
+
+for (dig in unique(liver_seurat_obj$digest)){
+  liver_temp <- subset(liver_seurat_obj, subset = annot %in% cells_to_keep & digest == dig)
+  #saveRDS(liver_temp, paste0("spotless-benchmark/data/rds/liver_mouseStSt_", dig, "_7celltypes.rds"))
+}
 
 #### READ IN RESOLVE DATA ####
 resolve <- read.csv("spotless-benchmark/data/resolve/cell_counts.csv", row.names=1) %>%
@@ -65,8 +76,8 @@ resolve_summ <- resolve %>% group_by(slide) %>% mutate(props=count/sum(count)) %
 ggplot(resolve_summ, aes(x=annot_new, y=props)) + geom_boxplot()
 
 #### READ IN DECONVOLUTION RESULTS ####
-methods <- c("cell2location", "music", "RCTD", "spotlight", "stereoscope")
-proper_method_names <- c("Cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope")
+methods <- c("cell2location", "music", "RCTD", "spotlight", "stereoscope", "destvi")
+proper_method_names <- c("Cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope", "DestVI")
 
 datasets <- 1:4
 
@@ -80,27 +91,44 @@ results <- lapply(datasets, function(ds) {
             setNames(methods)}) %>% setNames(paste0("JB0", datasets)) %>% melt(id.vars=NULL) %>%
   `colnames<-`(c("celltype", "proportion", "method", "slice"))
 
+coarse=TRUE
 # Summarize mean proportions per slide
 results_summ <- results %>% group_by(slice, method, celltype) %>%
   summarise(mean_props = mean(as.numeric(proportion))) %>% ungroup
 
+if (coarse) {
+  results_summ <- results_summ %>% mutate(celltype = sapply(celltype, get_coarse_annot, "other")) %>%
+    group_by(slice, method, celltype) %>% summarise(mean_props = sum(mean_props)) %>% ungroup()
+}
+
 # Plot proportions across four slides
 n <- length(unique(results$celltype))
-qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
-col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 
-ggplot(results_summ, aes(x=method, y=mean_props, fill=celltype)) +
+results_summ <- results_summ %>% mutate(method=factor(method, levels=rev(methods)))
+ggplot(results_summ, aes(y=method, x=mean_props, fill=celltype)) +
   geom_bar(width=0.4, stat="identity", position=position_stack(reverse=TRUE)) +
-  #scale_x_discrete(limits = rev(levels(results_summ$method)),
-  #                 labels = rev(proper_method_names)) +
+  scale_y_discrete(labels = rev(proper_method_names)) +
   scale_fill_manual(values=col_vector) +
   facet_wrap(~slice, nrow=1) +
-  coord_flip() + 
   ylab("Sum of proportions across all spots in a slice") +
   labs(fill="Cell type") + theme_bw() +
   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(),
         axis.title = element_blank(), panel.grid = element_blank(),
         strip.background = element_rect(fill = "white"))
+
+liver_nuc_summ <- liver_nuc %>% group_by(annot_new) %>% summarise(mean_prop=mean(props))
+ggplot(liver_nuc_summ, aes(y="Nucseq", x=mean_prop, fill=annot_new)) +
+  geom_bar(width=0.4, stat="identity", position=position_stack(reverse=TRUE)) +
+  scale_fill_manual(values=col_vector) +
+  ylab("Sum of proportions across all spots in a slice") +
+  labs(fill="Cell type") + theme_bw() +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        axis.title = element_blank(), panel.grid = element_blank(),
+        strip.background = element_rect(fill = "white"))
+
+
 
 #### PLOTTING ALL RESULTS TOGETHER ####
 # First, order celltypes by abundance based on RESOLVE data
@@ -111,7 +139,10 @@ ct_order <- resolve_summ %>% group_by(annot_new) %>%
 real_props_df <- rbind(liver_nuc %>% mutate(source="nuclei"), resolve_summ) %>%
   mutate(annot_new = factor(annot_new, levels=rev(ct_order$annot_new)))
 ggplot(real_props_df, aes(x=annot_new, y=props)) +
-  geom_boxplot() + facet_wrap(~source, nrow=2) + theme_bw() + coord_flip()
+  geom_boxplot() + facet_wrap(~source, ncol=2) + theme_bw() + coord_flip()
+ggplot(real_props_df, aes(x=props, fill=forcats::fct_rev(annot_new), y=source)) +
+  geom_bar(width=0.4, stat="identity", position=position_fill(reverse = TRUE)) + 
+  theme_bw() + labs(fill="Cell type")
 
 # Deconvolution results
 deconv_props <- results_summ %>%
@@ -188,6 +219,123 @@ ggplot(all_props_scaled, aes(x=annot_new, y=props, color=scale)) +
   geom_line(data=summary_df, aes(x=annot_new, y=median, group=scale),
                                  position=position_dodge2(width=0.7)) +
   facet_wrap(~source)
+
+#### CHECKING ROBUSTNESS OF PREDICTIONS ####
+cells_to_keep <- names(which(rowSums(table(liver_seurat_obj$annot, liver_seurat_obj$digest) > 50) == 3))
+
+liver_temp <- subset(liver_seurat_obj, subset = annot %in% cells_to_keep) #%>% NormalizeData %>% FindVariableFeatures %>%
+#  ScaleData %>% RunPCA(features = VariableFeatures(object = .)) %>% RunUMAP(dims=1:20)
+#DimPlot(liver_temp, group.by=c("annot", "digest"))
+
+liver_temp_df <- liver_temp@meta.data %>%  group_by(sample, annot, digest) %>%
+  count(name="num") %>% group_by(sample, digest) %>% mutate(props=num/sum(num)) %>%
+  group_by(digest, annot) %>% summarise(mean_props=mean(props))
+
+liver_temp_df <- liver_temp@meta.data %>%  group_by(sample, annot, digest) %>%
+  count(name="num")
+
+ggplot(liver_temp_df, aes(y=digest, x=num, fill=annot)) +
+  geom_bar(width=0.4, stat="identity", position="fill") +
+  scale_fill_manual(values=col_vector) +
+  ylab("Sum of proportions across all spots in a slice") +
+  labs(fill="Cell type") + theme_bw() +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        axis.title = element_blank(), panel.grid = element_blank(),
+        strip.background = element_rect(fill = "white"))
+
+
++#methods <- c("cell2location", "music", "RCTD", "spotlight", "stereoscope")
+#proper_method_names <- c("Cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope")
+
+methods <- c("music", "RCTD", "cell2location", "destvi")
+proper_method_names <- c("MuSiC", "RCTD", "cell2location", "DestVI")
+
+digests <- c("exVivo", "inVivo", "nuclei")
+datasets <- 1:4
+
+results <- lapply(datasets, function(ds) {
+  lapply(digests, function(dig) {
+    lapply(tolower(methods), function (method) {
+      read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
+                                method, "_liver_mouseVisium_JB0", ds, "_", dig), header=TRUE, sep="\t") %>%
+        # Still has . in colnames
+        `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))
+  }) %>% setNames(methods) %>% melt(id.vars=NULL)}) %>%
+    setNames(digests) %>% do.call(rbind, .) %>% mutate(digest=str_extract(rownames(.), "[a-zA-z]+"))
+  }) %>% setNames(paste0("JB0", datasets)) %>% melt(id.vars=c("variable", "value", "L1", "digest"), level=2) %>%
+  `colnames<-`(c("celltype", "proportion", "method", "digest", "slice"))
+
+# Summarize mean proportions per slide
+results_summ <- results %>% group_by(slice, method, celltype, digest) %>%
+  summarise(mean_props = mean(as.numeric(proportion))) %>% ungroup
+
+if (coarse) {
+  results_summ <- results_summ %>% mutate(celltype = sapply(celltype, get_coarse_annot, "other")) %>%
+    group_by(slice, method, celltype, digest) %>% summarise(mean_props = sum(mean_props)) %>% ungroup()
+}
+
+
+# Plot proportions across four slides
+n <- length(unique(results$celltype))
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+
+ggplot(results_summ, aes(x=digest, y=mean_props, fill=celltype)) +
+  geom_bar(width=0.4, stat="identity", position=position_stack(reverse=TRUE)) +
+  #scale_x_discrete(limits = rev(levels(results_summ$method)),
+  #                 labels = rev(proper_method_names)) +
+  scale_fill_manual(values=col_vector) +
+  facet_grid(method~slice) +
+  coord_flip() + 
+  ylab("Sum of proportions across all spots in a slice") +
+  labs(fill="Cell type") + theme_bw() +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        axis.title = element_blank(), panel.grid = element_blank(),
+        strip.background = element_rect(fill = "white"))
+
+
+##### CHECK DIFFERENCES BETWEEN REGIONS
+slide <- 1
+datasets <- 1
+visium_annot <- readRDS("spotless-benchmark/data/rds/liver_mouseVisium_JB01.rds")
+
+results <- lapply(datasets, function(ds) {
+  lapply(tolower(methods), function (method) {
+    test <- read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
+                              method, "_liver_mouseVisium_JB0", ds), header=TRUE, sep="\t") %>%
+      # Still has . in colnames
+      `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))
+  }) %>%
+    setNames(methods)}) %>% setNames(paste0("JB0", datasets)) %>% melt(id.vars=NULL) %>%
+  mutate(region = rep(visium_annot$zonationGroup, length(unique(variable))*length(unique(L2)))) %>%
+  `colnames<-`(c("celltype", "proportion", "method", "slice", "region"))
+
+coarse=TRUE
+# Summarize mean proportions per slide
+results_summ <- results %>% group_by(slice, method, celltype, region) %>%
+  summarise(mean_props = mean(as.numeric(proportion))) %>% ungroup
+
+if (coarse) {
+  results_summ <- results_summ %>% mutate(celltype = sapply(celltype, get_coarse_annot, "other")) %>%
+    group_by(slice, method, celltype, region) %>% summarise(mean_props = sum(mean_props)) %>% ungroup()
+}
+
+# Plot proportions across four slides
+n <- length(unique(results$celltype))
+qual_col_pals <- brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+
+results_summ <- results_summ %>% mutate(method=factor(method, levels=rev(methods)))
+ggplot(results_summ, aes(y=region, x=mean_props, fill=celltype)) +
+  geom_bar(width=0.4, stat="identity", position=position_stack(reverse=TRUE)) +
+  #scale_y_discrete(labels = rev(proper_method_names)) +
+  scale_fill_manual(values=col_vector) +
+  facet_wrap(~method, scales="free") +
+  ylab("Sum of proportions across all spots in a slice") +
+  labs(fill="Cell type") + theme_bw() +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        axis.title = element_blank(), panel.grid = element_blank(),
+        strip.background = element_rect(fill = "white"))
 
 
 ##### CODE DUMP #####

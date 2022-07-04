@@ -11,7 +11,7 @@ get_color_vector <- function(n) {
   return (col_vector)
 }
 
-scRNA_obj <- readRDS("D:/spotless-benchmark/standards/reference/gold_standard_1.rds")
+scRNA_obj <- readRDS("~/spotless-benchmark/standards/reference/gold_standard_1.rds")
 scRNA_obj <- scRNA_obj %>% .[apply(GetAssayData(.), 1, max) > 4,] %>%
   .[, colSums(.) >= 200] %>% NormalizeData() %>%
   FindVariableFeatures(mean.cutoff=c(0.05, 3), dispersion.cutoff=c(0, Inf), nfeatures = 3500) %>%

@@ -35,12 +35,12 @@ get_coarse_annot <- function(celltype){
 }
 
 #### CHANGEABLE PARAMS ####
-path <- "D:/spotless-benchmark/data/raw_data/seqFISH_eng2019/"
+path <- "~/spotless-benchmark/data/raw_data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
-dataset <- "ob" # cortex_svz or ob
+dataset <- "cortex_svz" # cortex_svz or ob
 standard_no <- ifelse(dataset == "cortex_svz", 1, 2)
-fov_no <- 2 # 0-6
-combine_all_plots <- TRUE
+fov_no <- 0 # 0-6
+combine_all_plots <- FALSE
 
 #### READ IN FILE ####
 annot <- read.csv(paste0(path, dataset, "_cell_type_annotations.csv"))
@@ -201,3 +201,8 @@ for (fov_no in 0:6){
 p_all <- patchwork::wrap_plots(all_plots, nrow = 1)
 ggsave(paste0("D:/PhD/figs/sc_meeting_10012022/", dataset, "_all_fovs.png"),
                p_all, width = 4000, height = 800, units="px")
+
+# CONFERENCE
+p + theme(panel.grid=element_blank(), axis.title=element_blank(),
+          axis.text=element_blank(), legend.position="none")
+ggsave("Pictures/conference_spot_sample.png", width = 1500, height = 1500, units="px")
