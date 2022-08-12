@@ -61,6 +61,7 @@ Model building (`params.deconv_args.destvi.build`)
 
 Model fitting (`params.deconv_args.destvi.fit`)
 - `-e`: number of epochs to fit the model (default: 2500)
+- `-b`: minibatch size to use during training (default: 128)
 
 #### MuSiC
 - `--sampleID`: metadata column in single-cell reference containing sample information (default: none)

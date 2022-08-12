@@ -17,6 +17,8 @@ prs.add_argument('-o','--out_dir', default = os.getcwd() ,
 
 prs.add_argument('-e', '--epochs', default=2500, type = int, help = "number of epochs to fit the model")
 
+prs.add_argument('-b', '--batch_size', default=128, type=int, help = "minibatch size to use during training.")
+
 args = prs.parse_args()
 
 cuda_device = args.cuda_device
@@ -62,7 +64,7 @@ DestVI.setup_anndata(st_adata, layer="counts")
 # Set up model
 st_model = DestVI.from_rna_model(st_adata, sc_model)
 st_model.view_anndata_setup()
-st_model.train(max_epochs=args.epochs)
+st_model.train(max_epochs=args.epochs, batch_size=args.batch_size)
 
 # Save training figure
 st_model.history["elbo_train"].iloc[5:].plot()
