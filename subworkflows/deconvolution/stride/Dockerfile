@@ -26,6 +26,9 @@ RUN source activate stride && \
     sed -i '/import read_10X_h5/ s/$/, read_h5ad/' src/STRIDE/ModelTrain.py && \
     sed -n 1,7p /tmp/extra_code.txt > tmp && sed -i -e 35rtmp src/STRIDE/utility/IO.py && \
     sed -i "10i import scanpy" src/STRIDE/utility/IO.py && \
+    # borrowed from https://github.com/DongqingSun96/STRIDE/commit/5b7d845178ddecd6c5671b079fc0e6da40288be4
+    sed "201i \    celltype_topic_norm_df = celltype_topic_norm_df.fillna(0)" src/STRIDE/Deconvolution.py && \
+    sed "144i \    celltype_topic_norm_df = celltype_topic_norm_df.fillna(0)" src/STRIDE/Deconvolution.py && \
     pip install -r requirements.txt && python setup.py install
 
 RUN echo "source activate stride" >> ~/.bashrc
