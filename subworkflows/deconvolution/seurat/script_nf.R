@@ -5,7 +5,7 @@ library(dplyr)
 par <- list(
   tech = "none",
   norm.method = "vst",
-  n_hvgs = 2000,              # Number of variable features in either vst or SCT
+  n_hvgs = 2000,              # Number of variable features in either vst or sct
   n_int_features = 2000,      # Number of variable features used for integration
   npcs = 30,                  # Number of principal components
   dims = 30,                  # Number of dimensions for integration and other functions
@@ -117,9 +117,10 @@ transfer_anchors <- FindTransferAnchors(reference = scRNA.integrated, query = sp
 par$reduction <- ifelse(par$reduction == "rpca", "pcaproject", par$reduction)
 
 # k.weight error: see https://github.com/satijalab/seurat/issues/4427 
-for (i in 0:4){
+for (i in 0:(par$k.weight / 5)-1){
   # Try until k.weight is low enough
   k.weight = par$k.weight - (i*5)
+  cat("k.weight:", k.weight, "\n")
   predictions <- try(TransferData(anchorset = transfer_anchors,
                               refdata = scRNA.integrated[[par$annot, drop=TRUE]],
                               dims = 1:par$dims,
