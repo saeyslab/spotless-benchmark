@@ -65,29 +65,29 @@ if (class(spatial_data) != "Seurat"){
   )
 }
 
-cat ("Preprocessing and clustering spatial data...")
+cat ("Preprocessing and clustering spatial data...\n")
 giotto_obj_spatial <- normalizeGiotto(giotto_obj_spatial) %>% 
     calculateHVG() %>% runPCA() %>%
     createNearestNetwork(dimensions_to_use = 1:par$nn.dims, k = par$nn.k) %>%
     doLeidenCluster(resolution = par$cluster.res,
                     n_iterations = par$cluster.n_iter)
 
-cat("Finding marker genes from single-cell data...")
+cat("Finding marker genes from single-cell data...\n")
 markers <- findMarkers_one_vs_all(giotto_obj_scRNA,
                                   cluster_column = par$annot,
                                   method="gini", expression_values="normalized")
+
 # Use top 100 markers as marker genes (or as much as there is)
 top_markers <- lapply(unique(markers$cluster), function(celltype) {
                         top_n <- markers[markers$cluster == celltype, ][1:par$n_topmarkers,]$genes
                         top_n[!is.na(top_n)]
                       })
 
-signature_matrix <- makeSignMatrixPAGE(sign_names = unique(markers$cluster),
-                                       sign_list = top_markers)
-
-cat("Performing PAGE enrichment...")
-giotto_obj_spatial <- runPAGEEnrich(giotto_obj_spatial,
-                                    sign_matrix = signature_matrix)
+cat("Creating signature matrix...\n")
+signature_matrix <- makeSignMatrixDWLS(giotto_obj_scRNA,
+                                       expression_values = "normalized",
+                                       sign_gene = unlist(top_markers),
+                                       cell_type_vector = giotto_obj_scRNA@cell_metadata[[par$annot]])
 
 cat("Running deconvolution...\n")
 giotto_obj_spatial <- runDWLSDeconv(giotto_obj_spatial, sign_matrix = signature_matrix)
