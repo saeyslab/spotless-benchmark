@@ -29,6 +29,7 @@ assert (cuda_device.isdigit() or cuda_device == "cpu"), "invalid device input"
 
 print("Parameters\n==========")
 print("Training epochs: {}".format(args.epochs))
+print("Batch size: {}".format(args.batch_size))
 print("==========")
 
 ##### MAIN PART #####
