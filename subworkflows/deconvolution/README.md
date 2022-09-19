@@ -125,10 +125,13 @@ Model fitting (`params.deconv_args.destvi.fit`)
 
 #### STRIDE
 - `--gene-use`: location of the gene list file used to train the model, or "All" (longer runtime). By default the differential marker genes for each celltype will be used.
+- `--markers`: number of differential marker genes to use (calculated using rank_genes_groups function)
 - `--sc-scale-factor`: the scale factor for cell-level normalization (default: 75% quantile of nCount)
 - `--st-scale-factor`: the scale factor for spot-level normalization (default: 75% quantile of nCount for ST)
 - `--normalize`: flag indicating that the single-cell and spatial count matrices should be normalized (based on SD for each gene)
 - `--ntopics`: number of topics to train and test the model. Multiple numbers should be separated by space (e.g., --ntopics 6 7 8). STRIDE will automatically select the optimal topic number (default: checks ntopics from number_of_celltypes to 3 $\times$ number_of_celltypes)
+
+**Notes:** `--gene-use` and `--markers` cannot be passed together, and `--gene-use` will not work if there are spaces in your file name.
 
 
 #### Tangram
