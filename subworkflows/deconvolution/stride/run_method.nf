@@ -20,8 +20,29 @@ process runSTRIDE {
         python $params.rootdir/subworkflows/deconvolution/stride/createFiles.py \
            $sc_input $params.annot
 
+        echo "Arguments: $args"
+        if [[ "$args" == *"--markers"* ]] && [[ "$args" == *"--gene-use"* ]]
+        then
+          echo "ERROR: Both gene list and markers option is provided. You can only choose one."
+          exit 1
+
+        elif [[ "$args" == *"--markers"* ]]
+        then
+          echo "Identifying marker genes..."
+          python $params.rootdir/subworkflows/deconvolution/stride/identify_markers.py \
+            --sc-count $sc_input --annot $params.annot $args
+          
+          # Remove --markers from argument, add --gene-use
+          re='(.*)--markers[ ]*[0-9]+(.*)'
+          [[ "$args" =~ \$re ]]
+          new_args="\${BASH_REMATCH[1]}\${BASH_REMATCH[2]} --gene-use markers.txt"
+
+        else
+          new_args="$args"
+        fi
+
         STRIDE deconvolve --sc-count $sc_input --sc-celltype annot.txt \
-            --st-count $sp_input $args
+            --st-count $sp_input \$new_args
 
         mv STRIDE_spot_celltype_frac.txt $output
         
