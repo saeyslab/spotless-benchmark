@@ -43,6 +43,7 @@ if (par$dataset_type == "prior_from_data"){
                               seurat_obj = seurat_obj_scRNA,
                               dataset_type = par$dataset_type,
                               clust_var = par$clust_var,
+                              region_var = par$region_var,
                               n_regions = as.numeric(par$n_regions),
                               n_spots_min = as.numeric(par$n_spots_min),
                               n_spots_max = as.numeric(par$n_spots_max),

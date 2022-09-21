@@ -10,15 +10,16 @@
 # visium_sd:   sd of normal dist. used for downsampling each spot
 
 synvis:
-  sc_input: /home/chananchidas/spotless-benchmark/data/rds/liver_mouseStSt_nuclei_7celltypes.h5ad
-  clust_var: annot
-  type: prior,aud
-  reps: 1
+  sc_input: /home/chananchidas/spotless-benchmark/data/raw_data/sc_datasets/brain_cortex_generation.rds
+  clust_var: celltype
+  region_var: brain_subregion
+  type: real
+  reps: 10
   n_regions: 5
   dataset_id: "1"
   n_spots_min: 100
   n_spots_max: 200
   n_spots: 1000
-  visium_mean: 30000
-  visium_sd: 7500
+  visium_mean: 20000
+  visium_sd: 5000
 
