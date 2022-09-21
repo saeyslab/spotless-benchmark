@@ -149,6 +149,13 @@ nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name>
   --remap_annot /home/$USER/spotless-benchmark/standards/gold_standard_1/conversion.tsv 
 ```
 
+### Converting between Seurat/AnnData (rds/h5ad) objects
+The workflow detects whether the input file is of rds or h5ad format and converts the file to its counterpart. Use `params.convert_input` to indicate the  file(s) to be converted.
+```
+nextflow run subworkflows/helper_processes.nf -entry convertWorkflow -profile <profile_name> \
+--convert_input "standards/silver_standard_2-[1-8]/*.rds"
+```
+
 ## Platforms
 The workflow has been tested on three platforms:
 - NextFlow 21.04.3 on the Windows Subsystem for Linux (WSL2, Ubuntu 20.04), with Docker Desktop for Windows 4.1.0
