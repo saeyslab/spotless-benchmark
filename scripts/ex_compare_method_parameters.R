@@ -16,20 +16,22 @@ possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_d
                             "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
                             "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse")
 datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
-              'hippocampus', 'kidney', 'pbmc', 'scc_p5')
+              'hippocampus', 'kidney', 'scc_p5')
 proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
-                          "Hippocampus", "Kidney", "PBMC", "SCC (patient 5)") %>%
+                          "Hippocampus", "Kidney", "SCC (patient 5)") %>%
   setNames(datasets)
 
 read_results_one_ds <- function(comparisons, method, dataset,
                                 dt_subset=possible_dataset_types,
-                                path="~/spotless-benchmark/results/") {
-  # comparison is a named vector 
+                                path="~/spotless-benchmark/results/",
+                                rep_text="rep") {
+  # comparison is a named vector
+  if (rep_text == "rep") reps <- 1:10 else reps <- 0:6
   lapply(comparisons, function (ext) {
     lapply(dt_subset, function(dt){
-      lapply(1:10, function (repl) {
+      lapply(reps, function (repl) {
         read.table(paste0(path, dataset, "_", dt, "/metrics_", method, "_",
-                          dataset, "_", dt, "_rep", repl, ext),
+                          dataset, "_", dt, "_", rep_text, repl, ext),
                    header = TRUE, sep= " ")}) %>%
         do.call(rbind, .) %>% tibble::rownames_to_column(var="rep")
     }) %>% setNames(dt_subset) %>% melt(id.vars="rep")
@@ -41,8 +43,9 @@ read_results_one_ds <- function(comparisons, method, dataset,
 plot_one_ds <- function(results, moi){
   y_breaks <- list("prc" = c(0.6, 0.8, 1.0),
                    "RMSE" = c(0.05, 0.15, 0.25))
+  reps <- results %>% pull(rep) %>% unique %>% length
   summary_df <- results %>% filter(metric==moi) %>% group_by(source) %>%
-    mutate(id = 1:(length(unique(results$dataset_type))*10),
+    mutate(id = 1:(length(unique(results$dataset_type))*reps),
            dataset_type = str_remove(dataset_type, "artificial_")) %>%
     mutate(dt_linebreak = str_wrap(str_replace_all(dataset_type, "_", " "), width = 20)) %>%
     mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
@@ -57,7 +60,7 @@ plot_one_ds <- function(results, moi){
     facet_wrap(~dt_linebreak)
 }
 
-summary_df <- results %>% filter(metric==moi) %>% group_by(source) %>%
+#summary_df <- results %>% filter(metric==moi) %>% group_by(source) %>%
 
 
 
@@ -119,7 +122,6 @@ results <- lapply(seq(10,50,10), function (n_cells) {
     do.call(rbind, .)
 
 ## Plot
-
 proper_dataset_names <- c("Cortex", "Olfactory Bulb") %>% setNames(c("cortex_svz", "ob"))
 
 df <- results %>% filter(metric == "prc" | metric == "RMSE")
@@ -144,7 +146,20 @@ ggplot(df, aes(y=value, x=n_cells, group=fov)) +
 ggsave("D:/spotless-benchmark/plots/c2l_priors_seqFISH_bw.png",
        #width = 29.7, height = 15.0, units="cm", dpi = 300)
        width = 1600, height = 900, units="px")
-       
+
+
+#### GOLD STANDARD - DETECTION ALPHA ####
+comparison <- c("_d20", "") %>% setNames(c("d20", "d200"))
+results <- read_results_one_ds(comparison, "cell2location", "Eng2019",
+                               dt_subset="cortex_svz", rep_text="fov")
+plot_one_ds(results, "prc") + plot_one_ds(results, "RMSE")
+
+#### SILVER STANDARD - CELL2LOCATION N_CELLS_PER_LOC PRIORS ####
+comparison <- c("", "_30cells") %>% setNames(c("8cells", "30cells"))
+results <- read_results(comparison, "cell2location")
+plot_ds(results, "prc")
+plot_ds(results, "RMSE")
+
 #### SILVER STANDARD - MUSIC SAMPLE IDS ####
 comparison <- c("_nosampleID", "_withsampleID") %>% setNames(c("no_ID", "with_ID"))
 results <- read_results_one_ds(comparison, "music", datasets[1])
@@ -153,7 +168,7 @@ plot_one_ds(results, "RMSE")
 
 #### SILVER STANDARD - MUSIC PSEUDOSAMPLES ####
 comparison <- c("", "_pseudosample") %>% setNames(c("normal", "pseudosample"))
-dataset_subset <- c('kidney', 'pbmc', 'scc_p5') %>% setNames(c("Kidney", "PBMC", "SCC (P5)"))
+dataset_subset <- c('kidney', 'scc_p5') %>% setNames(c("Kidney", "SCC (P5)"))
 results <- read_results(comparison, "music", 
                         dataset_subset=dataset_subset)
 plot_ds(results, "prc")
@@ -251,3 +266,61 @@ comparison <- c("_constrained", "") %>% setNames(c("constrained", "clusters"))
 results <- read_results(comparison, "tangram")
 plot_ds(results, "prc")
 plot_ds(results, "RMSE")
+
+#### SILVER STANDARD - cell2location detection alpha ####
+comparison <- c("", "_d20") %>% setNames(c("d200", "d20"))
+results <- read_results_one_ds(comparison, "cell2location", "kidney",
+                               dt_subset=c("artificial_dominant_celltype_diverse", "artificial_uniform_distinct"))
+plot_ds(results, "prc")
+plot_ds(results, "RMSE")
+
+#### SILVER STANDARD - SPOTlight ####
+comparison <- c("_default", "_optim") %>% setNames(c("default", "optim"))
+results <- read_results_one_ds(comparison, "spotlight", datasets[3])
+plot_one_ds(results, "prc")
+plot_one_ds(results, "RMSE")
+
+#### SILVER STANDARD - SPOTlight ####
+comparison <- c("", "_spotlightyaml", "_stringent", "_optim") %>% setNames(c("current", "test", "stringent", "relaxed"))
+results <- read_results(comparison, "spotlight")
+plot_ds(results, "prc")
+plot_ds(results, "RMSE")
+
+#### SILVER STANDARD - SPOTlight (after email) ####
+comparison <- c("", "_stringent") %>% setNames(c("old", "stringent"))
+results <- read_results(comparison, "spotlight")
+plot_ds(results, "prc")
+plot_ds(results, "RMSE")
+
+#### SILVER STANDARD - SPATIALDWLS ####
+comparison <- c("", "_old") %>% setNames(c("new", "old"))
+results <- read_results(comparison, "spatialdwls")
+plot_ds(results, "prc")
+plot_ds(results, "RMSE")
+
+#### SILVER STANDARD - STRIDE ####
+comparison <- c("", "_50markers", "_raw") %>% setNames(c("old", "markers", "raw"))
+results <- read_results_one_ds(comparison, "stride", datasets[2])
+plot_one_ds(results, "prc")
+plot_one_ds(results, "RMSE")
+
+#### SILVER STANDARD - STEREOSCOPE ####
+comparison <- c("", "_5000hvgssub250") %>% setNames(c("old", "hvgssub"))
+results <- read_results_one_ds(comparison, "stereoscope", datasets[5])
+plot_one_ds(results, "prc")
+plot_one_ds(results, "RMSE")
+
+
+#### SILVER STANDARD - STEREOSCOPE (HVGs) ####
+comparison <- c("", "_5000hvgs") %>% setNames(c("old", "hvgs"))
+results <- read_results_one_ds(comparison, "stereoscope", datasets[2])
+plot_one_ds(results, "prc")
+plot_one_ds(results, "RMSE")
+
+#### SILVER STANDARD - DESTVI cerebellum nucleus ####
+comparison <- c("", "_5kepochsboth64b") %>% setNames(c("original", "epochs"))
+results <- read_results_one_ds(comparison, "destvi", datasets[2],
+                               dt_subset=possible_dataset_types[c(1,6,8)])
+
+plot_one_ds(results, "prc")
+plot_one_ds(results, "RMSE")

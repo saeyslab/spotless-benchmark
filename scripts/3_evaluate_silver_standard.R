@@ -3,17 +3,21 @@ library(stringr)
 library(ggplot2)
 library(precrec)
 library(reshape2)
-
+library(RColorBrewer)
 
 possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_distinct", "artificial_uniform_overlap", "artificial_diverse_overlap",
                             "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
                             "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse")
 datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
-              'hippocampus', 'kidney', 'pbmc', 'scc_p5')
+              'hippocampus', 'kidney', 'scc_p5')
 proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
-                          "Hippocampus", "Kidney", "PBMC", "SCC (patient 5)") %>%
+                          "Hippocampus", "Kidney", "SCC (patient 5)") %>%
                           setNames(datasets)
-methods <- c("spotlight", "music", "cell2location", "RCTD", "stereoscope", "spatialdwls", "destvi", "nnls", "dstg", "seurat", "tangram")
+methods <- c("spotlight", "music", "cell2location", "rctd", "stereoscope",
+             "spatialdwls", "destvi", "nnls", "dstg", "seurat", "tangram", "stride")
+proper_method_names <- c("SPOTlight", "MuSiC", "Cell2location", "RCTD", "Stereoscope",
+                         "SpatialDWLS", "DestVI", "NNLS", "DSTG", "Seurat", "Tangram", "STRIDE") %>%
+  setNames(methods)
 possible_metrics <- c("corr", "RMSE", "accuracy", "sensitivity", "specificity", "precision", "F1", "prc")
 proper_metric_names <- c("Correlation", "RMSE", "Accuracy", "Sensitivity", "Specificity", "Precision", "F1", "AUPR") %>%
   setNames(possible_metrics)
@@ -25,6 +29,7 @@ df_new <- lapply(datasets, function(ds) {
   lapply(tolower(methods), function (method) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
+        #print(paste(method, ds, dt, repl))
         read.table(paste0("~/spotless-benchmark/results/", ds, "_", dt, "/metrics_",
                                          method, "_", ds, "_", dt, "_rep", repl)) %>%
           t %>% data.frame %>%
@@ -37,14 +42,15 @@ df_new <- lapply(datasets, function(ds) {
   mutate("source" = "new")
 
 ##### BOXPLOT #####
-moi <- "RMSE"
+moi <- "prc"
 
 df_format <- df_new %>% filter(metric == moi, method != "nnls") %>%
   mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20),
          all_values = as.numeric(all_values)) %>%
   mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak))) %>%
-  mutate(method = str_replace(method, "RCTD", "rctd"))
-
+  mutate(method = str_replace(method, "RCTD", "rctd")) %>%
+  mutate(method = factor(method, levels=sort(methods)))
+  
 df_ref <- df_new %>% filter(metric == moi, method == "nnls") %>%
   group_by(dataset, dataset_type) %>% summarise(avg_val = median(as.numeric(all_values))) %>%
   mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20),
@@ -54,7 +60,7 @@ df_ref <- df_new %>% filter(metric == moi, method == "nnls") %>%
 
 p <- ggplot(df_format, aes(x=method, y=all_values, color=method)) + geom_boxplot(width=0.75) +
   ylab(paste0("Average ", proper_metric_names[moi])) + labs(color="Method") +
-  #scale_color_discrete(labels=c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope")) +
+  scale_color_manual(labels=sort(proper_method_names), values=col_vector[1:12]) + 
   theme_bw() +
   theme(legend.position="bottom", legend.direction = "horizontal",
         axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank(),
@@ -62,12 +68,16 @@ p <- ggplot(df_format, aes(x=method, y=all_values, color=method)) + geom_boxplot
   facet_grid(dataset ~ dt_linebreak, scales="free_y",
              labeller=labeller(dataset=proper_dataset_names)) +
   guides(color = guide_legend(nrow=1))
+qual_col_pals <- brewer.pal.info %>% filter(rownames(.) %in% c("Dark2", "Paired"))
+col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 
-p + geom_hline(data=df_ref, aes(yintercept=all_values), linetype="dashed", color="gray")
+p #+ geom_hline(data=df_ref, aes(yintercept=all_values), linetype="dashed", color="gray")
+ggsave("~/Pictures/facetgrid_AUPR.png", width=330, height=210, units="mm", dpi=200)
 
 ###### BAR PLOT OF BEST PERFORMERS #####
 df_new_best <- df_new %>%
   filter(!grepl("F2|balanced_accuracy|corr", metric)) %>% 
+  filter(method != "nnls") %>%
   # Calculate median of metrics
   group_by(metric, method, dataset, dataset_type) %>%
   summarise(median_val = round(median(as.numeric(all_values)), 3)) %>%
@@ -94,4 +104,20 @@ ggplot(df_new_best_subset, aes(x=metric, y=n, fill=method)) + geom_bar(width=0.4
   #                 labels=c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope", "Tie")) + theme_classic() +
   scale_y_continuous(expand = expansion(mult = c(0, 0.05))) + scale_x_discrete(limits = rev(levels(df_new_best_subset$metric))) +
   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.y = element_blank()) + coord_flip()
-ggsave("Pictures/barplot_rawcounts.png", width=150, height=60, units="mm", dpi=200)
+df_new_best_subset <- df_new_best_subset %>% mutate(method = factor(method, levels = c("Tie", rev(sort(methods[-8])))))
+
+ggplot(df_new_best_subset %>% filter(metric == "RMSE"),
+       aes(x=method, y=n, fill=method)) + geom_bar(width=0.4, position=position_stack(reverse=TRUE), stat="identity") +
+  ylab("% Best performing") + xlab("Metric") + labs(fill="Method") +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
+  scale_x_discrete(breaks = levels(df_new_best_subset$method),
+                   limits = levels(df_new_best_subset$method),
+                   labels = rev(c(sort(as.character(proper_method_names[-8])), "Tie"))) +
+  scale_fill_manual(limits = levels(df_new_best_subset$method),
+                    values=rev(col_vector[1:12])) +
+  theme_classic() +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.y = element_blank(),
+        legend.position="none") + coord_flip()
+#scale_fill_manual(labels=c("Tie", sort(proper_method_names)), values=col_vector) + 
+  
+ggsave("~/Pictures/barplot_RMSE.png", width=80, height=60, units="mm", dpi=200)
