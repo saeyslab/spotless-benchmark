@@ -150,10 +150,10 @@ nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name>
 ```
 
 ### Converting between Seurat/AnnData (rds/h5ad) objects
-The workflow detects whether the input file is of rds or h5ad format and converts the file to its counterpart. Use `params.convert_input` to indicate the  file(s) to be converted.
+The workflow detects whether the input file is of rds or h5ad format and converts the file to its counterpart. Use `params.convert_input` to indicate the  file(s) to be converted. In case of multiple files, they cannot be from different folders.
 ```
 nextflow run subworkflows/helper_processes.nf -entry convertWorkflow -profile <profile_name> \
---convert_input "standards/silver_standard_2-[1-8]/*.rds"
+--convert_input "standards/silver_standard_2-1/*.rds"
 ```
 
 ## Platforms
