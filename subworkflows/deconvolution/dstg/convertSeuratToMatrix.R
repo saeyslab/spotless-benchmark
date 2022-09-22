@@ -31,6 +31,9 @@ if (class(spatial_data) != "Seurat"){
   matrix_visium <- GetAssayData(spatial_data, slot="counts")
 }
 
+colnames(matrix_visium) <- stringr::str_replace_all(colnames(matrix_visium),
+                                                    "[/ .]", "") # Replace prohibited characters
+
 file_name_visium <- stringr::str_split(basename(par$sp_input), "\\.")[[1]][1]
 cat("Saving new file as", paste0(file_name_visium, "_matrix.rds..."), "\n")
 saveRDS(matrix_visium, paste0(file_name_visium, "_matrix.rds"))
