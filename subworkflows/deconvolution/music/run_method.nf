@@ -20,6 +20,7 @@ process runMusic {
         Rscript $params.rootdir/subworkflows/deconvolution/music/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
             --annot $params.annot --output $output \
+            --rootdir $params.rootdir \
             --sampleID $params.sampleID $args
         """
 

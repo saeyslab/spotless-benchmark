@@ -13,7 +13,17 @@ par <- list(
 
   # Leiden cluster
   cluster.res = 0.4,      # Cluster resolution
-  cluster.n_iter = 1000   # Iterations
+  cluster.n_iter = 1000,   # Iterations
+
+  # Downsampling cells
+  downsample_cells = TRUE, # If dense matrix is too big, downsample cells
+  target_n_cells = 10000,  # Max no. of cells per cell type
+
+  # Downsampling genes
+  downsample_genes = TRUE, # If dense matrix is too big, downsample genes
+  n_hvgs = 3000,           # Number of highly variable genes to keep
+  pct = 0.1,               # Percentage of cells which genes have to be expressed
+  assay_oi = "RNA",
 )
 
 # Replace default values by user input
@@ -29,6 +39,11 @@ seurat_obj_scRNA <- readRDS(par$sc_input)
 DefaultAssay(seurat_obj_scRNA) <- "RNA"
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
 cat("Found ", ncelltypes, "cell types in the reference.\n")
+
+if (prod(dim(seurat_obj_scRNA)) > 2**31){
+  cat("Reference is too large.\n")
+  source(paste0(par$rootdir, "/subworkflows/deconvolution/downsampleMatrix.R"))
+}
 
 cat("Converting to Giotto object and preprocessing...\n")
 giotto_obj_scRNA <- createGiottoObject(

@@ -17,6 +17,7 @@ process runSpatialDWLS {
         """
         Rscript $params.rootdir/subworkflows/deconvolution/spatialdwls/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
+            --rootdir $params.rootdir \
             --annot $params.annot --output $output $args
         """
 
