@@ -18,8 +18,6 @@ workflow {
             throw new Exception("Error: please enter --mode as 'run_standard', 'run_dataset', or 'generate_and_run'")
         }
 
-        println(all_standards)
-
         // RUN STANDARD PIPELINE
         if (params.mode ==~ /run_standard/ ){
             // Check pipeline name
