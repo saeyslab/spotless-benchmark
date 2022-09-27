@@ -23,6 +23,7 @@ process convertBetweenRDSandH5AD {
 
 process formatTSVFile {
     tag "format_${method_name}"
+    label 'trivial'
     container 'rocker/tidyverse:latest'
     publishDir { "${params.outdir.props}/${output_suffix.replaceFirst(/_[a-z]{3}[0-9]+/, "")}" },
                 mode: 'copy', pattern: "proportions_*"
@@ -46,8 +47,7 @@ process formatTSVFile {
 
 process createDummyFile {
     tag "dummy_${file_name}"
-    memory "1 MB"
-    cpus 1
+    label 'trivial'
 
     input:
         path (h5ad_file)

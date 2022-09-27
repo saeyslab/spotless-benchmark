@@ -1,5 +1,6 @@
 process getCellComposition {
     tag 'getcellcounts_tangram'
+    label 'trivial'
     container 'csangara/seuratdisk:latest'
 
     input:
