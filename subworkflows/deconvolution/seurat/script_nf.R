@@ -11,7 +11,8 @@ par <- list(
   dims = 30,                  # Number of dimensions for integration and other functions
   reduction = 'pcaproject',   # FindTransferAnchors (pcaproject, lsiproject, rpca, cca)
   k.score = 30,               # FindTransferAnchors
-  k.weight = 50               # TransferData
+  k.weight = 50,              # TransferData
+  conserve.memory = FALSE     # SCTransform
 )
 
 # Replace default values by user input
@@ -41,7 +42,6 @@ if (class(spatial_data) != "Seurat"){
   spatial_data <- CreateSeuratObject(spatial_data$counts)
 } else {
   DefaultAssay(spatial_data) <- names(spatial_data@assays) %>% .[grep("RNA|Spatial", .)[1]]
-  spatial_data <- GetAssayData(spatial_data, slot="counts")
 }
 
 # Check if multiple datasets have to be integrated
@@ -64,10 +64,12 @@ if (par$norm.method == "vst") {
                                                         verbose = FALSE)
 } else {
   seurat_obj_scRNA.list <- lapply(seurat_obj_scRNA.list, function (x) {
-      x %>% SCTransform(variable.features.n = par$n_hvgs, verbose = FALSE)
+      x %>% SCTransform(variable.features.n = par$n_hvgs, verbose = FALSE,
+                        conserve.memory = par$conserve.memory)
   })
   spatial_data <- SCTransform(spatial_data,
-                              assay = names(spatial_data@assays) %>% .[grep("RNA|Spatial", .)[1]])
+                              assay = DefaultAssay(spatial_data),
+                              conserve.memory = par$conserve.memory)
 }
 
 # Integrate reference datasets if there are more than one
