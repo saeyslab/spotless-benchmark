@@ -50,6 +50,7 @@ if (par$tech == "none" || ! par$tech %in% colnames(seurat_obj_scRNA@meta.data)){
 } else {
   seurat_obj_scRNA.list <- SplitObject(seurat_obj_scRNA, split.by = par$tech)
 }
+rm(seurat_obj_scRNA); gc()
 
 norm.method <- ifelse(par$norm.method == "sct", "SCT", "LogNormalize")
 
@@ -81,14 +82,23 @@ if (length(seurat_obj_scRNA.list) > 1) {
                                                 anchor.features = features)
   }
   
+  if (par$reduction == "rpca"){
+    seurat_obj_scRNA.list <- lapply(seurat_obj_scRNA.list, RunPCA, features = features)
+  }
+  
   # Integrate dataset
   scRNA.integration_anchors <- FindIntegrationAnchors(seurat_obj_scRNA.list,
                                                       anchor.features = features,
                                                       normalization.method = norm.method,
-                                                      dims = 1:par$dims)
+                                                      dims = 1:par$dims,
+                                                      reduction = par$reduction)
+  rm(seurat_obj_scRNA.list); gc()
+  
   scRNA.integrated <- IntegrateData(scRNA.integration_anchors, 
                                     normalization.method = norm.method,
                                     dims = 1:par$dims)
+  rm(scRNA.integration_anchors); gc()
+  
   DefaultAssay(scRNA.integrated) <- "integrated"
 } else {
   scRNA.integrated <- seurat_obj_scRNA.list[[1]]
