@@ -1,5 +1,6 @@
 library(Seurat)
 library(SeuratObject)
+library(magrittr)
 
 ##### SCRIPT TO CONVERT SEURAT OBJECT TO LIST WITH MATRIX FILE #####
 par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
@@ -31,8 +32,12 @@ if (class(spatial_data) != "Seurat"){
   matrix_visium <- GetAssayData(spatial_data, slot="counts")
 }
 
-colnames(matrix_visium) <- stringr::str_replace_all(colnames(matrix_visium),
-                                                    "[/ .]", "") # Replace prohibited characters
+colnames(matrix_visium) <- colnames(matrix_visium) %>%
+      # Replace prohibited characters
+      stringr::str_replace_all("[/ .]", "") %>%
+      # Add "spot_" if colname starts with number (otherwise, error downstream)
+      ifelse(stringr::str_detect(., "^[0-9]"),
+        paste0("spot_", .), .)
 
 file_name_visium <- stringr::str_split(basename(par$sp_input), "\\.")[[1]][1]
 cat("Saving new file as", paste0(file_name_visium, "_matrix.rds..."), "\n")
