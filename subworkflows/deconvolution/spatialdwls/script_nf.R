@@ -23,7 +23,7 @@ par <- list(
   downsample_genes = TRUE, # If dense matrix is too big, downsample genes
   n_hvgs = 3000,           # Number of highly variable genes to keep
   pct = 0.1,               # Percentage of cells which genes have to be expressed
-  assay_oi = "RNA",
+  assay_oi = "RNA"
 )
 
 # Replace default values by user input

@@ -17,7 +17,7 @@ saveRDS(matrix_scRNA, paste0(file_name_scrna, "_matrix.rds"))
 ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
 cat("Found ", ncelltypes, "cell types in the reference.\n")
 cell_types <- stringr::str_replace_all(seurat_obj_scRNA[[par$annot, drop=TRUE]],
-                                       "[/ .]", "") # Replace prohibited characters
+                                       "[/ .\\-&]", "") # Replace prohibited characters
 names(cell_types) <- colnames(seurat_obj_scRNA)
 cat("Saving cell types as", paste0(file_name_scrna, "_label.rds..."), "\n")
 saveRDS(cell_types, paste0(file_name_scrna, "_label.rds"))
@@ -34,7 +34,7 @@ if (class(spatial_data) != "Seurat"){
 
 colnames(matrix_visium) <- colnames(matrix_visium) %>%
       # Replace prohibited characters
-      stringr::str_replace_all("[/ .]", "") %>%
+      stringr::str_replace_all("[/ .\\-&]", "") %>%
       # Add "spot_" if colname starts with number (otherwise, error downstream)
       ifelse(stringr::str_detect(., "^[0-9]"),
         paste0("spot_", .), .)
