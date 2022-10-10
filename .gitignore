@@ -54,7 +54,6 @@ vignettes/*.pdf
 
 #### MISC ####
 AdRoit*
-standards/*
 deconv_proportions/*
 results/*
 work/*
@@ -62,3 +61,4 @@ data/raw_data/*
 plots/*
 logs/*
 trace*
+*jpeg
