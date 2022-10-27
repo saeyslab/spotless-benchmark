@@ -3,6 +3,33 @@ This is a repository for running spatial deconvolution tools through a Nextflow 
 
 **Quickstart guide**
 1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
+
+
+2. Download containers with path `csangara/sp_${method}:latest`, where method name is in all lowercase.
+
+<details> 
+<summary>Full code</summary>
+
+
+```
+# Method containers
+for method in cell2location destvi dstg music nnls rctd spatialdwls spotlight stereoscope stride seurat tangram
+do
+docker pull csangara/sp_${method}:latest
+done
+
+# Other
+docker pull csangara/sp_eval:latest # for computing performance metrics
+docker pull csangara/seuratdisk:latest # for converting between Seurat and AnnData objects internally
+
+# For singularity
+singularity pull docker://csangara/${container_name}:latest
+# You might have to define path to singularity containers using the "singularity.cacheDir" directive in the config file
+```
+
+
+</details>
+
 2. Clone this repository. (If Git LFS isn't installed, you will have to download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
 3. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`.
 (The other two profiles are used inside computing clusters, namely *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
