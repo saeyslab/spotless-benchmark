@@ -40,7 +40,9 @@ RUN git clone https://github.com/csangara/DSTG.git && \
     sed -i "42i\    count_names = count_names.drop([x for x in count_names.values if x not in features])" DSTG/DSTG/gutils.py && \
     # DSTG internally makes use of one function from SPOTlight, which we copy below
     sed -i "1i source('test_spot_fun.R')" DSTG/DSTG/R_utils.R && \
-    sed -i 's/SPOTlight:://' DSTG/DSTG/R_utils.R
+    sed -i 's/SPOTlight:://' DSTG/DSTG/R_utils.R && \
+    # Fixing bug for when number of genes <2000
+    sed -i "s/return (egen)/return (egen[!is.na(egen)])/" DSTG/DSTG/R_utils.R
 
 # Copy only needed file from SPOTlight instead of installing the whole package
 COPY test_spot_fun.R DSTG/DSTG/
