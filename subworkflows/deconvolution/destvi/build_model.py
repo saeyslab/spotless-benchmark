@@ -8,6 +8,8 @@ prs = arp.ArgumentParser()
 prs.add_argument('sc_data_path',
                     type = str, help = 'path to single cell h5ad count data')
 
+prs.add_argument('sp_data_path', type = str, help = "path to a spatial dataset to get gene names" )
+
 prs.add_argument('cuda_device', type = str, help = "index of cuda device ID or cpu")
 
 prs.add_argument('-o','--out_dir', default = None,
@@ -57,6 +59,13 @@ warnings.filterwarnings('ignore')
 ## scRNA reference (raw counts)
 print("Reading scRNA-seq data from " + args.sc_data_path + "...")
 sc_adata = sc.read_h5ad(args.sc_data_path)
+
+print("Reading in spatial data from " + args.sp_data_path + "...")
+st_adata = sc.read_h5ad(args.sp_data_path)
+
+if not all(sc_adata.var_names.isin(st_adata.var_names)):
+    print("Subsetting single-cell data to match genes in spatial data...")
+    sc_adata = sc_adata[:, sc_adata.var_names.isin(st_adata.var_names)].copy()
 
 # Filter genes
 print("Before filtering: {} genes.".format(sc_adata.shape[1]))

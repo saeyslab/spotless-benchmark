@@ -8,6 +8,7 @@ process buildDestVIModel {
 
     input:
         path (sc_input)
+        tuple path (sp_input_h5ad), path (sp_input_rds)
     output:
         tuple path ("adata.h5ad"), path ("model.pt")
 
@@ -19,7 +20,8 @@ process buildDestVIModel {
         """
         source activate scvi-env
         python $params.rootdir/subworkflows/deconvolution/destvi/build_model.py \
-            $sc_input $cuda_device -a $params.annot -o \$PWD/model $epochs $args
+            $sc_input $sp_input_h5ad $cuda_device -a $params.annot \
+            -o \$PWD/model $epochs $args
         mv model/* .
         """
 

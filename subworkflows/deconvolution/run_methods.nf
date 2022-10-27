@@ -130,7 +130,8 @@ workflow runMethods {
             }
 
             if ( methods =~ /destvi/ ) {
-                buildDestVIModel(sc_input_conv)
+                
+                buildDestVIModel(sc_input_conv, sp_input_pair.first())
                 
                 // Repeat model output for each spatial file
                 buildDestVIModel.out.combine(sp_input_pair)
@@ -194,8 +195,8 @@ workflow runMethods {
                 fitSTRIDEModel(stride_combined_ch.sp_input,
                                stride_combined_ch.model)
                 formatSTRIDE(fitSTRIDEModel.out) 
-                
                 */
+                
                 
                 runSTRIDE(sc_input_conv.combine(sp_input_pair))
                 formatSTRIDE(runSTRIDE.out)
