@@ -186,7 +186,9 @@ nextflow run subworkflows/helper_processes.nf -entry convertWorkflow -profile <p
 ```
 
 ## Platforms
-The workflow has been tested on three platforms:
-- NextFlow 21.04.3 on the Windows Subsystem for Linux (WSL2, Ubuntu 20.04), with Docker Desktop for Windows 4.1.0
-- NextFlow 20.10.3 on CentOS 7, with Singularity 3.8.1
-- NextFlow 21.03.0 on CentOS 7, with Singularity 3.8.5 (and NVIDIA Volta V100 GPUs)
+The workflow has been tested on the following platforms:
+- Local: NextFlow 21.04.3 on Windows Subsystem for Linux (WSL2, Ubuntu 20.04), with Docker Desktop for Windows 4.1.0
+- Local: Nextflow 21.10.6 on CentOS 8, with Docker 20.10.14
+- SGE cluster: NextFlow 20.10.3 on CentOS 7, with Singularity 3.8.1 
+- Slurm cluster: NextFlow 21.03.0 on CentOS 7, with Singularity 3.8.5 (and NVIDIA Volta V100 GPUs)
+
