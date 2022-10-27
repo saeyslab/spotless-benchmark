@@ -5,10 +5,10 @@ This is a repository for running spatial deconvolution tools through a Nextflow 
 1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
 
 
-2. Download containers with path `csangara/sp_${method}:latest`, where method name is in all lowercase.
+2. Download [containers](https://hub.docker.com/u/csangara).
 
 <details> 
-<summary>Full code</summary>
+<summary>Sample code</summary>
 
 
 ```
@@ -30,10 +30,10 @@ singularity pull docker://csangara/${container_name}:latest
 
 </details>
 
-2. Clone this repository. (If Git LFS isn't installed, you will have to download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
-3. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`.
-(The other two profiles are used inside computing clusters, namely *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
-4. While in the `spotless-benchmark/` directory:
+3. Clone this repository. (If Git LFS isn't installed, you will have to download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
+4. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`.
+(The other two profiles are used inside computing clusters: *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
+5. While in the `spotless-benchmark/` directory:
 ```
 nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/test_sc_data.rds \
 --sp_input unit-test/test_sp_data.rds --annot subclass
@@ -41,9 +41,11 @@ nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/
 # If singularity is installed, use -profile local,singularity
 ```
 
-This runs MuSiC as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). 
+This runs MuSiC as a test. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`).
 
 To run more methods, type the method names separated with a comma but no spaces, e.g., `--methods rctd,music`. To adjust method parameters, see `subworkflows/deconvolution/README.md`.
+
+‼**WARNING:** Do not run multiple methods simultaneously on your local computer, please only do so on a cluster!
 
 ## Running the pipeline
 **Input:**
