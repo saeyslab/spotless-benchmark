@@ -15,7 +15,7 @@ dataset_types = ["artificial_uniform_distinct", "artificial_diverse_distinct", "
                   "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
                   "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse"]
 datasets = ['brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
-              'hippocampus', 'kidney', 'pbmc', 'scc_p5']
+              'hippocampus', 'kidney', 'scc_p5']
 ref=False
 ref_text = "_ref" if ref else ""
 

@@ -7,12 +7,12 @@ library(ggplot2)
 #trace_file2 <- read.table("D:/spotless-benchmark/trace.txt", header=TRUE, sep="\t")
 
 datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
-             'hippocampus', 'kidney', 'pbmc', 'scc_p5')
+             'hippocampus', 'kidney', 'scc_p5')
 possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_distinct", "artificial_uniform_overlap", "artificial_diverse_overlap",
                             "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
                             "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse")
 proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
-                          "Hippocampus", "Kidney", "PBMC", "SCC (patient 5)") %>% setNames(datasets)
+                          "Hippocampus", "Kidney", "SCC (patient 5)") %>% setNames(datasets)
 fields <- str_split("task_id,hash,name,tag,status,exit,container,duration,realtime,cpus,disk,memory,attempt,pcpu,pmem,rss,peak_rss,vmem,peak_vmem", ",")[[1]]
 
 spotlight_logs <-  read.table("D:/spotless-benchmark/logs/hpc_cpu_spotlight.txt", sep="\t") %>%

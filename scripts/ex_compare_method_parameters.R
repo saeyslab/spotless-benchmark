@@ -67,7 +67,7 @@ plot_one_ds <- function(results, moi){
 read_results <- function(comparisons, method, dataset_subset=datasets,
                          dt_subset=possible_dataset_types,
                           path="~/spotless-benchmark/results/") {
-  # Read more than one dataset
+  # Read more than one dataset"
   lapply(dataset_subset, function (dataset) {
     lapply(comparisons, function (ext) {
       lapply(dt_subset, function(dt){
@@ -168,7 +168,7 @@ plot_one_ds(results, "RMSE")
 
 #### SILVER STANDARD - MUSIC PSEUDOSAMPLES ####
 comparison <- c("", "_pseudosample") %>% setNames(c("normal", "pseudosample"))
-dataset_subset <- c('kidney', 'scc_p5') %>% setNames(c("Kidney", "SCC (P5)"))
+dataset_subset <- c('kidney', 'pbmc', 'scc_p5') %>% setNames(c("Kidney", "PBMC", "SCC (P5)"))
 results <- read_results(comparison, "music", 
                         dataset_subset=dataset_subset)
 plot_ds(results, "prc")
@@ -319,8 +319,7 @@ plot_one_ds(results, "RMSE")
 
 #### SILVER STANDARD - DESTVI cerebellum nucleus ####
 comparison <- c("", "_5kepochsboth64b") %>% setNames(c("original", "epochs"))
-results <- read_results_one_ds(comparison, "destvi", datasets[2],
-                               dt_subset=possible_dataset_types[c(1,6,8)])
+results <- read_results(comparison, "destvi", datasets[1:6])
 
-plot_one_ds(results, "prc")
-plot_one_ds(results, "RMSE")
+plot_ds(results, "prc")
+plot_ds(results, "RMSE")

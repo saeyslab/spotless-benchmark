@@ -9,9 +9,9 @@ possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_d
                             "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
                             "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse")
 datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
-              'hippocampus', 'kidney', 'pbmc', 'scc_p5')
+              'hippocampus', 'kidney', 'scc_p5')
 proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
-                          "Hippocampus", "Kidney", "PBMC", "SCC (patient 5)") %>%
+                          "Hippocampus", "Kidney", "SCC (patient 5)") %>%
                         setNames(datasets)
 methods <- c("cell2location", "music", "rctd", "spotlight", "stereoscope")
 possible_metrics <- c("corr", "RMSE", "accuracy", "balanced_accuracy", "sensitivity", "specificity", "precision", "F1", "F2", "prc")

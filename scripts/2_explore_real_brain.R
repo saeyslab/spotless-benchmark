@@ -75,7 +75,7 @@ ggplot(df, aes(y=region, fill=celltype,x=n)) +
   geom_bar(stat="identity", position="fill", width=0.5) + theme_bw() +
   theme(legend.position="bottom", legend.direction = "horizontal",
         panel.grid=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
-  guides(fill = guide_legend(nrow = 2)) + scale_fill_manual(values=col_vector)
+  guides(fill = guide_legend(nrow = 3)) + scale_fill_manual(values=col_vector)
 #ggsave("Documents/region_distribution.png", height=15, width=30, units="cm")
 
 
