@@ -2,79 +2,123 @@ library(Seurat)
 library(tidyverse)
 library(ggplot2)
 library(patchwork)
+library(RColorBrewer)
+qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
+col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 
 # Read liver data with 3 samples (digest protocol - nuclei)
 # https://livercellatlas.org/data_files/toDownload/rawData_digestNuclei.zip
-liver_sn <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_snRNAseq_3samples/",
-                    gene.column=1)
-liver_sn_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_snRNAseq_3samples/",
-                           "moustStSt_snRNAseq_3samples_annot.csv")) %>%
-                  column_to_rownames("cell")
+# liver_sn <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_snRNAseq_3samples/",
+#                     gene.column=1)
+# liver_sn_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_snRNAseq_3samples/",
+#                            "moustStSt_snRNAseq_3samples_annot.csv")) %>%
+#                   column_to_rownames("cell")
 
 # Read liver data with 12 samples (Mouse stst - all liver cells)
 # https://livercellatlas.org/data_files/toDownload/rawData_mouseStSt.zip
-liver_sn <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_snRNAseq/",
+liver_all <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allcells/",
                     gene.column=1)
-liver_sn_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_snRNAseq/",
-                           "mouseStSt_snRNAseq_annot.csv")) %>%
+liver_all_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allcells/",
+                           "mouseStSt_annot.csv")) %>%
                             column_to_rownames("cell")
-table(liver_sn_annot$annot)
-table(liver_sn_annot$sample)
-liver_sn_annot <- liver_sn_annot %>% filter(digest == "nuclei")
-liver_sn_subset <- liver_sn[,colnames(liver_sn) %in% rownames(liver_sn_annot)]
 
-liver_seurat_obj <- CreateSeuratObject(counts = liver_sn_subset,
-                                       meta.data = liver_sn_annot)
-#saveRDS(liver_seurat_obj, "~/spotless-benchmark/data/rds/liver_moustStSt_snRNAseq_guilliams2022.rds")
-liver_seurat_obj <- readRDS("~/spotless-benchmark/data/rds/liver_moustStSt_snRNAseq_guilliams2022.rds")
-liver_seurat_obj <- readRDS("~/spotless-benchmark/data/rds/liver_mouseStSt_guilliams2022.rds")
+table(liver_all_annot$annot)
+table(liver_all_annot$sample)
 
+# Create seurat object
+liver_seurat_obj <- CreateSeuratObject(counts = liver_all,
+                                       meta.data = liver_all_annot)
+
+# Normalization and preprocessing (can skip)
 liver_seurat_obj <- liver_seurat_obj %>% NormalizeData %>% FindVariableFeatures %>%
   ScaleData %>% RunPCA(features = VariableFeatures(object = .)) %>% RunUMAP(dims=1:20)
 
-liver_df <- liver_seurat_obj@meta.data %>% group_by(sample, annot) %>% count()
-ggplot(liver_df, aes(x=sample, y=n, fill=annot)) + geom_bar(stat="identity", position="fill")
+#### COMBINING FINER ANNOTATION ####
+# Use finer annotation of CD45- cells to differentiate ECs
+annot_cd45_file <- read.csv("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allCells/annot_mouseStStCD45neg.csv")
+all(annot_cd45_file$cell %in% colnames(liver_seurat_obj))
 
-### Split the object into test and generation
-set.seed(2022)
-sampling_metadata <- liver_seurat_obj@meta.data %>%
-  rownames_to_column("cell_id") %>%
-  distinct(cell_id, annot, sample) %>%
-  group_by(annot, sample) %>%
-  sample_frac(0.5) %>% as_tibble()
+# Create dataframe with all cells of liver data; cells not in fine annotation will be NA
+annot_cd45 <- annot_cd45_file[match(Cells(liver_seurat_obj), annot_cd45_file$cell),] %>%
+  select(annot, cell) %>%  rename(annot_fine = annot) %>%
+  mutate(annot = liver_seurat_obj$annot, cell = Cells(liver_seurat_obj)) %>%
+  # Fill in NAs with original annotation
+  mutate(annot_fine = case_when(is.na(annot_fine) ~ annot,
+                                TRUE ~ annot_fine)) %>%
+  # remove "NucSeq" from Hepatocytes
+  mutate(annot_fine = str_remove(annot_fine, " NucSeq")) %>%
+  mutate(annot_fine = str_replace(annot_fine, "Portain", "Portal"))
 
-cell_ids_generation <- sampling_metadata %>% pull(cell_id)
-cell_ids_test <- liver_seurat_obj@meta.data %>% rownames() %>% setdiff(cell_ids_generation)
+# Check that the new annot is the same
+annot_cd45 %>% filter(cell %in% annot_cd45_file$cell) %>% select(annot_fine) %>% table
+annot_cd45_file$annot %>% table
+all(rownames(liver_seurat_obj@meta.data) == annot_cd45$cell)
 
-liver_seurat_obj_generation <- liver_seurat_obj %>% subset(cells = cell_ids_generation)
-liver_seurat_obj_test <- liver_seurat_obj %>% subset(cells = cell_ids_test)
+# Using even finer annotation of Myeloid, CD45-, and fibroblasts (from robin)
+annot_fine_file <- readRDS("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allCells/metadata_combined_robin.rds")
+annot_fine <- annot_fine_file[match(Cells(liver_seurat_obj), annot_fine_file$cell),]
+all(Cells(liver_seurat_obj) == annot_fine$cell)
 
-## To check if the two datasets are the same
-# Compare UMAP
-liver_seurat_obj_transformed <- liver_seurat_obj %>% SCTransform(ncells = 3000, verbose = FALSE) %>%
-  RunPCA(verbose = FALSE) %>% RunUMAP(dims = 1:30)
-p1 <- DimPlot(liver_seurat_obj_transformed, group.by = "annot")
-p2 <- DimPlot(liver_seurat_obj_transformed %>% subset(cells = cell_ids_generation), group.by = "annot")
-p3 <- DimPlot(liver_seurat_obj_transformed %>% subset(cells = cell_ids_test), group.by = "annot")
-p1 + p2 + p3 + plot_layout(ncol=3, guides = 'collect') &
-  theme(legend.position = "bottom", legend.direction = "horizontal")
+# Add to seurat_obj
+liver_seurat_obj$annot_cd45 <- annot_cd45$annot_fine
+liver_seurat_obj$annot_fine <- annot_fine$annot
 
-# Compare proportions
-liver_df <- lapply(list(liver_seurat_obj, liver_seurat_obj_generation, liver_seurat_obj_test),
-       function(k) k@meta.data %>% .$annot %>% table %>% stack) %>%
-  setNames(c("original", "generation", "test")) %>%
-  reshape2::melt(id.var=c("values", "ind")) %>% `colnames<-`(c("count", "celltype", "source"))
-ggplot(temp_df, aes(x=source,y=count,fill=celltype)) +
-  geom_bar(stat="identity") + theme_bw()
-ggplot(liver_df, aes(x=source, y=count, fill=celltype)) +
-  geom_bar(stat="identity", position="fill")
+#saveRDS(liver_seurat_obj, "~/spotless-benchmark/data/rds/liver_mouseStSt_guilliams2022.rds")
 
-# Save objects
-#liver_seurat_obj_generation %>% saveRDS("~/spotless-benchmark/data/rds/liver_snRNAseq_3samples_guilliams2022_generation.rds")
-#liver_seurat_obj_test %>% saveRDS("~/spotless-benchmark/data/rds/liver_snRNAseq_3samples_guilliams2022_test.rds")
+##### READ IN DATA #####
+liver_seurat_obj <- readRDS("~/spotless-benchmark/data/rds/liver_mouseStSt_guilliams2022.rds")
+
+# Plot cell type proportions of different samples and digests
+liver_df <- liver_seurat_obj@meta.data %>% group_by(sample, annot, digest) %>% count()
+
+ggplot(liver_df, aes(y=sample, x=n, fill=annot)) + geom_bar(stat="identity", position="fill") +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+  facet_wrap(~digest, scales="free") + theme_bw() +
+  theme(panel.grid = element_blank(), legend.position = "bottom",
+        legend.direction = "horizontal") +
+  scale_fill_manual(values=col_vector) +
+  guides(fill = guide_legend(nrow = 2)) + labs(fill="Celltype")
+ggsave("~/Pictures/dambi_28102022/liver_sampledigest.png",
+        width=300, height=150, units="mm", dpi=300)
+
+# Plot UMAP
+ggplot(liver_seurat_obj@meta.data, aes(x=UMAP_1, y=UMAP_2, color=annot)) +
+  geom_point(size=0.1)
+
+# Check distribution of cells
+liver_df <- liver_seurat_obj@meta.data
+
+ggplot(liver_df, aes(y=annot, fill=annot_fine)) + geom_bar(position="fill") +
+  scale_fill_manual(values=col_vector)
+ggplot(liver_df, aes(y=annot, fill=annot_cd45)) + geom_bar(position="fill") +
+  scale_fill_manual(values=col_vector)
+
+lapply(liver_seurat_obj$annot %>% unique, function(ct) {
+  liver_seurat_obj@meta.data %>% filter(annot == ct) %>% .$annot_fine %>% table
+  }) %>% setNames(liver_seurat_obj$annot %>% unique)
 
 
-## SPATIAL DATA ##
+##### CREATE DIFFERENT REFERENCE DATASETS #####
+# Save separate files depending on digest
+annotation <- "annot_cd45" # annot, annot_fine, or annot_cd45
+
+# Keep celltypes with more than 50 cells in all three digests
+cts_to_keep <- names(which(rowSums(table(liver_seurat_obj@meta.data[[annotation]],
+                                         liver_seurat_obj$digest) > 50) == 3))
+for (dig in unique(liver_seurat_obj$digest)){
+  cells_to_keep <- Cells(liver_seurat_obj)[liver_seurat_obj@meta.data[[annotation]] %in% cts_to_keep &
+                                            liver_seurat_obj$digest == dig]
+  num_cts <- length(cts_to_keep)
+  liver_temp <- liver_seurat_obj[,cells_to_keep]
+  ext <- ifelse(annotation == "annot", "", annotation)
+  saveRDS(liver_temp, paste0("spotless-benchmark/data/rds/liver_mouseStSt_",
+                             dig, "_", num_cts, "celltypes_", ext, ".rds"))
+}
+
+liver_seurat_obj <- liver_seurat_obj[,liver_seurat_obj$annot_cd45 %in% cts_to_keep]
+#saveRDS(liver_seurat_obj, "~/spotless-benchmark/data/rds/liver_mouseStSt_9celltypes.rds")
+
+#### SPATIAL DATA #####
 liver_spatial <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_visium/countTable_mouseStStVisium/",
                          gene.column=1)
 liver_spatial_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/",
@@ -107,89 +151,33 @@ for (i in 1:4){
   liver_spatial_seurat_obj@images$image <- image
   
   # Test
-  #print(SpatialDimPlot(liver_spatial_seurat_obj, "zonationGroup"))
-  saveRDS(liver_spatial_seurat_obj, paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
+  # print(SpatialDimPlot(liver_spatial_seurat_obj, "zonationGroup"))
+  # saveRDS(liver_spatial_seurat_obj, paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
 }
 
-# Check that synthetic data were generated nicely
-for (i in 1:10){
-  synthdata <- readRDS(paste0("spotless-benchmark/synthetic_data/liver_snRNAseq_guilliams2022_generation_prior_from_data_rep", i, ".rds"))
-  print(dim(synthdata$counts))
-  print(colMeans(synthdata$relative_spot_composition[,1:9]))
-  print(sum(colMeans(synthdata$relative_spot_composition[,1:9])))
-}
+i <- 1
+liver_spatial <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
+SpatialDimPlot(liver_spatial[,grepl("Central|Portal", liver_spatial$zonationGroup)], "zonationGroup")
 
-#### TO DO ####
-par = list(annot = "annot")
-celltypes <- unique(liver_seurat_obj[[par$annot, drop=TRUE]])
-ident <- celltypes[1]
-test2 <- get_expressed_genes(celltypes[2], liver_seurat_obj, par$annot)
-expressed_genes_list = unique(liver_seurat_obj$annot) %>% lapply(get_expressed_genes, liver_seurat_obj)
-features_keep = union(var_genes, expressed_genes_list %>% unlist() %>% unique()) # this keeps still: 
-celltypes_counts <- table(liver_seurat_obj$annot)
-celltypes_counts[celltypes_counts > 10000] = 10000
-
-lapply(get_expressed_genes, liver_seurat_obj, pct = 0.10, assay_oi = "RNA")
-var_genes <- VariableFeatures(liver_seurat_obj) 
-
-get_expressed_genes <- function(celltype_oi, seurat_obj, annot_col, assay_oi="RNA", pct=0.1){
-  cells_oi <- colnames(seurat_obj)[seurat_obj[[annot_col]] == celltype_oi]
-  exprs_mat <- seurat_obj[[assay_oi]]@data %>% .[, cells_oi]
+liver_spatial_subset <- liver_spatial[,grepl("Central|Portal", liver_spatial$zonationGroup)]
   
-  n_cells_oi = ncol(exprs_mat)
-  if (n_cells_oi < 5000) {
-    genes <- exprs_mat %>% apply(1, function(x) {
-      sum(x > 0)/n_cells_oi
-    }) %>% .[. >= pct] %>% names()
-  } else {
-    # If there are more than 5000 cells there seems to be some memory issue
-    # Split into chunks of 100 genes
-    splits = split(1:nrow(exprs_mat), ceiling(seq_along(1:nrow(exprs_mat))/100))
-    genes = splits %>% lapply(function(genes_indices, exprs,
-                                       pct, n_cells_oi) {
-      begin_i = genes_indices[1]
-      end_i = genes_indices[length(genes_indices)]
-      exprs = exprs[begin_i:end_i, ]
-      genes = exprs %>% apply(1, function(x) {
-        sum(x > 0)/n_cells_oi
-      }) %>% .[. >= pct] %>% names()
-    }, exprs_mat, pct, n_cells_oi) %>% unlist() %>%
-      unname()
-  }
-  return (genes)
-}
+ind <- bind_cols(liver_spatial_subset$zonationGroup, GetTissueCoordinates(liver_spatial_subset)) %>%
+  setNames(c("zonationGroup", "row", "col"))
+ggplot(ind, aes(x=col, y=row, color=zonationGroup)) + geom_point(size=3) +
+  coord_fixed() + theme_classic(base_size=20) + scale_y_reverse() +
+  theme(axis.line = element_blank(), axis.text = element_blank(),
+        axis.ticks = element_blank(), axis.title = element_blank(),
+        legend.title=element_blank(),
+        legend.background = element_rect(fill = "transparent"),
+        legend.box.background = element_rect(fill = "transparent"),
+        legend.key = element_rect(fill = "transparent"),
+        panel.background = element_rect(fill = "transparent",
+                                        colour = NA_character_), # necessary to avoid drawing panel outline
+        plot.background = element_rect(fill = "transparent",
+                                       colour = NA_character_) # necessary to avoid drawing plot outline
+  ) +
+  scale_color_manual(labels=c("Central Vein", "Portal Vein"),
+                       values=c("#BCF8EC", "#507255"))
 
-downsample_cells <- function(seurat_obj, annot_col, target_n_cells = 10000){
-  index_keep <- sapply(unique(seurat_obj[[annot_col, drop=TRUE]]), function(celltype){
-    indices_oi <- which(seurat_obj[[annot_col]] == celltype)
-    n_cells <- min(target_n_cells, length(indices_oi))
-    sample(indices_oi, n_cells, replace=FALSE)
-  })
-  return (unlist(index_keep) %>% sort())
-}
-
-new_seurat_obj <- liver_seurat_obj[, new_cells]
-
-##### LIVER nUMIs ####
-liver_sc_counts <- liver_seurat_obj@meta.data %>% select(nCount_RNA, nFeature_RNA, digest) %>%
-  rename(sample=digest)
-
-liver_spatial_counts <- lapply(1:4, function (i) {
-  liver_spatial_seurat_obj <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
-  liver_spatial_seurat_obj@meta.data %>% select(nCount_RNA, nFeature_RNA, sample)
-}) %>% do.call(rbind, .)
-
-liver_synthetic_counts <- lapply(1:2, function (i) {
-  liver_synthvisium <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_8/liver_prior_from_data_rep", i, ".rds"))
-  temp <- data.frame(nCount_RNA = colSums(liver_synthvisium$counts),
-                     nFeature_RNA = colSums(liver_synthvisium$counts > 0),
-                     sample = paste0("synth", i))
-}) %>% do.call(rbind, .)
-
-liver_counts_df <- rbind(liver_sc_counts, liver_spatial_counts, liver_synthetic_counts) %>%
-  mutate(sample = factor(sample, levels=unique(sample)))
-p1 <- ggplot(liver_counts_df, aes(x=sample, color=sample, y=nCount_RNA)) + geom_violin() +
-  theme_bw() + ggtitle("nCount_RNA") + theme(axis.title=element_blank())
-p2 <- ggplot(liver_counts_df, aes(x=sample, color=sample, y=nFeature_RNA)) + geom_violin() +
-  theme_bw() + ggtitle("nFeature_RNA") + theme(axis.title=element_blank())
-p1 + p2 & theme(legend.position = "none")
+ggsave("~/Pictures/SCG_poster/liver_points.png",
+       width=200, height=120, units="mm", dpi=300)
