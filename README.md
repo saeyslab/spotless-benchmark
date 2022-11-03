@@ -3,10 +3,37 @@ This is a repository for running spatial deconvolution tools through a Nextflow 
 
 **Quickstart guide**
 1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
-2. Clone this repository. (If Git LFS isn't installed, you will have to download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
-3. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`.
-(The other two profiles are used inside computing clusters, namely *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
-4. While in the `spotless-benchmark/` directory:
+
+
+2. Download [containers](https://hub.docker.com/u/csangara).
+
+<details> 
+<summary>Sample code</summary>
+
+
+```
+# Method containers
+for method in cell2location destvi dstg music nnls rctd spatialdwls spotlight stereoscope stride seurat tangram
+do
+docker pull csangara/sp_${method}:latest
+done
+
+# Other
+docker pull csangara/sp_eval:latest # for computing performance metrics
+docker pull csangara/seuratdisk:latest # for converting between Seurat and AnnData objects internally
+
+# For singularity
+singularity pull docker://csangara/${container_name}:latest
+# You might have to define path to singularity containers using the "singularity.cacheDir" directive in the config file
+```
+
+
+</details>
+
+3. Clone this repository. (If Git LFS isn't installed, you will have to download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
+4. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`.
+(The other two profiles are used inside computing clusters: *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
+5. While in the `spotless-benchmark/` directory:
 ```
 nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/test_sc_data.rds \
 --sp_input unit-test/test_sp_data.rds --annot subclass
@@ -14,9 +41,11 @@ nextflow run main.nf -profile local,docker --methods music --sc_input unit-test/
 # If singularity is installed, use -profile local,singularity
 ```
 
-This runs MuSiC as a test. The first run might take a few minutes because the containers have to be downloaded. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`). 
+This runs MuSiC as a test. If this works, you should see the proportions and metrics inside `deconv_proportions/` and `results/` respectively (these directories can be changed under `params.outdir`).
 
 To run more methods, type the method names separated with a comma but no spaces, e.g., `--methods rctd,music`. To adjust method parameters, see `subworkflows/deconvolution/README.md`.
+
+‼**WARNING:** Do not run multiple methods simultaneously on your local computer, please only do so on a cluster!
 
 ## Running the pipeline
 **Input:**
@@ -157,7 +186,9 @@ nextflow run subworkflows/helper_processes.nf -entry convertWorkflow -profile <p
 ```
 
 ## Platforms
-The workflow has been tested on three platforms:
-- NextFlow 21.04.3 on the Windows Subsystem for Linux (WSL2, Ubuntu 20.04), with Docker Desktop for Windows 4.1.0
-- NextFlow 20.10.3 on CentOS 7, with Singularity 3.8.1
-- NextFlow 21.03.0 on CentOS 7, with Singularity 3.8.5 (and NVIDIA Volta V100 GPUs)
+The workflow has been tested on the following platforms:
+- Local: NextFlow 21.04.3 on Windows Subsystem for Linux (WSL2, Ubuntu 20.04), with Docker Desktop for Windows 4.1.0
+- Local: Nextflow 21.10.6 on CentOS 8, with Docker 20.10.14
+- SGE cluster: NextFlow 20.10.3 on CentOS 7, with Singularity 3.8.1 
+- Slurm cluster: NextFlow 21.03.0 on CentOS 7, with Singularity 3.8.5 (and NVIDIA Volta V100 GPUs)
+
