@@ -12,6 +12,3 @@ deconv_args:
     fit: "-e 5000 -b 64"
   seurat: "--norm.method sct"
   stride: "--normalize"
-
-#runID_props: "_5kepochsboth64b"
-#runID_metrics: "_5kepochsboth64b"
