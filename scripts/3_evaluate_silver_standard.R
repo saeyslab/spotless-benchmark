@@ -4,10 +4,13 @@ library(ggplot2)
 library(precrec)
 library(reshape2)
 library(RColorBrewer)
+qual_col_pals <- brewer.pal.info %>% filter(rownames(.) %in% c("Dark2", "Paired"))
+col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 
 possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_distinct", "artificial_uniform_overlap", "artificial_diverse_overlap",
                             "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
-                            "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse")
+                            "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse",
+                            "artificial_missing_celltypes_visium")
 datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
               'hippocampus', 'kidney', 'scc_p5')
 proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
@@ -21,6 +24,10 @@ proper_method_names <- c("SPOTlight", "MuSiC", "Cell2location", "RCTD", "Stereos
 possible_metrics <- c("corr", "RMSE", "accuracy", "sensitivity", "specificity", "precision", "F1", "prc")
 proper_metric_names <- c("Correlation", "RMSE", "Accuracy", "Sensitivity", "Specificity", "Precision", "F1", "AUPR") %>%
   setNames(possible_metrics)
+
+calculate_dirichlet_ref <- FALSE
+show_dirichlet_ref <- TRUE
+
 
 ##### READ IN RESULTS #####
 setwd("~/spotless-benchmark")
@@ -56,7 +63,18 @@ df_ref <- df_new %>% filter(metric == moi, method == "nnls") %>%
   mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20),
          all_values = avg_val) %>%
   mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
-  
+
+if (calculate_dirichlet_ref){
+  source("scripts/ex_reference_metric.R")
+}
+
+df_ref_dirichlet <- readRDS("standards/ref_all_metrics.rds")
+df_ref_dirichlet <- df_ref_dirichlet %>% filter(metric == moi) %>%
+  group_by(dataset, dataset_type) %>% summarise(avg_val = median(value)) %>%
+  mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20),
+         all_values = avg_val) %>%
+  mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
+
 
 p <- ggplot(df_format, aes(x=method, y=all_values, color=method)) + geom_boxplot(width=0.75) +
   ylab(paste0("Average ", proper_metric_names[moi])) + labs(color="Method") +
@@ -68,11 +86,15 @@ p <- ggplot(df_format, aes(x=method, y=all_values, color=method)) + geom_boxplot
   facet_grid(dataset ~ dt_linebreak, scales="free_y",
              labeller=labeller(dataset=proper_dataset_names)) +
   guides(color = guide_legend(nrow=1))
-qual_col_pals <- brewer.pal.info %>% filter(rownames(.) %in% c("Dark2", "Paired"))
-col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 
-p #+ geom_hline(data=df_ref, aes(yintercept=all_values), linetype="dashed", color="gray")
-ggsave("~/Pictures/facetgrid_AUPR.png", width=330, height=210, units="mm", dpi=200)
+p <- p + geom_hline(data=df_ref, aes(yintercept=all_values), linetype="dashed", color="gray")
+if (show_dirichlet_ref){
+  p <- p + geom_hline(data=df_ref_dirichlet, aes(yintercept=all_values), color="gray")
+  
+}
+p
+ggsave(paste0("~/Pictures/benchmark_paper/facetgrid_", proper_metric_names[moi], ".png"),
+       width=330, height=180, units="mm", dpi=200)
 
 ###### BAR PLOT OF BEST PERFORMERS #####
 df_new_best <- df_new %>%
@@ -121,3 +143,54 @@ ggplot(df_new_best_subset %>% filter(metric == "RMSE"),
 #scale_fill_manual(labels=c("Tie", sort(proper_method_names)), values=col_vector) + 
   
 ggsave("~/Pictures/barplot_RMSE.png", width=80, height=60, units="mm", dpi=200)
+
+####### RANK SUM #######
+df_ranked <- df_new %>%
+  filter(!grepl("F2|balanced_accuracy|corr", metric)) %>% 
+  #filter(method != "nnls") %>%
+  # Calculate median of metrics
+  group_by(metric, method, dataset, dataset_type) %>%
+  summarise(median_val = round(median(as.numeric(all_values)), 3)) %>%
+  group_by(metric, dataset, dataset_type) %>%
+  mutate(rank = case_when(metric == "RMSE" ~ dense_rank(median_val),
+                 metric != "RMSE" ~ dense_rank(desc(median_val))))
+
+df_ranked %>% group_by(method, metric) %>% summarise(summed_rank= sum(rank)) %>%
+  group_by(metric) %>% arrange(summed_rank, .by_group = TRUE) %>%
+  filter(metric == "RMSE")
+
+col_vector <- brewer.pal(12, "Paired")
+moi <- "prc"
+best_performers <- df_ranked %>% filter(metric == moi) %>% 
+  group_by(method) %>% summarise(summed_rank = sum(rank)) %>%
+  arrange(summed_rank) %>% pull(method)
+
+df_ranked_format <- df_ranked %>% filter(metric == moi) %>%
+                              mutate(#rank = factor(rank),
+                              method = factor(method, levels = rev(best_performers)))
+  
+ggplot(df_ranked_format,
+       aes(x=method, y=rank, fill=factor(rank))) +
+  geom_bar(width=0.4, position=position_stack(reverse=TRUE), stat="identity") +
+  #ylab(paste0(proper_metric_names[moi], " rankings across 54 scenarios")) +
+  ggtitle(proper_metric_names[moi])+
+  xlab("Method") + labs(fill="Rank") +
+  scale_x_discrete(breaks = levels(df_ranked_format$method),
+                   limits = levels(df_ranked_format$method),
+                   labels = proper_method_names[levels(df_ranked_format$method)]) +
+  scale_fill_manual(limits = levels(df_ranked_format$rank),
+                    values=col_vector) +
+  scale_y_continuous(expand=c(0, 0.6)) +
+  coord_flip() +
+  #facet_wrap(~dataset_type) +
+  theme_classic(base_size=20) +
+  theme(axis.title.y = element_blank(), 
+        axis.title.x = element_blank(),
+        legend.position = "none") #+
+  #guides(fill = guide_legend(ncol=2))
+
+ggsave(paste0("~/Pictures/benchmark_paper/rankplot_", proper_metric_names[moi], ".png"),
+       width=200, height=120, units="mm", dpi=200)
+
+ggsave(paste0("~/Pictures/SCG_poster/rankplot_", proper_metric_names[moi], ".png"),
+       width=150, height=120, units="mm", dpi=300)
