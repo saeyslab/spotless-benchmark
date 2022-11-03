@@ -11,6 +11,7 @@ library(ggplot2)
 library(Matrix)
 library(gridExtra)
 library(stringr)
+library(magrittr)
 library(patchwork)
 
 #### HELPER FUNCTIONS ####
@@ -39,7 +40,7 @@ get_coarse_annot <- function(celltype){
 #### CHANGEABLE PARAMS ####
 path <- "~/spotless-benchmark/data/raw_data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
-dataset <- "cortex_svz" # cortex_svz or ob
+dataset <- "ob" # cortex_svz or ob
 standard_no <- ifelse(dataset == "cortex_svz", 1, 2)
 fov_no <- 0 # 0-6
 combine_all_plots <- FALSE
@@ -48,7 +49,8 @@ combine_all_plots <- FALSE
 annot <- read.csv(paste0(path, dataset, "_cell_type_annotations.csv"))
 cluster <- read.csv(paste0(path, dataset, "_cluster_names.csv")) %>%
   `colnames<-`(c("louvain", "celltype"))
-counts <- read.csv(paste0(path, dataset, "_counts.csv")) %>% `rownames<-`(annot$index)
+counts <- read.csv(paste0(path, dataset, "_counts.csv"), check.names = FALSE) %>%
+  `rownames<-`(annot$index)
 coords <- read.csv(paste0(path, dataset, "_cellcentroids.csv"))
 
 # Combine metadata information: cell no., louvain cluster & corresponding cell type,
@@ -73,6 +75,7 @@ if (dataset == "ob"){
 library(Seurat)
 seurat_obj <- CreateSeuratObject(counts=t(counts[metadata$celltype != "Unannotated",]),
                                  meta.data=metadata[metadata$celltype != "Unannotated",])
+seurat_obj <- RenameCells(seurat_obj, add.cell.id = "cell")
 # saveRDS(seurat_obj, paste0("~/spotless-benchmark/data/gold_standard_", standard_no, "/reference/reference_", dataset, ".rds"))
 
 # seurat_obj <- seurat_obj %>% ScaleData() %>% FindVariableFeatures() %>%
@@ -151,7 +154,8 @@ for (fov_no in 0:6){
   spot_counts <- data.frame(counts_subset) %>% add_column(index=rownames(meta_subset)) %>%
     filter(index %in% cells_in_spots$index) %>%
     column_to_rownames("index") %>% group_by(cells_in_spots$spot_no) %>%
-    summarise(across(everything(), sum)) %>% column_to_rownames(var="cells_in_spots$spot_no")
+    summarise(across(everything(), sum)) %>% column_to_rownames(var="cells_in_spots$spot_no") %>%
+    set_colnames(colnames(counts_subset)) %>% set_rownames(paste0("spot_", rownames(.)))
   # Convert to sparse matrix
   spot_counts_sparse <- as(t(spot_counts), "dgCMatrix")
   
@@ -159,7 +163,8 @@ for (fov_no in 0:6){
   ncelltypes <- length(unique(cells_in_spots$celltype))
   spot_composition <- cells_in_spots %>% count(spot_no, celltype) %>%
     tidyr::pivot_wider(names_from=celltype, values_from=n, values_fill=0) %>%
-    relocate(spot_no, .after = last_col()) %>% data.frame
+    relocate(spot_no, .after = last_col()) %>% data.frame %>%
+    mutate(spot_no = paste0("spot_", spot_no))
   
   ## 3. RELATIVE SPOT COMPOSITION (spots x celltypes (+1)) ##
   relative_spot_composition <- spot_composition[,-(ncelltypes+1)]/rowSums(spot_composition[,-(ncelltypes+1)])
@@ -168,7 +173,8 @@ for (fov_no in 0:6){
   ## 4. SPOT COORDINATES (spots x 2) ##
   spot_coordinates <- gtools::permutations(n=n_spots,r=2,repeats.allowed=T) %>%
     get_spot_center(start, spot_diameter, cc_distance, .) %>% `colnames<-`(c("x", "y")) %>%
-    data.frame %>% slice(spot_composition$spot_no) %>% `rownames<-`(spot_composition$spot_no)
+    data.frame %>% slice(as.numeric(str_extract(spot_composition$spot_no, "[0-9]+$"))) %>%
+    set_rownames(spot_composition$spot_no)
   
   ## 5. DATASET PROPERTIES ##
   dataset_properties <- data.frame("technology"="seqFISH+",
@@ -187,7 +193,7 @@ for (fov_no in 0:6){
   # Save rds
   filename <- paste0(dataset_source, "_", dataset, "_fov", fov_no)
   
-  # saveRDS(full_data, paste0("D:/spotless-benchmark/data/gold_standard_", standard_no, "/", filename, ".rds"))
+  saveRDS(full_data, paste0("~/spotless-benchmark/standards/gold_standard_", standard_no, "/", filename, ".rds"))
 
   # Save plot and add additional information on cells, celltypes and counts
   # plot_table <- cells_in_spots %>% group_by(spot_no) %>%
