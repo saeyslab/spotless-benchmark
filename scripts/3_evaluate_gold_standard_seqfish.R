@@ -1,10 +1,16 @@
 library(ggplot2)
 library(dplyr)
 library(reshape2)
+library(RColorBrewer)
 library(ungeviz) # geom_hpline
-
+qual_col_pals <- brewer.pal.info %>% filter(rownames(.) %in% c("Dark2", "Paired"))
+col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 path <- "~/spotless-benchmark/results/"
-methods <- c("cell2location", "music", "rctd", "spotlight", "stereoscope", "destvi", "spatialdwls")
+methods <- c("spotlight", "music", "cell2location", "rctd", "stereoscope",
+             "spatialdwls", "destvi", "nnls", "dstg", "seurat", "tangram", "stride")
+proper_method_names <- c("SPOTlight", "MuSiC", "Cell2location", "RCTD", "Stereoscope",
+                         "SpatialDWLS", "DestVI", "NNLS", "DSTG", "Seurat", "Tangram", "STRIDE") %>%
+  setNames(methods)
 metrics <- c("RMSE", "prc")
 datasets <- c("cortex_svz", "ob")
 fovs <- 0:6
@@ -61,8 +67,9 @@ for (dataset_i in 1:2){
 #### READ IN ALL FILES ####
 # Read in all files
 results <- lapply(c("cortex_svz", "ob"), function (dataset) {
-  lapply(methods, function (method) {
+  lapply(tolower(methods), function (method) {
     lapply(fovs, function(fov){
+      print(paste(method, dataset, fov))
       read.table(paste0(path, "Eng2019_", dataset, "/metrics_", method,
                         "_Eng2019_", dataset, "_fov", fov),
                  header = TRUE, sep= " ")}) %>%
@@ -141,6 +148,21 @@ df %>% filter(metric == "RMSE") %>% group_by(method, dataset) %>%
 df %>% filter(metric == "prc") %>% group_by(method, dataset) %>%
   summarise(mean=mean(value)) %>% arrange(dataset, mean)
 
+
+## GET RANK
+df_ranked <- df %>%
+  # Calculate mean of metrics
+  group_by(metric, method, dataset) %>%
+  summarise(mean_val = mean(value)) %>%
+  group_by(metric, dataset) %>%
+  mutate(rank = case_when(metric == "RMSE" ~ dense_rank(mean_val),
+                          metric != "RMSE" ~ dense_rank(desc(mean_val))))
+
+df_ranked %>% group_by(method, metric) %>% summarise(summed_rank= sum(rank)) %>%
+  group_by(metric) %>% arrange(summed_rank, .by_group = TRUE) %>%
+  filter(metric == "prc")
+
+
 #### ALTERNATE PLOT WITHOUT FACETS ####
 # Just so I can change the y-lims
 library(patchwork)
@@ -170,27 +192,35 @@ args <- list(metric = metrics,
              xlims = list(c(0, 0.3), c(0, 1)),
              xbreaks = list(c(0, 0.1, 0.2, 0.3), c(0, 0.5, 1)),
              titles = c("RMSE", "AUPR"))
-df <- df %>% mutate(method = factor(method, levels=rev(unique(method))))
+df <- df %>% #filter(method != "nnls") %>%
+  mutate(method = factor(method, levels=rev(sort(unique(method)))))
 ps <- lapply(1:2, function(i){
   # The two datasets are plotted side by side
-  p <- ggplot(df[df$metric==args$metric[i],],
+  best_performers <- df_ranked %>% filter(metric == args$metric[i]) %>% 
+    group_by(method) %>% summarise(summed_rank = sum(rank)) %>%
+    arrange(summed_rank) %>% pull(method)
+  
+  p <- ggplot(df %>% filter(metric==args$metric[i]) %>%
+                mutate(method = factor(method, levels = rev(best_performers))),
          aes(x=value, y=method, colour=method, group=dataset, shape=dataset)) +
-    stat_summary(geom = "point", fun = "mean", size=1.5) +
+    stat_summary(geom = "point", fun = "mean", size=4, color="black") +
     # Reduce noise
-    theme_bw() + theme(legend.position="none", axis.title = element_blank(),
+    theme_classic(base_size=20) + theme(legend.position="none", axis.title = element_blank(),
                        legend.title = element_blank(),
                        panel.grid = element_blank()) +
-    scale_y_discrete(labels=rev(c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope"))) +
-    scale_color_manual(values=rev(c("#f8766d", "#a3a500", "#00bf7d", "#00b0f6", "#e76bf3"))) +
+    scale_y_discrete(labels=proper_method_names) +
+    #scale_color_manual(values=rev(col_vector[1:12])) +
     scale_x_continuous(limits = args$xlims[[i]], breaks=args$xbreaks[[i]]) +
     ggtitle(args$titles[i])
-  if (i==2) {p <- p + theme(axis.text.y = element_blank(),
-                            axis.ticks.y = element_blank())
-  }
+  
   p
 })
+
 ps[[1]] + ps[[2]]
-ggsave("Pictures/conference_goldstandard.png", units="px", width=1800, height=900)
+ggsave("~/Pictures/SCG_poster/goldstandard_RMSE.png",
+       ps[[1]], width=150, height=120, units="mm", dpi=300)
+ggsave("~/Pictures/SCG_poster/goldstandard_AUPR.png",
+       ps[[2]], width=150, height=120, units="mm", dpi=300)
 
 ### BARPLOT ###
 results <- lapply(c("cortex_svz", "ob"), function (dataset) {
