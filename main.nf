@@ -72,7 +72,7 @@ workflow {
         // Can have one or more files
         sp_input_ch = (params.mode ==~ /generate_and_run/ ? generateSyntheticData.out : Channel.fromPath(params.sp_input))
 
-        //runMethods(sc_input_ch, sp_input_ch, sc_input_type, sp_input_type)
+        runMethods(sc_input_ch, sp_input_ch, sc_input_type, sp_input_type)
         
         if (!params.skip_metrics){
             computeMetrics(runMethods.out)
