@@ -14,10 +14,12 @@ process runRCTD {
         output_suffix = file(sp_input).getSimpleName()
         output = "proportions_rctd_${output_suffix}${params.runID_props}"
         num_cores = task.cpus
+        args = (params.deconv_args.rctd ? params.deconv_args.rctd : "")
+
         """
         Rscript $params.rootdir/subworkflows/deconvolution/rctd/script_nf.R \
             --sc_input $sc_input --sp_input $sp_input \
-            --annot $params.annot --output $output --num_cores $num_cores
+            --annot $params.annot --output $output --num_cores $num_cores $args
         """
 
 }
