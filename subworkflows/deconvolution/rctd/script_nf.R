@@ -4,7 +4,15 @@ library(RCTD)
 library(Matrix)
 library(Seurat)
 
-par = R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+
+par <- list(
+    cell_min = 5
+)
+
+# Replace default values by user input
+args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+par[names(args)] <- args
+print(par)
 
 ## START ##
 cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
@@ -43,7 +51,7 @@ if (class(spatial_data) != "Seurat"){
 cat("Running RCTD with", par$num_cores, "cores...\n")
 start_time <- Sys.time()
 RCTD_deconv <- create.RCTD(spatialRNA_obj_visium, reference_obj, max_cores = as.numeric(par$num_cores),
-                            CELL_MIN_INSTANCE = 5)
+                            CELL_MIN_INSTANCE = as.numeric(par$cell_min))
 RCTD_deconv <- run.RCTD(RCTD_deconv, doublet_mode = "full")
 end_time <- Sys.time()
 cat("Runtime: ", round((end_time-start_time)[[1]], 2), "s\n", sep="")

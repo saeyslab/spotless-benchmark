@@ -59,6 +59,10 @@ workflow {
         
         println("The single-cell data is of ${sc_input_type} format and the spatial data is of ${sp_input_type} format.")
 
+        // Print arguments
+        println("\nParameters:")
+        params.deconv_args.each{ method, argu  -> println "${method}: ${argu}" }
+
         if (sp_input_type ==~ /h5ad/ && !params.skip_metrics){
             throw new Exception("Metric calculation is not supported for spatial h5ad files as input, please use --skip_metrics if you wish to run the pipeline.")
         }
@@ -68,7 +72,7 @@ workflow {
         // Can have one or more files
         sp_input_ch = (params.mode ==~ /generate_and_run/ ? generateSyntheticData.out : Channel.fromPath(params.sp_input))
 
-        runMethods(sc_input_ch, sp_input_ch, sc_input_type, sp_input_type)
+        //runMethods(sc_input_ch, sp_input_ch, sc_input_type, sp_input_type)
         
         if (!params.skip_metrics){
             computeMetrics(runMethods.out)
