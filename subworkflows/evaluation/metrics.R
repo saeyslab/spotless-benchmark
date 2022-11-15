@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 library(precrec)
 library(magrittr)
+library(philentropy)
 
 getConfusionMatrix <- function(known_props, test_props){
   test_props <- round(test_props, 2)
@@ -93,9 +94,18 @@ known_props_binary <- ifelse(known_props > 0, "present", "absent") %>%
 # Area under precision-recall curve
 eval_prc <- evalmod(scores = c(as.matrix(deconv_matrix)), labels=known_props_binary)
 prc <- subset(auc(eval_prc), curvetypes == "PRC")$aucs
+roc <- subset(auc(eval_prc), curvetypes == "ROC")$aucs
+
+# Jensen-shannon divergence
+jsd <- suppressMessages(
+        sapply(1:nrow(known_props), function(i) {
+          JSD(as.matrix(rbind(known_props[i,], deconv_matrix[i,])))
+  })) %>% mean(na.rm=TRUE)
 
 metrics <- data.frame("corr"=corr_spots, "RMSE"=RMSE,
                       "accuracy"=accuracy, "balanced_accuracy"=balanced_accuracy,
                       "sensitivity"=sensitivity, "specificity"=specificity,
-                      "precision"=precision, "F1"=F1, "F2"=F2, "prc"=prc)
+                      "precision"=precision, "F1"=F1, "F2"=F2, "prc"=prc, "roc"=roc,
+                      "jsd"=jsd)
+
 write.table(metrics, file=par$output, row.names=FALSE)
