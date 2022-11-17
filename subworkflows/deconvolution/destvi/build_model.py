@@ -65,14 +65,18 @@ st_adata = sc.read_h5ad(args.sp_data_path)
 
 if not all(sc_adata.var_names.isin(st_adata.var_names)):
     print("Subsetting single-cell data to match genes in spatial data...")
+    print("Before subsetting: {} genes.".format(sc_adata.shape[1]))
     sc_adata = sc_adata[:, sc_adata.var_names.isin(st_adata.var_names)].copy()
+    print("After subsetting: {} genes.".format(sc_adata.shape[1]))
 
 # Filter genes
 print("Before filtering: {} genes.".format(sc_adata.shape[1]))
 G = args.n_hvgs
 sc.pp.filter_genes(sc_adata, min_counts=10)
+print("After filtering: {} genes.".format(sc_adata.shape[1]))
 sc_adata.layers["counts"] = sc_adata.X.copy()
 
+print("Subsetting on HVGs...")
 sc.pp.highly_variable_genes(
     sc_adata,
     n_top_genes=G,
@@ -83,8 +87,8 @@ sc.pp.highly_variable_genes(
 sc.pp.normalize_total(sc_adata, target_sum=10e4)
 sc.pp.log1p(sc_adata)
 sc_adata.raw = sc_adata
-print("After filtering: {} genes.".format(sc_adata.shape[1]))
 
+print("Single-cell data now has {} genes.".format(sc_adata.shape[1]))
 print("Preparing anndata for the regression model...")
 CondSCVI.setup_anndata(sc_adata, layer="counts", labels_key=args.annotation_column)
 
