@@ -15,27 +15,35 @@ datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
 proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
                           "Hippocampus", "Kidney", "SCC (patient 5)") %>%
   setNames(str_replace(datasets, "_generation", ""))
-methods <- c("cell2location", "music",  "RCTD", "spotlight", "stereoscope")
+methods <- c("spotlight", "music", "cell2location", "rctd", "stereoscope",
+             "spatialdwls", "destvi", "nnls", "dstg", "seurat", "tangram", "stride")
+proper_method_names <- c("SPOTlight", "MuSiC", "Cell2location", "RCTD", "Stereoscope",
+                         "SpatialDWLS", "DestVI", "NNLS", "DSTG", "Seurat", "Tangram", "STRIDE") %>%
+  setNames(methods)
 
-plot_pr_curves <- function(curve_df, text, optimal_points=NULL){
+plot_pr_curves <- function(curve_df, text, optimal_points=NULL, show_method_names=FALSE){
   p <- ggplot(curve_df, aes(x=x, y=y)) +
     geom_line() + #scale_color_manual(values=rev(cols)) +
     geom_ribbon(aes(ymin=ymin, ymax=ymax), alpha=0.3) +
         #geom_text(data = optimal_points, aes(x=0,y=0.25,label = text), inherit.aes = FALSE) +
-    facet_wrap(~modname, ncol=1) + theme_bw() +
-    theme(panel.grid = element_blank(), strip.text = element_blank(),
+    facet_wrap(~modname, ncol=1, strip.position = "right") + theme_bw() +
+    theme(panel.grid = element_blank(),
           axis.title = element_blank(),
-          axis.text = element_blank(), axis.ticks = element_blank()) +
+          axis.text = element_blank(), axis.ticks = element_blank(),
+          strip.background = element_blank()) +
     ggtitle(text)
   if (!is.null(optimal_points)){
     p <- p + geom_point(data = optimal_points, aes(x=x,y=y), inherit.aes = FALSE,
                         alpha=0.5)
   }
+  if (!show_method_names){
+    p <- p + theme(strip.text = element_blank())
+  }
   return (p)
 }
 
 ##### NEW RESULTS #####
-setwd("D:/spotless-benchmark")
+setwd("~/spotless-benchmark")
 dsi <- 1
 ds <- datasets[dsi]
 dti <- 6
@@ -52,14 +60,15 @@ if (plot_type == "all_replicates"){
   all_known_matrices <- list()
   avg_abundance_matrices <- list()
   for (r in 1:10){
-    deconv_props <- lapply(tolower(methods), function (method){
-      read.table(paste0("deconv_proportions/", ds, "_", dt,
+    deconv_props <- lapply(methods, function (method){
+      #print(method)
+      read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
                         "/proportions_", method, "_", ds, "_", dt, "_rep", r),
                  header=TRUE)
     }) %>% setNames(methods)
     
     # Load ground truth data
-    ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/silver_standard_",
+    ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
                                         dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
     ncells <- ncol(ground_truth_data$spot_composition)-2
     
@@ -81,10 +90,10 @@ if (plot_type == "all_replicates"){
       lapply(methods, function(method) all_matrices[[r]][[method]][[i]])
     }), chklen = FALSE)
     labels <- join_labels(rep(lapply(1:10, function(r) all_known_matrices[[r]][,i]),
-                              each=5), chklen=FALSE)
+                              each=length(methods)), chklen=FALSE)
     
     # Make model
-    model <- mmdata(scores, labels, dsids=rep(1:10, each=5), modnames=rep(methods, 10))
+    model <- mmdata(scores, labels, dsids=rep(1:10, each=length(methods)), modnames=rep(methods, 10))
     curve <- evalmod(model)
     curve_df <- subset(fortify(curve), curvetype=="PRC")
     avg_abundance <- mean(sapply(1:10, function(r) avg_abundance_matrices[[r]][i]))
@@ -99,11 +108,13 @@ if (plot_type == "all_replicates"){
     } else {
       opt_prc <- NULL
     }
-    plot_pr_curves(curve_df, text, optimal_points = opt_prc)
+    plot_pr_curves(curve_df, text, optimal_points = opt_prc,
+                   show_method_names = (i == ncells))
   })
   
 p <- grid.arrange(grobs=all_plots, ncol=ncells, top = paste0(ds, "_", dt),
                   bottom="Recall", left="Precision")
+
 withpoints <- ifelse(plot_optimal_points, "_withpoints", "")
 dir.create(paste0("D:/spotless-benchmark/plots/pr_curves_by_abundance/", ds),
            showWarnings = FALSE)
@@ -115,13 +126,13 @@ ggsave(p, filename = paste0("D:/spotless-benchmark/plots/pr_curves_by_abundance/
 ## PLOT SINGLE REPLICATE
 r <- 2
 deconv_props <- lapply(tolower(methods), function (method){
-  read.table(paste0("deconv_proportions/", ds, "_", dt,
+  read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
                     "/proportions_", method, "_", ds, "_", dt, "_rep", r),
              header=TRUE)
 }) %>% setNames(methods)
   
 # Load ground truth data
-ground_truth_data <- readRDS(paste0("D:/spotless-benchmark/standards/silver_standard_",
+ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
                              dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
 ncells <- ncol(ground_truth_data$spot_composition)-2
 
@@ -134,8 +145,8 @@ known_binary_all <- ifelse(known_props > 0, "present", "absent")
 deconv_props <- lapply(deconv_props, function(k) {k[,colnames(known_props)]})
 
 scores <- join_scores(deconv_props)
-labels <- join_labels(replicate(5, known_binary_all, simplify=FALSE) %>% lapply(., data.frame))
-model <- mmdata(scores, labels, dsids=rep(1:18, 5), modnames=rep(methods, each=18))
+labels <- join_labels(replicate(length(methods), known_binary_all, simplify=FALSE) %>% lapply(., data.frame))
+model <- mmdata(scores, labels, dsids=rep(1:ncells, length(methods)), modnames=rep(methods, each=ncells))
 curve <- evalmod(model, raw_curves = TRUE)
 curve_df <- subset(fortify(curve), curvetype=="PRC")
 
@@ -154,7 +165,8 @@ ggplot(curve_df, aes(x=x, y=y)) +
   geom_text(data = opt_prc, aes(x=0,y=0.25,label = text), inherit.aes = FALSE) +
   facet_grid(modname ~ dsid,
              labeller = labeller(dsid=avg_abundance_text)) +
-  theme_bw() + theme(panel.grid = element_blank())
+  theme_bw() + theme(panel.grid = element_blank(),
+                     strip.background = element_blank())
 
 }
 }
