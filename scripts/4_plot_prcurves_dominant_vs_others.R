@@ -187,3 +187,74 @@ metrics[["others"]] <- sapply(metrics_by_group, function(k) apply(k[-dominant_ce
 # known_dominant <- ifelse(known_props[,dominant_cell_type] > 0, "present", "absent")
 # known_nondom <- ifelse(known_props[,-dominant_cell_type] > 0, "present", "absent")
 # 
+                              
+ df <- lapply(1:7, function (dsi){
+  ds <- datasets[dsi]
+  lapply(1:8, function (dti) {
+    dt <- possible_dataset_types[dti]
+    lapply (1:10, function (r) {
+        deconv_props <- lapply(tolower(methods), function (method){
+          read.table(paste0("deconv_proportions/", ds, "_", dt,
+                            "/proportions_", method, "_", ds, "_", dt, "_rep", r),
+                     header=TRUE)
+        }) %>% setNames(methods)
+        
+        # Load ground truth data
+        ground_truth_data <- readRDS(paste0("D:/spade-benchmark/standards/bronze_standard_",
+                                            dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
+        ncells <- ncol(ground_truth_data$spot_composition)-2
+        
+        known_props <- ground_truth_data$relative_spot_composition[,1:ncells]
+        colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
+        known_props <- known_props[,order(colSums(known_props), decreasing=TRUE)]
+        known_binary_all <- ifelse(known_props > 0, 1, 0) %>% data.frame %>%
+          select_if(function(.) !all(. > 0))
+        deconv_props <- lapply(deconv_props, function(k) {k[,colnames(known_binary_all)]})
+        
+        scores <- join_scores(deconv_props)
+        labels <- join_labels(replicate(length(methods), known_binary_all, simplify=FALSE) %>%
+                                lapply(., data.frame))
+        model <- mmdata(scores, labels, dsids=rep(1:ncol(known_binary_all), length(methods)),
+                        modnames=rep(methods, each=ncol(known_binary_all)))
+        curve <- evalmod(model, raw_curves = TRUE)
+        subset(auc(curve), curvetypes == "PRC") %>%
+          mutate(avg_abundances = rep(colMeans(known_props[,colnames(known_binary_all)]), length(methods)),
+                 rep = r, dom_celltype = rep(colnames(known_binary_all), length(methods)))
+      }) %>% do.call(rbind, .) %>% mutate(dataset_type = dt)
+  }) %>% do.call(rbind, .) %>% mutate(dataset = ds)
+})  %>% do.call(rbind, .) %>% select(-curvetypes) %>%
+ setNames(c("method", "abundance_rank", colnames(.)[3:8]))
+
+p <- ggplot(df, aes(x=avg_abundances, y=aucs, color=method, group=method)) +
+  geom_point(alpha=0.1) +
+  geom_smooth(method="gam") +
+  theme_bw() +
+  facet_grid(dataset~dataset_type, scales="free",
+             labeller = labeller(method=proper_method_names))
+
+ggsave("D:/spade-benchmark/plots/pr_curves_by_abundance/dataset_vs_dataset_types.png", plot = p,
+       width=297, height=210, units="mm", dpi=200)
+
+
+pg <- ggplot_build(p)
+df_cutoff <- data.frame(x = c(pg$data[[2]]$x[ind-1], pg$data[[2]]$x[ind]),
+                        y = c(pg$data[[2]]$y[ind-1], pg$data[[2]]$y[ind]),
+                        method = unique(df$method))
+prc_cutoff <- 0.8
+x_indices <- sapply(methods, function(m){
+  model = lm(y~x, data= df_cutoff %>% filter(method==m) %>% select(x,y))
+  (prc_cutoff-model$coefficients[1])/model$coefficients[2]
+})
+
+df_cutoff2 <- data.frame(x = x_indices,
+                 method = unique(df$method))
+
+p3 <- p + geom_point(data=df_cutoff2, aes(x=x, y=prc_cutoff), color="red", inherit.aes=FALSE) +
+  geom_hline(yintercept=prc_cutoff, color="red") +
+  geom_text(data=df_cutoff2, aes(label=paste0("x = ",round(x,4)),
+                                 x=0.45, y=0.75), inherit.aes=FALSE, colour="red") +
+  theme(panel.grid = element_blank()) +
+  xlab("Average abundance for a cell type in a replicate") + ylab("PRC AUC")
+
+ggsave("D:/spade-benchmark/plots/pr_curves_by_abundance/methods_gam_intercept_points.png", plot = p3,
+       width=297, height=80, units="mm", dpi=200)
