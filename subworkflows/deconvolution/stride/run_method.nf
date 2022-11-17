@@ -50,7 +50,7 @@ process runSTRIDE {
 }
 
 process buildSTRIDEModel {
-    tag 'stride_build'
+    tag "stride_build_$tag_suffix"
     label "retry"
     container 'csangara/sp_stride:latest'
     echo true
@@ -62,7 +62,8 @@ process buildSTRIDEModel {
 
     script:
         args = ( params.deconv_args.stride ? params.deconv_args.stride : "" )
-
+        tag_suffix = file(sc_input).getSimpleName()
+        
         """
         source activate stride
         echo "Creating annotation and dummy spatial files..."

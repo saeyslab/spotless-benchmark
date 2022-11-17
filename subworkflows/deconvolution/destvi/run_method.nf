@@ -1,5 +1,5 @@
 process buildDestVIModel {
-    tag 'destvi_build'
+    tag "destvi_build_$tag_suffix"
     label "retry"
     label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
@@ -13,6 +13,7 @@ process buildDestVIModel {
         tuple path ("adata.h5ad"), path ("model.pt")
 
     script:
+        tag_suffix = file(sc_input).getSimpleName()
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-e $params.epoch_build")
         args = ( params.deconv_args.destvi.build ? params.deconv_args.destvi.build : "" )
         cuda_device = ( params.gpu ? params.cuda_device : "cpu" )

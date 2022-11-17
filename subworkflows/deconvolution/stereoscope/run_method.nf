@@ -1,5 +1,5 @@
 process buildStereoscopeModel {
-    tag 'stereo_build'
+    tag "stereo_build_$tag_suffix"
     label "retry"
     label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
@@ -12,6 +12,7 @@ process buildStereoscopeModel {
         tuple path ("R*.tsv"), path ("logits*.tsv")
 
     script:
+        tag_suffix = file(sc_input).getSimpleName()
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-sce $params.epoch_build")
         args = ( params.deconv_args.stereoscope ? params.deconv_args.stereoscope : "" )
         gpu_flag = ( params.gpu ? "--gpu" : "" )

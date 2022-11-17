@@ -1,5 +1,5 @@
 process buildCell2locationModel {
-    tag 'c2l_build'
+    tag "c2l_build_$tag_suffix"
     label "retry"
     label "longer_time"
     label ( params.gpu ? "use_gpu" : "use_cpu" )
@@ -12,6 +12,7 @@ process buildCell2locationModel {
         path "sc.h5ad"
 
     script:
+        tag_suffix = file(sc_input).getSimpleName()
         sample_id_arg = ( params.sampleID ==~ /none/ ? "" : "-s $params.sampleID" )
         epochs = ( params.epoch_build ==~ /default/ ? "" : "-e $params.epoch_build")
         args = ( params.deconv_args.cell2location.build ? params.deconv_args.cell2location.build : "" )
