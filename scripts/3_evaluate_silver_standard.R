@@ -1,38 +1,27 @@
-library(dplyr)
-library(stringr)
-library(ggplot2)
-library(precrec)
-library(reshape2)
-library(RColorBrewer)
+## CONTENTS
+# 1. Boxplot of method performance
+# 2. Calculate rank sum and plot
+# (3. Calculate best performer bar plot)
+
+source("~/spotless-benchmark/scripts/0_init.R")
+
 qual_col_pals <- brewer.pal.info %>% filter(rownames(.) %in% c("Dark2", "Paired"))
 col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
 
-possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_distinct", "artificial_uniform_overlap", "artificial_diverse_overlap",
-                            "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
-                            "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse",
-                            "artificial_missing_celltypes_visium")
-datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
-              'hippocampus', 'kidney', 'scc_p5')
-proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
-                          "Hippocampus", "Kidney", "SCC (patient 5)") %>%
-                          setNames(datasets)
-methods <- c("spotlight", "music", "cell2location", "rctd", "stereoscope",
-             "spatialdwls", "destvi", "nnls", "dstg", "seurat", "tangram", "stride")
-proper_method_names <- c("SPOTlight", "MuSiC", "Cell2location", "RCTD", "Stereoscope",
-                         "SpatialDWLS", "DestVI", "NNLS", "DSTG", "Seurat", "Tangram", "STRIDE") %>%
-  setNames(methods)
-possible_metrics <- c("corr", "RMSE", "accuracy", "sensitivity", "specificity", "precision", "F1", "prc")
-proper_metric_names <- c("Correlation", "RMSE", "Accuracy", "Sensitivity", "Specificity", "Precision", "F1", "AUPR") %>%
-  setNames(possible_metrics)
-
 calculate_dirichlet_ref <- FALSE
-show_dirichlet_ref <- TRUE
+show_dirichlet_ref <- FALSE
+show_nnls_ref <- TRUE
 
+#### HELPER FUNCTIONS ####
+format_dataset_type <- function(dataset_type_col) {
+  dataset_type_col %>% str_replace_all(., "artificial_", "") %>%
+                       str_replace_all(., "_", " ") %>%
+                       str_wrap(., width = 20) %>%
+                       factor(., levels=unique(.))
+}
 
 ##### READ IN RESULTS #####
-setwd("~/spotless-benchmark")
-
-df_new <- lapply(datasets, function(ds) {
+results <- lapply(datasets, function(ds) {
   lapply(tolower(methods), function (method) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
@@ -45,39 +34,42 @@ df_new <- lapply(datasets, function(ds) {
     }) %>% do.call(rbind, .)
   }) %>% do.call(rbind, .)
 }) %>% do.call(rbind, .) %>%
-  setNames(c("metric", "all_values", "method", "rep", "dataset", "dataset_type") ) %>%
-  mutate("source" = "new")
+  setNames(c("metric", "all_values", "method", "rep", "dataset", "dataset_type"))
 
-##### BOXPLOT #####
-moi <- "prc"
+##### 1. BOXPLOT #####
+moi <- "jsd"
 
-df_format <- df_new %>% filter(metric == moi, method != "nnls") %>%
-  mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20),
-         all_values = as.numeric(all_values)) %>%
-  mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak))) %>%
-  mutate(method = str_replace(method, "RCTD", "rctd")) %>%
-  mutate(method = factor(method, levels=sort(methods)))
+results_format <- results %>% filter(metric == moi, method != "nnls") %>%
+  mutate(dt_linebreak = format_dataset_type(dataset_type),
+         all_values = as.numeric(all_values))
+
+results_nnls_ref <- results %>% filter(metric == moi, method == "nnls") %>%
+  group_by(dataset, dataset_type) %>% summarise(all_values = median(as.numeric(all_values))) %>%
+  mutate(dt_linebreak = format_dataset_type(dataset_type))
+
+p <- ggplot(results_format, aes(x=method, y=all_values, color=method))
+
+if (show_dirichlet_ref){
+  if (calculate_dirichlet_ref){
+    standard_type = "silver"
+    source("scripts/ex_reference_metric.R")
+  }
+  results_ref_dirichlet <- readRDS("standards/ref_all_metrics_silver.rds")
+  results_ref_dirichlet <- results_ref_dirichlet %>% filter(metric == moi) %>%
+    group_by(dataset, dataset_type) %>% summarise(all_values = median(value)) %>%
+    mutate(dt_linebreak = format_dataset_type(dataset_type))
   
-df_ref <- df_new %>% filter(metric == moi, method == "nnls") %>%
-  group_by(dataset, dataset_type) %>% summarise(avg_val = median(as.numeric(all_values))) %>%
-  mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20),
-         all_values = avg_val) %>%
-  mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
-
-if (calculate_dirichlet_ref){
-  source("scripts/ex_reference_metric.R")
+  # Add dirichlet ref to plot
+  p <- p + geom_hline(data=results_ref_dirichlet, aes(yintercept=all_values), color="gray")
 }
 
-df_ref_dirichlet <- readRDS("standards/ref_all_metrics.rds")
-df_ref_dirichlet <- df_ref_dirichlet %>% filter(metric == moi) %>%
-  group_by(dataset, dataset_type) %>% summarise(avg_val = median(value)) %>%
-  mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20),
-         all_values = avg_val) %>%
-  mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
+if (show_nnls_ref){
+  p <- p + geom_hline(data=results_nnls_ref, aes(yintercept=all_values),
+                      linetype="dashed", color="gray")
+}
 
-
-p <- ggplot(df_format, aes(x=method, y=all_values, color=method)) + geom_boxplot(width=0.75) +
-  ylab(paste0("Average ", proper_metric_names[moi])) + labs(color="Method") +
+p <- p + geom_boxplot(width=0.75) +
+  labs(y = paste0("Average ", proper_metric_names[moi]), color="Method") +
   scale_color_manual(labels=sort(proper_method_names), values=col_vector[1:12]) + 
   theme_bw() +
   theme(legend.position="bottom", legend.direction = "horizontal",
@@ -87,17 +79,72 @@ p <- ggplot(df_format, aes(x=method, y=all_values, color=method)) + geom_boxplot
              labeller=labeller(dataset=proper_dataset_names)) +
   guides(color = guide_legend(nrow=1))
 
-p <- p + geom_hline(data=df_ref, aes(yintercept=all_values), linetype="dashed", color="gray")
-if (show_dirichlet_ref){
-  p <- p + geom_hline(data=df_ref_dirichlet, aes(yintercept=all_values), color="gray")
-  
-}
 p
+
 ggsave(paste0("~/Pictures/benchmark_paper/facetgrid_", proper_metric_names[moi], ".png"),
        width=330, height=180, units="mm", dpi=200)
 
-###### BAR PLOT OF BEST PERFORMERS #####
-df_new_best <- df_new %>%
+####### 2. RANK SUM #######
+results_ranked <- results %>%
+  filter(!grepl("F2|balanced_accuracy|corr", metric)) %>% 
+  #filter(method != "nnls") %>%
+  # Calculate median of metrics
+  group_by(metric, method, dataset, dataset_type) %>%
+  summarise(median_val = round(median(as.numeric(all_values)), 3)) %>%
+  group_by(metric, dataset, dataset_type) %>%
+  mutate(rank = case_when(metric %in% c("RMSE", "jsd") ~ dense_rank(median_val),
+                          TRUE ~ dense_rank(desc(median_val))))
+
+results_ranked %>% group_by(method, metric) %>% summarise(summed_rank= sum(rank)) %>%
+  group_by(metric) %>% arrange(summed_rank, .by_group = TRUE) %>%
+  filter(metric == "RMSE")
+
+col_vector2 <- brewer.pal(12, "Paired")
+
+ps <- lapply(c("RMSE", "prc", "jsd"), function (moi) {
+  # Order method based on best performer
+  best_performers <- results_ranked %>% filter(metric == moi) %>% 
+    group_by(method) %>% summarise(summed_rank = sum(rank)) %>%
+    arrange(summed_rank) %>% pull(method)
+  
+  results_ranked_format <- results_ranked %>% filter(metric == moi) %>%
+    mutate(method = factor(method, levels = rev(best_performers)))
+  nnls_pos <- which(best_performers == "nnls")
+  
+  ggplot(results_ranked_format,
+         aes(x=method, y=rank, fill=factor(rank))) +
+    annotate("rect", xmin=12-nnls_pos+0.5, xmax=12-nnls_pos+1.5, ymin=-Inf, ymax=Inf, fill="gray25", alpha=0.1) +
+    geom_bar(width=0.4, position=position_stack(reverse=TRUE), stat="identity") +
+    #ylab(paste0(proper_metric_names[moi], " rankings across 54 scenarios")) +
+    labs(x = "Method", fill="Rank", title = proper_metric_names[moi]) +
+    scale_x_discrete(breaks = rev(best_performers),
+                     limits = rev(best_performers),
+                     labels = proper_method_names[rev(best_performers)]) +
+    scale_fill_manual(limits = levels(results_ranked_format$rank),
+                      values = col_vector2) +
+    scale_y_continuous(expand=c(0, 0.6), breaks=seq(0, 500, 250)) +
+    coord_flip() +
+    theme_classic(base_size=20) +
+    theme(axis.title.y = element_blank(), 
+          axis.title.x = element_blank()) +
+    guides(fill = guide_legend(ncol=2))
+  
+})
+
+patchwork::wrap_plots(ps) + plot_layout(guides="collect") & theme(legend.justification = "top")
+
+ggsave(paste0("~/Pictures/benchmark_paper/rankplot_both.png"),
+       width=375, height=150, units="mm", dpi=300)
+ggsave(paste0("~/Pictures/benchmark_paper/rankplot_three.png"),
+       width=560, height=150, units="mm", dpi=300)
+
+
+#ggsave(paste0("~/Pictures/SCG_poster/rankplot_", proper_metric_names[moi], ".png"),
+#       width=150, height=120, units="mm", dpi=300)
+
+
+###### 3. BAR PLOT OF BEST PERFORMERS #####
+results_best <- results %>%
   filter(!grepl("F2|balanced_accuracy|corr", metric)) %>% 
   filter(method != "nnls") %>%
   # Calculate median of metrics
@@ -105,8 +152,8 @@ df_new_best <- df_new %>%
   summarise(median_val = round(median(as.numeric(all_values)), 3)) %>%
   # Get best value (min for RMSE, max for others)
   group_by(metric, dataset, dataset_type) %>%
-  filter(case_when(metric == "RMSE" ~ median_val == min(median_val),
-                    T ~ median_val == max(median_val))) %>%
+  filter(case_when(metric %in% c("RMSE", "jsd") ~ median_val == min(median_val),
+                    TRUE ~ median_val == max(median_val))) %>%
   # Count number of best performers, if more than 1 then it is a tie
   add_tally() %>% mutate(winner = ifelse(n == 1, method, "Tie")) %>%
   # Count number of times a method performs best
@@ -116,81 +163,39 @@ df_new_best <- df_new %>%
   tidyr::pivot_wider(names_from = method, values_from = n, values_fill = 0) %>%
   tidyr::pivot_longer(!metric, names_to = "method", values_to = "n")
 
-df_new_best$metric <- df_new_best$metric %>% str_replace("prc", "AUPR") %>% R.utils::capitalize() %>%
-  factor(., levels=c("RMSE", "Accuracy", "Specificity", "Sensitivity", "Precision", "F1", "AUPR"))
-df_new_best_subset <- df_new_best %>% filter(metric == "RMSE" | metric=="AUPR") %>%
-  mutate(metric = factor(metric))
-ggplot(df_new_best_subset, aes(x=metric, y=n, fill=method)) + geom_bar(width=0.4, position=position_stack(reverse=TRUE), stat="identity") +
-  ylab("% Best performing") + xlab("Metric") + labs(fill="Method") +
-  #scale_fill_manual(values = c("#f8766d", "#a3a500", "#00bf7d", "#00b0f6", "#e76bf3", "#a1a1a1"), 
-  #                 labels=c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope", "Tie")) + theme_classic() +
-  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) + scale_x_discrete(limits = rev(levels(df_new_best_subset$metric))) +
-  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.y = element_blank()) + coord_flip()
-df_new_best_subset <- df_new_best_subset %>% mutate(method = factor(method, levels = c("Tie", rev(sort(methods[-8])))))
+moi <- c("prc", "RMSE")
+ggplot(results_best %>% filter(metric %in% moi, n > 0),
+       aes(x=metric, y=n, fill=method)) +
+  geom_bar(width=0.4, position=position_stack(reverse=TRUE), stat="identity") +
+  labs(x = "Metric", y = "% Best performing", fill="Method") +
+  theme_classic() +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.05))) + 
+  scale_x_discrete(limits = moi, breaks = moi,
+                   labels = proper_metric_names[moi]) +
+  scale_fill_manual(values=col_vector,
+                    labels=proper_method_names) +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        axis.title.y = element_blank()) +
+  coord_flip()
 
-ggplot(df_new_best_subset %>% filter(metric == "RMSE"),
-       aes(x=method, y=n, fill=method)) + geom_bar(width=0.4, position=position_stack(reverse=TRUE), stat="identity") +
+# Separated bar plot
+moi <- "RMSE"
+best_performers <- results_best %>% filter(metric == moi) %>% 
+  arrange(n) %>% pull(method)
+ggplot(results_best %>% filter(metric == moi) %>%
+         mutate(method = factor(method, levels = best_performers)),
+       aes(x=method, y=n)) +
+  geom_bar(width=0.4, position=position_stack(reverse=TRUE), stat="identity") +
   ylab("% Best performing") + xlab("Metric") + labs(fill="Method") +
   scale_y_continuous(expand = expansion(mult = c(0, 0.05))) +
-  scale_x_discrete(breaks = levels(df_new_best_subset$method),
-                   limits = levels(df_new_best_subset$method),
-                   labels = rev(c(sort(as.character(proper_method_names[-8])), "Tie"))) +
-  scale_fill_manual(limits = levels(df_new_best_subset$method),
-                    values=rev(col_vector[1:12])) +
+  scale_x_discrete(breaks = best_performers,
+                   limits = best_performers,
+                   labels = proper_method_names[best_performers]) +
   theme_classic() +
   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(), axis.title.y = element_blank(),
         legend.position="none") + coord_flip()
-#scale_fill_manual(labels=c("Tie", sort(proper_method_names)), values=col_vector) + 
-  
+
 ggsave("~/Pictures/barplot_RMSE.png", width=80, height=60, units="mm", dpi=200)
 
-####### RANK SUM #######
-df_ranked <- df_new %>%
-  filter(!grepl("F2|balanced_accuracy|corr", metric)) %>% 
-  #filter(method != "nnls") %>%
-  # Calculate median of metrics
-  group_by(metric, method, dataset, dataset_type) %>%
-  summarise(median_val = round(median(as.numeric(all_values)), 3)) %>%
-  group_by(metric, dataset, dataset_type) %>%
-  mutate(rank = case_when(metric == "RMSE" ~ dense_rank(median_val),
-                 metric != "RMSE" ~ dense_rank(desc(median_val))))
 
-df_ranked %>% group_by(method, metric) %>% summarise(summed_rank= sum(rank)) %>%
-  group_by(metric) %>% arrange(summed_rank, .by_group = TRUE) %>%
-  filter(metric == "RMSE")
 
-col_vector <- brewer.pal(12, "Paired")
-moi <- "prc"
-best_performers <- df_ranked %>% filter(metric == moi) %>% 
-  group_by(method) %>% summarise(summed_rank = sum(rank)) %>%
-  arrange(summed_rank) %>% pull(method)
-
-df_ranked_format <- df_ranked %>% filter(metric == moi) %>%
-                              mutate(#rank = factor(rank),
-                              method = factor(method, levels = rev(best_performers)))
-  
-ggplot(df_ranked_format,
-       aes(x=method, y=rank, fill=factor(rank))) +
-  geom_bar(width=0.4, position=position_stack(reverse=TRUE), stat="identity") +
-  #ylab(paste0(proper_metric_names[moi], " rankings across 54 scenarios")) +
-  ggtitle(proper_metric_names[moi])+
-  xlab("Method") + labs(fill="Rank") +
-  scale_x_discrete(breaks = levels(df_ranked_format$method),
-                   limits = levels(df_ranked_format$method),
-                   labels = proper_method_names[levels(df_ranked_format$method)]) +
-  scale_fill_manual(limits = levels(df_ranked_format$rank),
-                    values=col_vector) +
-  scale_y_continuous(expand=c(0, 0.6)) +
-  coord_flip() +
-  #facet_wrap(~dataset_type) +
-  theme_classic(base_size=20) +
-  theme(axis.title.y = element_blank(), 
-        axis.title.x = element_blank(),
-        legend.position = "none") #+
-  #guides(fill = guide_legend(ncol=2))
-
-ggsave(paste0("~/Pictures/benchmark_paper/rankplot_", proper_metric_names[moi], ".png"),
-       width=200, height=120, units="mm", dpi=200)
-
-ggsave(paste0("~/Pictures/SCG_poster/rankplot_", proper_metric_names[moi], ".png"),
-       width=150, height=120, units="mm", dpi=300)

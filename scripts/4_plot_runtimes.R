@@ -1,43 +1,31 @@
-library(stringr)
-library(dplyr)
-library(ungeviz) # geom_hpline
-library(ggplot2)
+## CONTENTS
+# 1. Plot runtime distribution
+# 2. Plot runtime per dataset
 
-#trace_file <- read.table("D:/spotless-benchmark/trace_old.txt", header=TRUE, sep="\t")
-#trace_file2 <- read.table("D:/spotless-benchmark/trace.txt", header=TRUE, sep="\t")
+source("~/spotless-benchmark/scripts/0_init.R")
+library(ungeviz)
 
-datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
-             'hippocampus', 'kidney', 'scc_p5')
-possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_distinct", "artificial_uniform_overlap", "artificial_diverse_overlap",
-                            "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
-                            "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse")
-proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
-                          "Hippocampus", "Kidney", "SCC (patient 5)") %>% setNames(datasets)
+# Add asterisk if method is used with GPU
+proper_method_names <- c("SPOTlight", "MuSiC", "* Cell2location", "RCTD", "* Stereoscope",
+                         "SpatialDWLS", "* DestVI", "NNLS", "DSTG", "Seurat", "* Tangram", "STRIDE") %>%
+  setNames(methods)
+
 fields <- str_split("task_id,hash,name,tag,status,exit,container,duration,realtime,cpus,disk,memory,attempt,pcpu,pmem,rss,peak_rss,vmem,peak_vmem", ",")[[1]]
-
-spotlight_logs <-  read.table("D:/spotless-benchmark/logs/hpc_cpu_spotlight.txt", sep="\t") %>%
+hpc_logs <- read.table("~/spotless-benchmark/logs_silverstandard.txt", sep="\t") %>%
   setNames(fields)
 
-
-prism_logs <- read.table("D:/spotless-benchmark/logs/prism_3methods.txt", sep="\t") %>%
-  setNames(fields)
-hpc_logs <- read.table("D:/spotless-benchmark/logs/hpc_gpu.txt", sep="\t") %>%
-  setNames(fields)
-c2l_cpu <-  read.table("D:/spotless-benchmark/logs/hpc_cpu_c2l.txt", sep="\t") %>%
-  setNames(fields) %>% mutate(tag = sapply(tag, function(u) str_replace(u, "c2l", "c2lcpu")))
-
-df <- bind_rows(prism_logs %>% filter(!grepl("stereo", tag)),
-                hpc_logs %>% filter(exit == "0") %>% mutate(exit = as.numeric(exit))) %>%
-                #c2l_cpu %>% filter(exit == "0") %>% mutate(exit = as.numeric(exit))) %>%
-  filter(grepl("runSpotlight|runRCTD|runMusic|fitCell2locationModel|fitStereoscopeModel", name)) %>%
-  select(name, hash, tag, duration, realtime, cpus) %>%
+df <- hpc_logs %>% filter(exit == "0") %>% mutate(exit = as.numeric(exit)) %>%
+  filter(grepl("runMethods:run|runMethods:fit|runMethods:build", name)) %>%
+  select(name, hash, tag, duration, realtime, cpus, memory) %>%
   # Parse method and replicate from tag
-  mutate(method = sapply(tag, function(u) str_split(u, "_")[[1]][1]),
+  mutate(type = sapply(name, function(u) str_match(u, "runMethods:(.*?)[A-Z]")[2]),
+         method = sapply(tag, function(u) str_split(u, "_")[[1]][1]),
          rep = sapply(tag, function(u) as.numeric(str_replace(rev(str_split(u, "_")[[1]])[1], "rep", ""))),
          ds_dt = gsub("[a-zA-Z0-9]*_(\\w*)_rep[0-9]+", "\\1", tag)) %>%
   # Parse dataset and dataset type
   mutate(dataset = sapply(ds_dt, function(u) str_match(u, paste(datasets, collapse="|"))[1]),
-         dataset_type = sapply(ds_dt, function(u) str_match(u, paste(possible_dataset_types, collapse="|"))[1])) %>%
+         dataset_type = sapply(ds_dt, function(u) str_match(u, paste(possible_dataset_types, collapse="|"))[1]),
+         type = ifelse(type == "build", "build", "run")) %>%
   select(-ds_dt, -name, -tag, -hash, -duration) %>%
   # Convert time to minutes using regex pattern
   mutate(mins = sapply(realtime, function(u){
@@ -49,20 +37,47 @@ df <- bind_rows(prism_logs %>% filter(!grepl("stereo", tag)),
   mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20)) %>%
   mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
 
+df %>% group_by(method) %>% tally()
 
-ggplot(df, aes(x=method, y=mins, color=method)) + geom_hpline(width=0.4, size=0.3) +
+# Order methods based on median runtimes
+fastest <- df %>% group_by(method) %>% summarise(avg_runtime = mean(mins)) %>%
+  arrange(desc(avg_runtime)) %>% pull(method)
+
+df <- df %>% mutate(method=factor(method, levels=fastest))
+
+ggplot(df %>% filter(type != "build"),
+       aes(y=method, x=mins)) + 
+  geom_point(data=df %>% filter(type == "build"), aes(y=method, x=mins, color=type),
+             shape=21, fill="white", size=2, stroke=1, inherit.aes = FALSE) +
+  geom_boxplot(color="#619CFF") +
+  scale_y_discrete(limits=fastest, labels=proper_method_names[fastest]) +
+  scale_x_continuous(expand = c(0,2), breaks=c(0, 50, 100, 150), limits = c(-5, 150)) +
+  scale_color_discrete(breaks="build", labels="Model building", name=NULL) +
+  xlab("Runtime (min)") +
+  theme_classic(base_size=20) +
+  theme(axis.title.y = element_blank(),
+        legend.position = c(0.85, 0.95),
+        #legend.background = element_rect(fill = "gray95"),
+        legend.title = element_blank(),
+        legend.margin = margin(0,2.5, 2.5,2.5, unit="mm"))
+
+
+## Runtime by dataset and dataset type 
+# If you want to order dataset by total dimensions, # genes, or # cells
+dataset_order_total_dims <- datasets[c(1, 5, 3, 2, 6, 4)]
+dataset_order_nfeatures <- datasets[c(1, 3, 2, 6, 4, 5)]
+dataset_order_ncells <- datasets[c(5, 1, 3, 2, 4, 6)]
+
+ggplot(df %>% mutate(dataset=factor(dataset, levels = dataset_order_ncells)) %>%
+         filter(type == "run"),
+       aes(x=dataset, y=mins, color=method)) + geom_hpline(width=0.4, size=0.3) +
   stat_summary(geom = "point", fun = "mean") +
   ylab(paste0("Average runtimes (min)")) + labs(color="Method") +
-  #scale_color_discrete(labels=c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope")) +
   theme_bw() +
   theme(legend.position="bottom", legend.direction = "horizontal",
-        axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+        axis.title.x=element_blank(), axis.ticks.x=element_blank(),
         panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
-  facet_grid(dataset ~ dt_linebreak, scales="free_y",
-             labeller=labeller(dataset=proper_dataset_names))
-# Median runtimes
-df %>% group_by(method) %>% summarise(median = median(mins))
-df %>% group_by(method) %>% tally()
-ggplot(df, aes(y=method, x=mins)) + geom_violin() +
-  scale_y_discrete(limits=sort(unique(df$method), decreasing = TRUE))
+  facet_wrap(~method, scales="free_y")
 
+ggsave("Pictures/benchmark_paper/runtime.png",
+       width=200, height=150, units="mm", dpi=300)

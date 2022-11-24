@@ -1,12 +1,16 @@
-library(tidyverse)
-library(magrittr)
-library(ggplot2)
-library(Matrix)
-library(gridExtra)
-library(Seurat)
+## CONTENTS
+# 1. Create Seurat objects from STARMap and single-cell reference (+ data exploration)
+# 2. Combine annotations
+# 3. Create Visium-like spots from STARMap data
 
-# Files: https://www.dropbox.com/sh/f7ebheru1lbz91s/AACIAqjvDv--mhnE-PmSXB41a/visual_1020?dl=0&subfolder_nav_tracking=1
+## DATA
+# Spatial data: https://www.dropbox.com/sh/f7ebheru1lbz91s/AACIAqjvDv--mhnE-PmSXB41a/visual_1020?dl=0&subfolder_nav_tracking=1
 # To get position, follow instructions on https://www.starmapresources.org/data
+# Only download 20180410, as 20180505 is unusable due to unequal cells
+# Sc data: https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq
+
+commandArgs <- function(...) "only_libraries"
+source("~/spotless-benchmark/scripts/0_init.R"); rm(commandArgs)
 
 #### HELPER FUNCTIONS ####
 # Returns data frame of circle points to visualize with ggplot
@@ -31,10 +35,17 @@ get_coarse_annot <- function(celltype){
   else { return (replacements[which(conditions)] )}
 }
 
-#### MAIN ####
-datasets <- c("20180410", "20180505") # Dataset 20180505 has unequal cells (unusable)
-dataset <- datasets[1]
+# Function to combine excitatory neurons from each layer (for single-cell data)
+get_coarse_annot_sc <- function(celltype){
+  conditions <- c(grepl("L2/3", celltype), grepl("L5|NP", celltype), grepl("L6", celltype))
+  replacements <- c("L2/3", "L5", "L6")
+  if (all(!conditions)) { return (celltype) }
+  else { return (replacements[which(conditions)] )}
+}
 
+#### 1. CREATE SEURAT OBJECTS AND EXPLORE DATA ####
+## READ IN STARMAP DATA ##
+dataset <- "20180410"
 folder_path <- paste0("~/spotless-benchmark/data/raw_data/STARMAP_mouseVIS_wang2018/", dataset, "_BY3_1kgenes/")
 annot <- read.csv(paste0(folder_path, "class_labels.csv")) %>%
   add_column(read.csv(paste0(folder_path, "positions.csv"))) %>%
@@ -44,38 +55,30 @@ genes <- read.csv(paste0(folder_path, "genes.csv"), header=FALSE)
 counts <- read.csv(paste0(folder_path, "cell_barcode_count.csv"), header=FALSE) %>% t %>% data.frame() %>%
   set_rownames(genes[,1]) %>% set_colnames(annot$cell_id)
 
-# Let's look at some dataset properties..
+# Data exploration
 seurat_obj <- CreateSeuratObject(counts=counts,
                                  meta.data=annot %>% column_to_rownames("cell_id"))
 df <- seurat_obj@meta.data %>% select(nCount_RNA, nFeature_RNA) %>% stack
 ggplot(df, aes(x=values)) + geom_density() + facet_grid(rows=vars(ind), scales = "free") + theme_bw()
+
 p1 <- ggplot(seurat_obj@meta.data, aes(y=nCount_RNA, x=celltype)) + geom_violin() + theme_bw()
 p2 <- ggplot(seurat_obj@meta.data, aes(y=nFeature_RNA, x=celltype)) + geom_violin() + theme_bw()
 p1 + p2
+
 seurat_obj <- seurat_obj %>% subset(celltype != "Filtered") %>% ScaleData() %>%
   FindVariableFeatures() %>% RunPCA() %>%  RunUMAP(dims = 1:30)
 DimPlot(seurat_obj, reduction = "umap", group.by="celltype", label=TRUE)
 # DoHeatmap(seurat_obj, features=c("Reln", "Cplx1", "Vip", "Sst", "Pvalb", "Trp73"), group.by="celltype")
 
 
-### SINGLE-CELL REFERENCE ####
-# https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq
-
-# Function to combine excitatory neurons from each layer
-get_coarse_annot_sc <- function(celltype){
-  conditions <- c(grepl("L2/3", celltype), grepl("L5|NP", celltype), grepl("L6", celltype))
-  replacements <- c("L2/3", "L5", "L6")
-  if (all(!conditions)) { return (celltype) }
-  else { return (replacements[which(conditions)] )}
-}
-
+## READ IN SINGLE-CELL REFERENCE ##
 data_path <- "spotless-benchmark/data/raw_data/mousebrain_ABA_VISp/mouse_VISp_2018-06-14_"
 scrnaseq_vis <- read.csv(paste0(data_path, "exon-matrix.csv"))
 vis_genes <- read.csv(paste0(data_path, "genes-rows.csv"))
 vis_annot <- read.csv(paste0(data_path, "samples-columns.csv")) %>%
   filter(!subclass %in% c("No Class", "High Intronic", "Batch Grouping", "Low Quality", "Doublet"))
 
-# Let's look at some dataset properties
+# Data exploration
 seurat_obj_scrna <- CreateSeuratObject(counts=scrnaseq_vis %>% set_rownames(vis_genes$gene_symbol) %>%
                                          .[, colnames(.) %in% vis_annot$sample_name],
                                        meta.data=vis_annot %>% column_to_rownames("sample_name"))
@@ -88,7 +91,7 @@ p1 <- ggplot(df, aes(y=nCount_RNA, x=subclass)) + geom_violin() + theme_bw()
 p2 <- ggplot(seurat_obj_scrna@meta.data, aes(y=nFeature_RNA, x=subclass)) + geom_violin() + theme_bw()
 p1 + p2
 
-# Let's try matching the annotations from the two 
+#### 2. ANNOTATION MATCHING ###
 table(vis_annot$subclass)
 table(annot$celltype)
 
@@ -121,7 +124,7 @@ dim(seurat_obj_scrna)
 # saveRDS(seurat_obj_scrna %>% subset(celltype %in% intersect(seurat_obj_scrna$celltype, annot$celltype)),
 #         "spotless-benchmark/standards/reference/gold_standard_3_12celltypes.rds")
 
-#### CREATING SPOTS ####
+#### 3. CREATING SPOTS ####
 # Now, it's time to create some spots!
 # 1.4 by 0.3 mm
 # 17200 x 3700 pixels (approx, from max(annot$X and $Y))

@@ -1,18 +1,16 @@
-#### PREPROCESS GOLD STANDARD (SEQFISH+ DATASET) ####
-# This script creates Visium-like spots from the seqFISH+ dataset and also the reference data
+## CONTENTS
+# 1. Create Visium-like spots from seqFISH+ data
+# 2. Create reference dataset
+# 3. Data exploration
+
+## DATA
 # Count data: https://github.com/CaiGroup/seqFISH-PLUS/raw/master/sourcedata.zip
 # Annotations: https://github.com/CaiGroup/seqFISH-PLUS/raw/master/celltype_annotations.zip
 # Cluster annotations: https://static-content.springer.com/esm/art%3A10.1038%2Fs41586-019-1049-y/MediaObjects/41586_2019_1049_MOESM3_ESM.xlsx
 # Cluster annotations were first modified in excel so there are only two columns - "louvain" and "celltype"
 
-library(dplyr)
-library(tibble)
-library(ggplot2)
-library(Matrix)
-library(gridExtra)
-library(stringr)
-library(magrittr)
-library(patchwork)
+commandArgs <- function(...) "only_libraries"
+source("~/spotless-benchmark/scripts/0_init.R"); rm(commandArgs)
 
 #### HELPER FUNCTIONS ####
 # Returns data frame of circle points to visualize with ggplot
@@ -37,15 +35,15 @@ get_coarse_annot <- function(celltype){
   else { return (replacements[which(conditions)] )}
 }
 
-#### CHANGEABLE PARAMS ####
+## CHANGEABLE PARAMS ##
 path <- "~/spotless-benchmark/data/raw_data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
 dataset <- "ob" # cortex_svz or ob
 standard_no <- ifelse(dataset == "cortex_svz", 1, 2)
 fov_no <- 0 # 0-6
-combine_all_plots <- FALSE
+combine_all_plots <- FALSE # For powerpoint presentations
 
-#### READ IN FILE ####
+### READ IN FILE ##
 annot <- read.csv(paste0(path, dataset, "_cell_type_annotations.csv"))
 cluster <- read.csv(paste0(path, dataset, "_cluster_names.csv")) %>%
   `colnames<-`(c("louvain", "celltype"))
@@ -72,16 +70,18 @@ if (dataset == "ob"){
   metadata$Region <- coords$Region
 }
 
-library(Seurat)
+### 1. CREATE REFERENSE DATASET ####
 seurat_obj <- CreateSeuratObject(counts=t(counts[metadata$celltype != "Unannotated",]),
                                  meta.data=metadata[metadata$celltype != "Unannotated",])
 seurat_obj <- RenameCells(seurat_obj, add.cell.id = "cell")
 # saveRDS(seurat_obj, paste0("~/spotless-benchmark/data/gold_standard_", standard_no, "/reference/reference_", dataset, ".rds"))
 
+# Plot
 # seurat_obj <- seurat_obj %>% ScaleData() %>% FindVariableFeatures() %>%
 #   RunPCA() %>%  RunUMAP(dims = 1:30)
 # DimPlot(seurat_obj, reduction = "umap", group.by="celltype_coarse", label=TRUE)
 
+#### 2. CREATE SPOTS ####
 # Coordinates are in units of one pixel (=0.103 microns)
 # Each camera FOV is 2,000 pixels * 0.103 micron/pixel = 206 micron
 # Visium has center-to-center distance of 100 microns, spot size 55 micron
@@ -206,10 +206,101 @@ for (fov_no in 0:6){
 }
 
 p_all <- patchwork::wrap_plots(all_plots, nrow = 1)
-ggsave(paste0("D:/PhD/figs/sc_meeting_10012022/", dataset, "_all_fovs.png"),
-               p_all, width = 4000, height = 800, units="px")
+# ggsave(paste0("D:/PhD/figs/sc_meeting_10012022/", dataset, "_all_fovs.png"),
+#                p_all, width = 4000, height = 800, units="px")
 
-# CONFERENCE
+# Spot sample
 p + theme(panel.grid=element_blank(), axis.title=element_blank(),
           axis.text=element_blank(), legend.position="none")
-ggsave("Pictures/conference_spot_sample.png", width = 1500, height = 1500, units="px")
+# ggsave("Pictures/conference_spot_sample.png", width = 1500, height = 1500, units="px")
+
+#### 3. EXPLORE DATA ####
+args <- list(disp = c(0, 0.2),
+             min_count = c(4, 2),
+             colsums_cutoff = c(200, 0))
+
+# Read and preprocess reference data
+scRNA_objs <- lapply(1:2, function(i) {
+  readRDS(paste0("~/spotless-benchmark/standards/reference/gold_standard_", i, ".rds")) %>%
+    .[apply(GetAssayData(.), 1, max) > args$min_count[i],] %>%
+    .[, colSums(.) >= args$colsums_cutoff[i]] %>%
+    NormalizeData() %>%
+    FindVariableFeatures(mean.cutoff=c(0.05, 3),
+                         dispersion.cutoff=c(args$disp[i], Inf),
+                         nfeatures = 3500) %>%
+    ScaleData(vars.to.regress = "nCount_RNA") %>%
+    RunPCA(npcs = 20) %>% RunUMAP(dims = 1:20, n_neighbors=10)
+})
+
+# UMAPs
+DimPlot(scRNA_objs[[1]], reduction = "umap", group.by="celltype_coarse", label=TRUE)
+DimPlot(scRNA_objs[[2]], reduction = "umap", group.by="celltype_coarse", label=TRUE)
+
+# UMAP with and without labels
+params <- list(labels=c(TRUE, FALSE), titles=c("_labels", ""),
+               widths=c(3000, 1690), heights=c(1500, 1090),
+               main_titles = c("Cortex UMAP (n=17)", "Olfactory Bulb UMAP (n=9)"),
+               file_names = c("cortex_svz", "ob"))
+
+for (sc in 1:2){
+  for (i in 1:2){ 
+    p <- DimPlot(scRNA_objs[[sc]], reduction = "umap", group.by="celltype",
+                 label=params$labels[i]) +
+      scale_color_manual(values = col_vector) +
+      theme(axis.text = element_blank(), axis.ticks = element_blank(),
+            axis.title = element_blank(), legend.position=c("right", "none")[i]) +
+      ggtitle(params$main_titles[sc])
+    # ggsave(paste0("D:/PhD/figs/sc_meeting_10012022/", params$file_names[sc],
+    # "_ref", params$titles[i], "_new.png"), p,
+    #       width=params$widths[i], height=params$heights[i], units="px")
+    print(p)
+  }
+}
+
+# Violin plots
+vlnplots <- lapply(scRNA_objs, function(scRNA_obj) {
+  print(VlnPlot(scRNA_obj, features="nCount_RNA", group.by = "celltype_coarse"))
+})
+wrap_plots(vlnplots)
+
+# Density plots
+densityplots <- lapply(scRNA_objs, function(scRNA_obj) {
+  df <- scRNA_obj@meta.data[,c("nCount_RNA", "nFeature_RNA")] %>% reshape2::melt(id.var=NULL)
+  print(ggplot(data=df, aes(x=value, color=variable)) + geom_density() +
+    theme_bw())
+})
+wrap_plots(densityplots)
+
+# Compare datasets
+df_comb <- lapply(1:2, function(k) {
+  scRNA_objs[[k]]@meta.data[,c("nCount_RNA", "nFeature_RNA")] %>%
+    mutate(dataset = k)
+  }) %>% do.call(rbind, .) %>%
+  pivot_longer(!dataset)
+  
+proper_feature_names <- c("Total counts per cell", "Total genes per cell") %>%
+  setNames(c("nCount_RNA","nFeature_RNA"))
+ggplot(data=df_comb, aes(x=value, color=factor(dataset))) + geom_density() +
+  #scale_color_discrete(labels=c("Cortex", "OB")) +
+  labs(color="Dataset") + 
+  theme_bw() +
+  theme(strip.background = element_rect(fill = "white"),
+        axis.text.y = element_blank(), axis.ticks.y = element_blank(),
+        axis.title = element_blank(), panel.grid = element_blank()) +
+  facet_wrap(~name, labeller=labeller(name=proper_feature_names))
+# ggsave("D:/PhD/figs/sc_meeting_10012022/dataset_properties.png")
+
+# Plot counts per spot distribution
+datasets <- c("cortex_svz", "ob")
+spots_df <- lapply(1:2, function(i) {
+  lapply(0:6, function(fov_no) {
+    spatial_data <- readRDS(paste0("~/spotless-benchmark/standards/gold_standard_", i,
+                                   "/Eng2019_", datasets[i], "_fov", fov_no, ".rds"))
+    colSums(spatial_data$counts)
+  }) %>% melt() 
+}) %>% setNames(datasets) %>% melt(id.var=c("value", "L1"), level=2) %>%
+  setNames(c("value", "fov", "dataset")) %>%
+  mutate(fov = factor(fov))
+
+ggplot(data=spots_df, aes(x=value, color=fov, group=fov)) + geom_density() +
+  facet_wrap(~dataset) + theme_bw()

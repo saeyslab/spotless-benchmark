@@ -1,21 +1,17 @@
-library(Seurat)
-library(tidyverse)
-library(ggplot2)
-library(patchwork)
-library(RColorBrewer)
-qual_col_pals = brewer.pal.info[brewer.pal.info$category == 'qual',]
-col_vector = unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
+## CONTENTS
+# 1. Preprocess single-cell reference files from the Liver atlas and explore data
+# 2. Create different reference datasets for different sequencing technologies
+# 3. Save Visium datasets from the liver atlas as Seurat objects (+image)
 
-# Read liver data with 3 samples (digest protocol - nuclei)
-# https://livercellatlas.org/data_files/toDownload/rawData_digestNuclei.zip
-# liver_sn <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_snRNAseq_3samples/",
-#                     gene.column=1)
-# liver_sn_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_snRNAseq_3samples/",
-#                            "moustStSt_snRNAseq_3samples_annot.csv")) %>%
-#                   column_to_rownames("cell")
+## DATA
+# https://livercellatlas.org/download.php
+# Single-cell: MouseStSt, All liver cells
+# Visium: MouseStSt, Visium spatial
 
-# Read liver data with 12 samples (Mouse stst - all liver cells)
-# https://livercellatlas.org/data_files/toDownload/rawData_mouseStSt.zip
+commandArgs <- function(...) "only_libraries"
+source("~/spotless-benchmark/scripts/0_init.R"); rm(commandArgs)
+
+#### 1. PREPROCESS SINGLE-CELL DATA ####
 liver_all <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allcells/",
                     gene.column=1)
 liver_all_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allcells/",
@@ -30,10 +26,10 @@ liver_seurat_obj <- CreateSeuratObject(counts = liver_all,
                                        meta.data = liver_all_annot)
 
 # Normalization and preprocessing (can skip)
-liver_seurat_obj <- liver_seurat_obj %>% NormalizeData %>% FindVariableFeatures %>%
-  ScaleData %>% RunPCA(features = VariableFeatures(object = .)) %>% RunUMAP(dims=1:20)
+# liver_seurat_obj <- liver_seurat_obj %>% NormalizeData %>% FindVariableFeatures %>%
+#   ScaleData %>% RunPCA(features = VariableFeatures(object = .)) %>% RunUMAP(dims=1:20)
 
-#### COMBINING FINER ANNOTATION ####
+## COMBINING FINER ANNOTATION ##
 # Use finer annotation of CD45- cells to differentiate ECs
 annot_cd45_file <- read.csv("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allCells/annot_mouseStStCD45neg.csv")
 all(annot_cd45_file$cell %in% colnames(liver_seurat_obj))
@@ -55,6 +51,7 @@ annot_cd45_file$annot %>% table
 all(rownames(liver_seurat_obj@meta.data) == annot_cd45$cell)
 
 # Using even finer annotation of Myeloid, CD45-, and fibroblasts (from robin)
+# This is not really necessary, as we are mostly interested in endothelial cell zonation
 annot_fine_file <- readRDS("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allCells/metadata_combined_robin.rds")
 annot_fine <- annot_fine_file[match(Cells(liver_seurat_obj), annot_fine_file$cell),]
 all(Cells(liver_seurat_obj) == annot_fine$cell)
@@ -65,7 +62,7 @@ liver_seurat_obj$annot_fine <- annot_fine$annot
 
 #saveRDS(liver_seurat_obj, "~/spotless-benchmark/data/rds/liver_mouseStSt_guilliams2022.rds")
 
-##### READ IN DATA #####
+## EXPLORE SINGLE-CELL DATA ##
 liver_seurat_obj <- readRDS("~/spotless-benchmark/data/rds/liver_mouseStSt_guilliams2022.rds")
 
 # Plot cell type proportions of different samples and digests
@@ -78,8 +75,8 @@ ggplot(liver_df, aes(y=sample, x=n, fill=annot)) + geom_bar(stat="identity", pos
         legend.direction = "horizontal") +
   scale_fill_manual(values=col_vector) +
   guides(fill = guide_legend(nrow = 2)) + labs(fill="Celltype")
-ggsave("~/Pictures/dambi_28102022/liver_sampledigest.png",
-        width=300, height=150, units="mm", dpi=300)
+# ggsave("~/Pictures/dambi_28102022/liver_sampledigest.png",
+#         width=300, height=150, units="mm", dpi=300)
 
 # Plot UMAP
 ggplot(liver_seurat_obj@meta.data, aes(x=UMAP_1, y=UMAP_2, color=annot)) +
@@ -97,8 +94,7 @@ lapply(liver_seurat_obj$annot %>% unique, function(ct) {
   liver_seurat_obj@meta.data %>% filter(annot == ct) %>% .$annot_fine %>% table
   }) %>% setNames(liver_seurat_obj$annot %>% unique)
 
-
-##### CREATE DIFFERENT REFERENCE DATASETS #####
+##### 2. CREATE DIFFERENT REFERENCE DATASETS #####
 # Save separate files depending on digest
 annotation <- "annot_cd45" # annot, annot_fine, or annot_cd45
 
@@ -118,7 +114,7 @@ for (dig in unique(liver_seurat_obj$digest)){
 liver_seurat_obj <- liver_seurat_obj[,liver_seurat_obj$annot_cd45 %in% cts_to_keep]
 #saveRDS(liver_seurat_obj, "~/spotless-benchmark/data/rds/liver_mouseStSt_9celltypes.rds")
 
-#### SPATIAL DATA #####
+#### 3. PREPROCESS SPATIAL DATA #####
 liver_spatial <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_visium/countTable_mouseStStVisium/",
                          gene.column=1)
 liver_spatial_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/",
@@ -150,11 +146,11 @@ for (i in 1:4){
   # Add image to seurat object
   liver_spatial_seurat_obj@images$image <- image
   
-  # Test
   # print(SpatialDimPlot(liver_spatial_seurat_obj, "zonationGroup"))
   # saveRDS(liver_spatial_seurat_obj, paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
 }
 
+# Plot Central and Portal spots only
 i <- 1
 liver_spatial <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
 SpatialDimPlot(liver_spatial[,grepl("Central|Portal", liver_spatial$zonationGroup)], "zonationGroup")
@@ -163,6 +159,7 @@ liver_spatial_subset <- liver_spatial[,grepl("Central|Portal", liver_spatial$zon
   
 ind <- bind_cols(liver_spatial_subset$zonationGroup, GetTissueCoordinates(liver_spatial_subset)) %>%
   setNames(c("zonationGroup", "row", "col"))
+
 ggplot(ind, aes(x=col, y=row, color=zonationGroup)) + geom_point(size=3) +
   coord_fixed() + theme_classic(base_size=20) + scale_y_reverse() +
   theme(axis.line = element_blank(), axis.text = element_blank(),
@@ -179,5 +176,5 @@ ggplot(ind, aes(x=col, y=row, color=zonationGroup)) + geom_point(size=3) +
   scale_color_manual(labels=c("Central Vein", "Portal Vein"),
                        values=c("#BCF8EC", "#507255"))
 
-ggsave("~/Pictures/SCG_poster/liver_points.png",
-       width=200, height=120, units="mm", dpi=300)
+# ggsave("~/Pictures/SCG_poster/liver_points.png",
+#        width=200, height=120, units="mm", dpi=300)

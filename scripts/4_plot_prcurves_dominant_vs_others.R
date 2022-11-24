@@ -1,26 +1,11 @@
-library(dplyr)
-library(stringr)
-library(ggplot2)
-library(precrec)
-library(reshape2)
-library(RColorBrewer)
+## CONTENTS
+# TODO
+
+source("~/spotless-benchmark/scripts/0_init.R")
 library(gridExtra)
 # trace(".dataframe_common", where=getNamespace("precrec"), edit=TRUE)
 
-possible_dataset_types <- c("artificial_uniform_distinct", "artificial_diverse_distinct", "artificial_uniform_overlap", "artificial_diverse_overlap",
-                            "artificial_dominant_celltype_diverse", "artificial_partially_dominant_celltype_diverse",
-                            "artificial_dominant_rare_celltype_diverse", "artificial_regional_rare_celltype_diverse")
-datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
-              'hippocampus', 'kidney', 'scc_p5')
-proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
-                          "Hippocampus", "Kidney", "SCC (patient 5)") %>%
-  setNames(str_replace(datasets, "_generation", ""))
-methods <- c("spotlight", "music", "cell2location", "rctd", "stereoscope",
-             "spatialdwls", "destvi", "nnls", "dstg", "seurat", "tangram", "stride")
-proper_method_names <- c("SPOTlight", "MuSiC", "Cell2location", "RCTD", "Stereoscope",
-                         "SpatialDWLS", "DestVI", "NNLS", "DSTG", "Seurat", "Tangram", "STRIDE") %>%
-  setNames(methods)
-
+##### HELPER FUNCTIONS #####
 plot_pr_curves <- function(curve_df, text, optimal_points=NULL, show_method_names=FALSE){
   p <- ggplot(curve_df, aes(x=x, y=y)) +
     geom_line() + #scale_color_manual(values=rev(cols)) +
@@ -51,7 +36,7 @@ dt <- possible_dataset_types[dti]
 plot_optimal_points <- TRUE
 plot_type <- c("all_replicates", "single_rep")[1]
 
-for (dsi in 1:7){
+for (dsi in 1:6){
   ds <- datasets[dsi]
 for (dti in c(1:4, 6:8)){
   dt <- possible_dataset_types[dti]
@@ -200,22 +185,23 @@ metrics[["others"]] <- sapply(metrics_by_group, function(k) apply(k[-dominant_ce
 # known_nondom <- ifelse(known_props[,-dominant_cell_type] > 0, "present", "absent")
 # 
                               
- df <- lapply(1:7, function (dsi){
+df <- lapply(1:6, function (dsi){
   ds <- datasets[dsi]
   lapply(1:8, function (dti) {
     dt <- possible_dataset_types[dti]
     lapply (1:10, function (r) {
         deconv_props <- lapply(tolower(methods), function (method){
-          read.table(paste0("deconv_proportions/", ds, "_", dt,
+          read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
                             "/proportions_", method, "_", ds, "_", dt, "_rep", r),
                      header=TRUE)
         }) %>% setNames(methods)
         
         # Load ground truth data
-        ground_truth_data <- readRDS(paste0("D:/spade-benchmark/standards/bronze_standard_",
+        ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
                                             dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
         ncells <- ncol(ground_truth_data$spot_composition)-2
         
+        # Calculate AUPR
         known_props <- ground_truth_data$relative_spot_composition[,1:ncells]
         colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
         known_props <- known_props[,order(colSums(known_props), decreasing=TRUE)]
@@ -237,36 +223,130 @@ metrics[["others"]] <- sapply(metrics_by_group, function(k) apply(k[-dominant_ce
 })  %>% do.call(rbind, .) %>% select(-curvetypes) %>%
  setNames(c("method", "abundance_rank", colnames(.)[3:8]))
 
-p <- ggplot(df, aes(x=avg_abundances, y=aucs, color=method, group=method)) +
+# Perform asymptotic regression
+library(gridExtra)
+
+aupr_cutoff <- 0.8
+plots_and_ints <- lapply(methods, function(met) {
+  
+  df_subset <- df %>% filter(method == met)
+  
+  # Build asymptotic model, fixing lower limit(c) as 0 and upper limit(d) as 1
+  # Equation becomes (1 - exp(-x/e)), which we use to solve for intercept
+  m1 <- drm(aucs ~ avg_abundances, data = df_subset, fct = AR.2(fixed=c(1, NA)))
+  intercept <- -(log(1-aupr_cutoff) * m1$coefficients)
+  
+  #print(paste(met, summary(m1)$coefficients[,2])) # Standard error of coefficient
+  
+  # Need fitted line for ggplot
+  pm <- plot(m1, log="", lwd=2, cex=1.2);
+  
+  tmp_plot <- ggplot(df_subset, aes(x=avg_abundances, y=aucs)) +
+    geom_point(alpha = 0.1, color="gray50") +
+    geom_line(aes(x=avg_abundances, y=`1`, color="red"), data=pm, inherit.aes = FALSE) +
+    geom_point(x=intercept, y=aupr_cutoff, color="red", size=2) +
+    # Add xintercept text
+    geom_text(label=paste0("x = ",round(intercept,4)), x=0.4, y=aupr_cutoff, colour="red") +
+    ggtitle(proper_method_names[met]) + theme_classic() +
+    theme(legend.position = "none",
+          axis.title = element_blank())
+  
+  return(list(plot=tmp_plot, intercept=intercept))
+}) %>% setNames(methods)
+
+
+nrow = 2; ncol = 6
+
+# Ranking based on intercept value (smallest = most sensitive)
+intercepts <- sapply(plots_and_ints, function(k) k$intercept) %>% setNames(methods)
+method_order <- names(sort(intercepts))
+
+# Do some extra cleanup with the plots
+all_plots <- lapply(1:length(plots_and_ints), function(k) {
+  # What is the method ranking
+  pos <- which(method_order == methods[k])
+  tmp_plot <- plots_and_ints[[k]]$plot
+  
+  # Remove x axis text if method is not in the final row
+  if (pos < (length(methods)/nrow * (nrow-1))+1){
+    tmp_plot <- tmp_plot + theme(axis.text.x = element_blank())
+  }
+  
+  # Remove y axis text if method is not in the first column
+  if ((pos - 1) %% ncol){
+    tmp_plot <- tmp_plot + theme(axis.text.y = element_blank())
+  }
+  tmp_plot
+  
+  }) %>% setNames(methods)
+patchworked <- patchworkGrob(patchwork::wrap_plots(all_plots[method_order],
+                                                   nrow = nrow, ncol = ncol))
+p_arranged <- grid.arrange(patchworked, left = "AUPR", bottom = "Average abundance") 
+
+ggsave(paste0("~/Pictures/benchmark_paper/detection_limit_cutoff", aupr_cutoff, ".png"),
+       p_arranged,
+       width=375, height=150, units="mm", dpi=300)
+
+## OBSOLETE - OTHER STUFF I TRIED THAT DIDN'T REALLY WORK OUT ##
+aupr_cutoff <- 0.8
+# Using a generalized linear model
+ggplot(df, aes(x=avg_abundances, y=aucs, color=method, group=method)) +
   geom_point(alpha=0.1) +
   geom_smooth(method="gam") +
   theme_bw() +
   facet_grid(dataset~dataset_type, scales="free",
              labeller = labeller(method=proper_method_names))
 
-ggsave("D:/spade-benchmark/plots/pr_curves_by_abundance/dataset_vs_dataset_types.png", plot = p,
-       width=297, height=210, units="mm", dpi=200)
 
+# Using loess
+p_loess <- ggplot(df, aes(x=avg_abundances, y=aucs, group = method)) +
+  geom_point(alpha=0.1) +
+  geom_smooth(method = "loess", formula = y ~ log10(x)) +
+  theme_bw() +
+  facet_grid(~method, scales="free",
+             labeller = labeller(method=proper_method_names))
+p_loess
 
-pg <- ggplot_build(p)
-df_cutoff <- data.frame(x = c(pg$data[[2]]$x[ind-1], pg$data[[2]]$x[ind]),
-                        y = c(pg$data[[2]]$y[ind-1], pg$data[[2]]$y[ind]),
-                        method = unique(df$method))
-prc_cutoff <- 0.8
+# Continuation of the loess - determining where x intersects y=0.8 (very hacky)
+# Just get all points from the plot, then get points before and after y==0.8,
+# Then perform linear regression on them to see where x is at y==0.8
+# I told you it was hacky
+pg <- ggplot_build(p_loess)
+df_cutoff <- pg$data[[2]] %>% group_by(PANEL, above = y >= aupr_cutoff) %>%
+  mutate(xnew = case_when(!above ~ x[which.max(x)], above ~ x[which.min(x)]),
+         ynew = case_when(!above ~ y[which.max(y)], above ~ y[which.min(y)])) %>%
+  distinct(xnew, ynew) %>% ungroup() %>% mutate(method = rep(sort(methods), each=2)) %>%
+  rename(x = xnew, y = ynew)
+
 x_indices <- sapply(methods, function(m){
-  model = lm(y~x, data= df_cutoff %>% filter(method==m) %>% select(x,y))
-  (prc_cutoff-model$coefficients[1])/model$coefficients[2]
+  model = lm(y~x, data = df_cutoff %>% filter(method==m) %>% dplyr::select(x,y))
+  (aupr_cutoff-model$coefficients[1])/model$coefficients[2]
 })
 
 df_cutoff2 <- data.frame(x = x_indices,
-                 method = unique(df$method))
+                         method = unique(df$method))
+# Interestingly, rankings are very similar to rankings from the asymptotic regression
+df_cutoff2 %>% arrange(x) 
 
-p3 <- p + geom_point(data=df_cutoff2, aes(x=x, y=prc_cutoff), color="red", inherit.aes=FALSE) +
-  geom_hline(yintercept=prc_cutoff, color="red") +
+p_loess + geom_point(data=df_cutoff2, aes(x=x, y=aupr_cutoff), color="red", inherit.aes=FALSE) +
+  geom_hline(yintercept=aupr_cutoff, color="red") +
   geom_text(data=df_cutoff2, aes(label=paste0("x = ",round(x,4)),
                                  x=0.45, y=0.75), inherit.aes=FALSE, colour="red") +
   theme(panel.grid = element_blank()) +
   xlab("Average abundance for a cell type in a replicate") + ylab("PRC AUC")
 
-ggsave("D:/spade-benchmark/plots/pr_curves_by_abundance/methods_gam_intercept_points.png", plot = p3,
-       width=297, height=80, units="mm", dpi=200)
+# Another approach I thought of - see distribution of abundances where aupr > 0.8
+# And then look for peak
+ggplot(df %>% filter(aucs >= 0.8), aes(x=avg_abundances)) +
+  geom_density() +
+  facet_wrap(~method)
+
+# Didn't feel like this was a good way to do it, cause peak doesn't really mean much
+df %>% filter(aucs >= 0.8) %>% group_by(method) %>%
+  mutate(dens = density(avg_abundances)$x[which.max(density(avg_abundances)$y)]) %>%
+  distinct(dens) %>% arrange(dens)
+
+
+# I also tried the aomisc package from here
+# https://www.statforbiology.com/nonlinearregression/usefulequations#asymptotic_regression_model
+# But it didn't really work out
