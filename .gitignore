@@ -58,7 +58,6 @@ deconv_proportions/*
 results/*
 work/*
 data/raw_data/*
-plots/*
 logs/*
 trace*
 *jpeg
