@@ -1,0 +1,34 @@
+# CPU methods: method="rctd,music,spatialdwls,seurat,spotlight,nnls,dstg"
+
+# GPU methods: method="cell2location,destvi,stereoscope,tangram"
+# add "--gpu" flag and optionally "--file_type h5ad"
+# file_type flag requires conversion to h5ad beforehand (see below)
+
+# STRIDE (method=stride) can also make use of "--file_type h5ad" but not GPU
+
+for i in {1..6}
+do
+nextflow run main.nf -profile hpc --mode run_standard \
+--standards silver_standard_${i} -c standards/standard.config \
+--methods $method #--gpu --file_type h5ad
+done
+
+## CONVERSION ##
+# Without "--file_type h5ad", the conversion happens within the pipeline
+# I like to convert my files before with
+for i in {1..6} # dataset
+do
+for j in {1..9} # abundance pattern
+do
+nextflow run subworkflows/helper_processes.nf -profile local,docker -entry convertWorkflow \
+--convert_input "standards/silver_standard_${i}-${j}/*.rds" -profile local,docker
+done
+done
+
+## COMPUTE METRICS ##
+# Disadvantage of using h5ad is that metrics have to be computed again (h5ad file doesn't contain ground truth)
+for i in {1..6}
+do
+nextflow run subworkflows/evaluation/evaluate_methods.nf -profile hpc \
+--sp_input "standards/silver_standard_${i}-*/*.rds" --methods $method
+done
