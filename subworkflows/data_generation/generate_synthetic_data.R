@@ -22,7 +22,7 @@ if (is.null(par$rep) || is.null(par$sc_input) || is.null(par$dataset_type)){
 }
 
 library(Seurat)
-library(synthvisium)
+library(synthspot)
 
 seurat_obj_scRNA <- readRDS(par$sc_input)
 if (!is.null(par$seed)) { set.seed(as.numeric(par$seed)) }

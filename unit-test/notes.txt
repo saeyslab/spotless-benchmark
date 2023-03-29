@@ -10,6 +10,6 @@ dimensions: 26252 genes x 16 spots
 original: test_sc_data
 remarks:
 > set.seed(10)
-> synthvisium::generate_synthetic_visium(seurat_obj = seurat_obj_scrna, dataset_type = "artificial_uniform_distinct",
+> synthspot::generate_synthetic_visium(seurat_obj = seurat_obj_scrna, dataset_type = "artificial_uniform_distinct",
                                                      clust_var = "subclass" , n_regions = 1,
                                                      n_spots_min = 10, n_spots_max = 50, visium_mean = 20000, visium_sd = 5000)

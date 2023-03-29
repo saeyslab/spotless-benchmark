@@ -3,20 +3,20 @@ nextflow.enable.dsl=2
 include { convertBetweenRDSandH5AD as convert_sc } from '../helper_processes'
 
 // Initialization: possible dataset types
-synvis_types_map = [aud: "artificial_uniform_distinct", add: "artificial_diverse_distinct",
+synthspot_types_map = [aud: "artificial_uniform_distinct", add: "artificial_diverse_distinct",
                     auo: "artificial_uniform_overlap", ado: "artificial_diverse_overlap",
                     adcd: "artificial_dominant_celltype_diverse", apdcd: "artificial_partially_dominant_celltype_diverse",
                     adrcd: "artificial_dominant_rare_celltype_diverse", arrcd: "artificial_regional_rare_celltype_diverse",
                     prior: "prior_from_data", real: "real", rm: "real_missing_celltypes_visium",
                     arm: "artificial_missing_celltypes_visium", addm: "artificial_diverse_distinct_missing_celltype_sc",
                     adom: "artificial_diverse_overlap_missing_celltype_sc"]
-synvis_types_fullnames = synvis_types_map.collect{ it.value }
-synvis_types_flat = synvis_types_map.collect{[it.key, it.value]}.flatten() // All key and values in a list
+synthspot_types_fullnames = synthspot_types_map.collect{ it.value }
+synthspot_types_flat = synthspot_types_map.collect{[it.key, it.value]}.flatten() // All key and values in a list
 
 process generate_synthetic_data {
     tag "$output"
-    container 'csangara/synthvisium:latest'
-    publishDir params.outdir.synvis, mode: 'copy'
+    container 'csangara/synthspot:latest'
+    publishDir params.outdir.synthspot, mode: 'copy'
     input:
         path (sc_input)
         val (dataset_type)
@@ -37,29 +37,29 @@ process generate_synthetic_data {
 workflow generateSyntheticData {
     main:
         // Check input type - if h5ad, convert to rds
-        sc_input_type = file(params.synvis.sc_input).getExtension() =~ /h5/ ? "h5ad" : "rds"
-        println("The synthvisium data is of ${sc_input_type} format.")
-        sc_input_ch = Channel.fromPath(params.synvis.sc_input)
+        sc_input_type = file(params.synthspot.sc_input).getExtension() =~ /h5/ ? "h5ad" : "rds"
+        println("The synthetic data is of ${sc_input_type} format.")
+        sc_input_ch = Channel.fromPath(params.synthspot.sc_input)
         sc_input_conv = sc_input_type =~ /h5ad/ ? convert_sc(sc_input_ch).flatten().filter( ~/.*rds*/ ) : sc_input_ch
         
         // Filter out invalid input, write out full name of abbreviations, filter out duplicates
-        synvis_type_input = params.synvis.type.split(',').findAll{ synvis_types_flat.contains(it) }
-                                            .collect{ ( synvis_types_fullnames.contains(it) ? it : synvis_types_map[it]) }
+        synthspot_type_input = params.synthspot.type.split(',').findAll{ synthspot_types_flat.contains(it) }
+                                            .collect{ ( synthspot_types_fullnames.contains(it) ? it : synthspot_types_map[it]) }
                                             .unique()
         // Extra arguments: remove dataset type and number of replicates, then turn to string
-        synvis_args_input = params.synvis.findAll{ it.key != "type" && it.key != "reps" && it.key != "sc_input"}
+        synthspot_args_input = params.synthspot.findAll{ it.key != "type" && it.key != "reps" && it.key != "sc_input"}
                                   .collect{ "--$it.key $it.value" }.join(" ")
 
-        println("Single-cell reference: $params.synvis.sc_input")
-        println("Dataset types to be generated: ${synvis_type_input.join(", ")}")
-        println("Number of replicates per dataset type: $params.synvis.reps")
-        println("Arguments: ${ (synvis_args_input) ? synvis_args_input: "None (default)" }")
+        println("Single-cell reference: $params.synthspot.sc_input")
+        println("Dataset types to be generated: ${synthspot_type_input.join(", ")}")
+        println("Number of replicates per dataset type: $params.synthspot.reps")
+        println("Arguments: ${ (synthspot_args_input) ? synthspot_args_input: "None (default)" }")
 
         // Duplicates sc_input by converting it to a list then turning it back into a dataflow
-        sc_input_dup = (sc_input_conv.toList()*synvis_type_input.size).flatMap()
+        sc_input_dup = (sc_input_conv.toList()*synthspot_type_input.size).flatMap()
         
-        generate_synthetic_data(sc_input_dup, Channel.from(synvis_type_input),
-                               synvis_args_input, 1..params.synvis.reps.toInteger())
+        generate_synthetic_data(sc_input_dup, Channel.from(synthspot_type_input),
+                               synthspot_args_input, 1..params.synthspot.reps.toInteger())
     emit:
         generate_synthetic_data.out
 }

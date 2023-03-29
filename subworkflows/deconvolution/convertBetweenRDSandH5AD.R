@@ -19,7 +19,7 @@ if (tolower(ext) == "rds"){
   cat("Reading input ", par$input_path, "\n")
   input_obj <- readRDS(par$input_path)
   
-  # Synthvisium object
+  # Synthspot object
   if (class(input_obj) != "Seurat"){
     seurat_obj <- CreateSeuratObject(counts = input_obj$counts)
   } else {

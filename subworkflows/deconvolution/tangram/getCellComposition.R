@@ -19,7 +19,7 @@ if ("uns" %in% names(sp_input_h5ad)){
 
 if (check_rds){
   to_write <- tryCatch({
-    # In case the rds is a synthvisium format, we get the absolute number of cells per spot
+    # In case the rds is a synthspot format, we get the absolute number of cells per spot
     sp_input_rds <- readRDS(par$sp_input_rds)
     known_abs_cells <- sp_input_rds$spot_composition
     celltype_cols <- !grepl("^name$|^region$|^spot_no$", colnames(known_abs_cells))

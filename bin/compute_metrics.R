@@ -34,14 +34,14 @@ par <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 #   # props_file = "/mnt/d/spotless-benchmark/proportions_music",
 #   props_file = "/mnt/d/spotless-benchmark/subworkflows/deconvolution/music/proportions.tsv",
 #   sp_input = "/mnt/d/spotless-benchmark/unit-test/test_sp_data.rds",
-#   sp_type = "synthvisium",
+#   sp_type = "synthspot",
 #   output = "tempMetrics"
 # )
 # par$output <- args$output
 # par[names(args)] <- args
 
 # Load reference data
-if (par$sp_type == "synthvisium"){
+if (par$sp_type == "synthspot"){
   synthetic_visium_data <- readRDS(par$sp_input)
   ncells <- length(colnames(synthetic_visium_data$spot_composition))-2
   
