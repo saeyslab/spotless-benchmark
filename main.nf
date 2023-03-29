@@ -34,11 +34,11 @@ workflow {
         else if (params.mode ==~ /run_dataset/ ) {
             println("Running the pipeline on the provided data...")
         }
-        // GENERATE SYNTHVISIUM DATA AND RUN
+        // GENERATE SYNTHETIC DATA AND RUN
         else if (params.mode ==~ /generate_and_run/) {
-            println("Generating synthvisium data...")
+            println("Generating synthetic data with synthspot...")
             generateSyntheticData()
-            println("Synthetic data will be copied to ${params.outdir.synvis}")
+            println("Synthetic data will be copied to ${params.outdir.synthspot}")
         }
 
         // Print inputs (the timing isn't right with with view(), so do this instead)
