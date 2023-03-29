@@ -4,6 +4,7 @@
 
 source("~/spotless-benchmark/scripts/0_init.R")
 library(ungeviz) # geom_hpline
+library(ggtext) # Bold ground truth label
 
 datasets <- c("cortex_svz", "ob")
 proper_dataset_names <- c("Cortex", "Olfactory Bulb") %>% setNames(c("cortex_svz", "ob"))
@@ -12,7 +13,7 @@ fovs <- 0:6
 #### HELPER FUNCTIONS ####
 # Combine excitatory neurons and interneuron subtypes
 get_coarse_annot <- function(celltype){
-  conditions <- c(grepl("Excitatory layer", celltype), grepl("Interneuron", celltype))
+  conditions <- c(grepl("Excitatory ?layer", celltype), grepl("Interneuron", celltype))
   replacements <- c('Excitatory neurons', 'Interneurons')
   if (all(!conditions)) { return (celltype) }
   else { return (replacements[which(conditions)] )}
@@ -158,10 +159,13 @@ props <- lapply(c("cortex_svz", "ob"), function (dataset) {
     do.call(rbind, .) %>% mutate("dataset" = dataset)
 }) %>% do.call(rbind, .)
 
+celltypes_list <- lapply(1:2, function(i) {
+  unique(readRDS(paste0("~/spotless-benchmark/standards/reference/gold_standard_", i, ".rds"))$celltype) %>%
+    setNames(str_replace_all(., "[/ .]", "")) %>% gsub("II", "2", .) 
+})
 
 ground_truth <- lapply(1:2, function (i) {
-  reference <- readRDS(paste0("~/spotless-benchmark/standards/reference/gold_standard_", i, ".rds"))
-  celltypes <- stringr::str_replace_all(unique(reference$celltype), "[/ .]", "")
+  celltypes <- names(celltypes_list[[i]])
     lapply(fovs, function(fov){
       known_props <- readRDS(paste0("~/spotless-benchmark/standards/gold_standard_",
                                     i, "/Eng2019_", datasets[i],
@@ -179,18 +183,21 @@ ground_truth <- lapply(1:2, function (i) {
       `colnames<-`(c("celltype", "proportion", "fov", "method", "dataset"))}) %>%
      do.call(rbind, .)
 
+
 combined <- rbind(props, ground_truth)
 combined_summ <- combined %>% group_by(dataset, fov, method, celltype) %>%
   summarise(mean_props = sum(as.numeric(proportion))) %>% ungroup %>%
   mutate(method = factor(method, levels=c("Known", methods)))
 
 # For coarse dataset
-combined_summ_coarse <- combined_summ %>% ungroup() %>%
-  # Group excitatory neurons together, and interneurons together
-  mutate(celltype = sapply(as.character(celltype), get_coarse_annot)) %>%
-  group_by(dataset, fov, method, celltype) %>% summarise(mean_props = sum(mean_props))
+# combined_summ_coarse <- combined_summ %>% ungroup() %>%
+#   # Group excitatory neurons together, and interneurons together
+#   mutate(celltype = sapply(as.character(celltype), get_coarse_annot)) %>%
+#   group_by(dataset, fov, method, celltype) %>% summarise(mean_props = sum(mean_props))
+combined_summ_coarse <- combined_summ
 
-plots <- lapply(datasets, function(ds){
+plots <- lapply(1:2, function(i){
+  ds <- datasets[i]
   n <- combined_summ_coarse %>% filter(dataset==ds) %>% ungroup() %>% select(celltype) %>% unique() %>% nrow()
   # We order the methods by ranking, based on RMSE
   best_performers <- df_ranked %>% filter(metric == "RMSE", dataset == ds) %>%
@@ -200,23 +207,32 @@ plots <- lapply(datasets, function(ds){
                 mutate(method = factor(method, levels = c(rev(best_performers), "Known"))),
               aes(x=method, y=mean_props, fill=celltype)) +
     geom_bar(width=0.4, stat="identity", position=position_stack(reverse=TRUE)) +
-    scale_x_discrete(labels = proper_method_names) + 
-    scale_fill_manual(values=col_vector) +
+    
+    scale_x_discrete(labels = c(proper_method_names, "<b>Ground truth</b>" %>% setNames("Known"))) + 
+    scale_fill_manual(values=col_vector,
+                      breaks=names(sort(celltypes_list[[i]])),
+                      labels=sort(celltypes_list[[i]])) +
     facet_wrap(~fov, nrow=1) +
     coord_flip() + 
-    ylab("Sum of proportions across all spots in a FOV") +
-    labs(fill="Cell type") + theme_bw() +
+    labs(fill="Cell type", y="Sum of proportions across all spots in a FOV",
+         subtitle=proper_dataset_names[ds]) +
+    theme_bw() +
     theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(),
-          axis.title = element_blank(), panel.grid = element_blank(),
-          strip.background = element_rect(fill = "white"))
-  if (ds == "cortex_svz") { p <- p + guides(fill=guide_legend(ncol=2))}
+          axis.text.y = element_markdown(),
+          axis.title.y = element_blank(), panel.grid = element_blank(),
+          strip.background = element_rect(fill = "white"),
+          legend.justification = c("left"),
+          legend.title = element_text(size=8),
+          legend.text = element_text(size=8),
+          legend.key.size=unit(3, 'mm'))
+  if (ds == "cortex_svz") { p <- p  + theme(axis.title.x = element_blank())} #+ guides(fill=guide_legend(ncol=2)))}
   p
 })
 
-wrap_plots(plots, nrow = 2)
+p_all <- wrap_plots(plots, nrow = 2)
 
-# ggsave("D:/spotless-benchmark/plots/seqFISH_abundance_barplot_a.png",
-#        p_all, width=297, height=120, units="mm", dpi=200)
+ggsave("~/Pictures/benchmark_paper/seqFISH_abundance_barplot.png",
+       p_all, width=297, height=150, units="mm", dpi=200)
 
 ## Barplot of just the reference ##
 ref_meta <- lapply(1:2, function(dataset_i) {

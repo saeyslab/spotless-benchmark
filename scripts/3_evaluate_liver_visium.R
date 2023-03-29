@@ -1,8 +1,8 @@
 ## CONTENTS
 # 1. Plot abundances
 # 2. Plot differences between using different reference datasets
-# 3. Calculate JSD & EMD between predictions (+Resolve) and Nuc-seq data
-# 4. Calculate AUPR
+# 3. Calculate AUPR
+# 4. Calculate JSD & EMD between predictions (+Resolve) and Nuc-seq data
 # 5. Plot JSD, EMD, and AUPR together
 # 6. Show predictions in SpatialDimPlot
 
@@ -13,6 +13,8 @@ library(philentropy)
 library(emdist)
 
 digests <- c("exVivo", "inVivo", "nuclei", "noEC", "9celltypes")
+proper_digest_names <- c("scRNA-seq\n(ex vivo digestion)", "scRNA-seq\n(in vivo digestion)", "snRNA-seq", "All (23 cell types)", "All_filtered") %>%
+  setNames(digests)
 datasets <- 1:4
 
 #### HELPER FUNCTIONS ####
@@ -89,7 +91,7 @@ ggplot(props_summ %>% filter(digest == "noEC") , aes(y=method, x=mean_props, fil
 # Also get coarser annotations
 liver_nuc <- readRDS("spotless-benchmark/data/rds/liver_mouseStSt_snRNAseq_guilliams2022.rds")
 liver_nuc <- liver_nuc@meta.data %>%
-  mutate(annot_new = sapply(annot, get_coarse_annot)) %>%
+  mutate(annot_new = sapply(annot_cd45, get_coarse_annot)) %>%
   filter(sample != "ABU21") %>%  group_by(sample, annot_new) %>%
   count() %>% group_by(sample) %>% mutate(props=n/sum(n))
 
@@ -117,28 +119,188 @@ ggplot(props_summ %>% filter(digest != "noEC_9celltypes"), aes(x=digest, y=mean_
         axis.title = element_blank(), panel.grid = element_blank(),
         strip.background = element_rect(fill = "white"))
 
-# Show result for one slide
-ggplot(props_summ %>% filter(slice == "JB01", digest != "noEC_9celltypes"), #%>%
-         #mutate(method = factor(method, levels = best_performers)),
+# Show result for average -> also filter same cell types
+liver_nuc_summ %>% arrange(desc(mean_prop))
+cts_keep <- props %>% filter(digest != "noEC") %>% distinct(celltype) %>% pull(celltype) %>% as.character
+props_summ2 <- props_summ %>% mutate(celltype = ifelse(celltype %in% cts_keep, celltype, "Others")) %>%
+  group_by(method, digest, celltype) %>% summarise(mean_props = sum(mean_props)) %>%
+  mutate(celltype = factor(celltype, levels=c(cts_keep[c(4, 2, 8, 6, 7, 5, 1, 3, 9)], "Others")
+))
+
+
+sorting_scheme <- c("stability", "jsd", "aupr", "none")[4]
+if (sorting_scheme == "stability") {
+  # If you want to sort the methods - prerequisites: evaluate_stability
+  liver_metrics <- readRDS("~/spotless-benchmark/data/rds/liver_metrics_ref_sensitivity.rds")
+  
+  # Process the liver metrics a bit more - remove duplicates
+  best_performers <- liver_metrics %>% rowwise() %>% mutate(combi = paste0(sort(c(as.character(other_digest), digest)), collapse="_")) %>%
+    distinct(method, dataset, combi, jsd) %>% group_by(method) %>% #group_by(method, combi) %>%
+    summarise(avg_perf = median(jsd)) %>% #group_by(combi) %>%
+    mutate(rank = dense_rank(avg_perf)) %>%
+    group_by(method) %>% summarise(rank = sum(rank)) %>% ungroup() %>%
+    arrange(rank, .by_group = TRUE) %>% pull(method)
+} else if (sorting_scheme == "jsd" || sorting_scheme == "aupr") {
+  # Prerequisite: run 3. for AUPR and 4. for JSD
+  best_performers <- all_rankings[[sorting_scheme]] %>% pull(method)
+} else if (sorting_scheme == "none"){
+  best_performers <- methods
+}
+
+
+proper_celltype_names <- c("B cells", "Central vein ECs", "Cholangiocytes", "Hepatocytes", "Kupffer cells",
+                           "Liver sinusoidal ECs", "Mesothelial cells", "Portal vein ECs", "T cells") %>% setNames(cts_keep)
+
+col_vector2 <- c(brewer.pal(9, "Paired"), "gray30")
+p_pred <- ggplot(props_summ2 %>% group_by(method, celltype, digest) %>%
+         summarise(mean_props = mean(mean_props)) %>%
+         mutate(method = factor(method, levels = best_performers)),
        aes(x=digest, y=mean_props, fill=celltype)) +
   geom_bar(width=0.4, stat="identity", position=position_stack(reverse=TRUE)) +
-  #scale_x_discrete(limits = rev(levels(props_summ$method)),
-  #                 labels = rev(proper_method_names)) +
-  scale_fill_manual(values=col_vector) +
+  scale_x_discrete(limits = rev(c("noEC", "noEC_9celltypes", "exVivo", "inVivo", "nuclei")),
+                   labels = c(proper_digest_names, "All (filtered)" %>% setNames("noEC_9celltypes"))) +
+  scale_fill_manual(values=col_vector2, labels=proper_celltype_names) +
   facet_wrap(~method, labeller = labeller(method=proper_method_names)) +
   coord_flip() + 
   ylab("Sum of proportions across all spots in a slice") +
   labs(fill="Cell type") + theme_bw() +
   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank(),
         axis.title = element_blank(), panel.grid = element_blank(),
-        strip.background = element_rect(fill = "white"),
-        legend.position = "bottom", legend.direction = "horizontal")
+        strip.background = element_rect(fill = "white", color="white"),
+        legend.position = "bottom", legend.direction = "horizontal",
+        panel.spacing = unit(1, "lines"),
+        plot.margin = margin(0, 5, 5, 5))
 
-# ggsave("~/Pictures/dambi_28102022/liver_ref.png",
-#        width=200, height=150, units="mm", dpi=300)
+
+# For nuc-seq?
+liver_nuc_summ2 <- liver_nuc %>% mutate(celltype = str_replace_all(annot_new, "[/&\\- .]", "")) %>%
+  mutate(celltype = ifelse(celltype %in% cts_keep, celltype, "Others")) %>%
+  group_by(sample, celltype) %>% summarise(props = sum(props)) %>%
+  group_by(celltype) %>% summarise(mean_props=mean(props)) %>%
+  mutate(celltype = factor(celltype, levels=c(cts_keep[c(4, 2, 8, 6, 7, 5, 1, 3, 9)], "Others"))) %>%
+  mutate(method="Ground truth (snRNA-seq)", digest="test")
+
+p_nuc <- ggplot(liver_nuc_summ2, aes(y="Ground truth", x=mean_props, fill=celltype)) +
+  geom_bar(width=0.4, stat="identity", position=position_stack(reverse=TRUE)) +
+  scale_fill_manual(values=col_vector2) +
+  ylab("Sum of proportions across all spots in a slice") +
+  labs(fill="Cell type") + theme_bw() +
+  theme(axis.ticks = element_blank(), axis.text = element_blank(),
+        axis.title = element_blank(), panel.grid = element_blank(),
+        panel.border = element_blank(), plot.margin = margin(5, 5, -5, 5),
+        legend.position = "none")
+
+p_nuc_rep <- wrap_plots(lapply(1:4, function(i) { 
+  if (i==1) p <- p_nuc+ theme(axis.text.y = element_text(size=10))
+  else p <- p_nuc
+  p
+  })) + plot_layout(nrow=1)
+
+p_nuc_rep / p_pred + plot_layout(height=c(1, 10))
+
+# ggsave("~/Pictures/benchmark_paper/liver_predictions_withref.png",
+#        width=400, height=250, units="mm", dpi=300)
+
+#### 3. CALCULATE AUPR AND FPR ####
+auprs <-  lapply(digests, function (dig) {
+  lapply(1:4, function (ds){
+    
+    deconv_matrix <- lapply(tolower(methods), function (method) {
+      read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
+                        method, "_liver_mouseVisium_JB0", ds, "_", dig, "_annot_cd45"), header=TRUE, sep="\t") %>%
+        # Still has . in colnames
+        `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))
+    }) %>% setNames(methods)
+    
+    visium_annot <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", ds, ".rds"))
+    rows_to_keep <- which(grepl("Portal|Central", visium_annot$zonationGroup))
+    visium_annot_subset <- visium_annot[,rows_to_keep]
+    
+    # For FPRs - consider several cell types
+    # Portal-present cells (Cholangiocytes, cDC1 & 2, PVECs, Lymphatic ECs
+    ground_truth_fpr <- rep(ifelse(grepl("ortal", visium_annot_subset$zonationGroup), 1, 0), 5) %>% matrix(ncol=5) %>%
+    # Central vein only
+      cbind(ifelse(grepl("Central", visium_annot_subset$zonationGroup), 1, 0)) %>%
+    # Not portal (LSECs)
+      cbind(ifelse(!grepl("Portal", visium_annot_subset$zonationGroup), 1, 0)) %>%
+      `colnames<-`(c("Cholangiocytes", "cDC1s", "cDC2s", "PortalVeinEndothelialcells",
+                     "LymphaticEndothelialcells", "CentralVeinEndothelialcells", "LSECs"))
+
+    thresholds <- seq(0, 0.05, by=0.005)
+    fprs <- lapply(methods, function(met) {
+      suppressMessages(sapply(thresholds, function(thresh) {
+          cols_to_keep <- intersect(colnames(ground_truth_fpr), colnames(deconv_matrix[[met]]))
+          test_props <- deconv_matrix[[met]]  %>% .[rows_to_keep, cols_to_keep]
+          known_props <- ground_truth_fpr[,cols_to_keep]
+
+          confusion <- data.frame(test_props = test_props %>% melt %>% pull(value),
+                                  known_props = known_props %>% melt() %>% pull(value)) %>%
+            mutate(category = case_when(known_props > 0 & test_props > thresh ~ "tp",
+                                        known_props == 0 & test_props <= thresh ~ "tn",
+                                        known_props > 0 & test_props <= thresh ~ "fn",
+                                        known_props == 0 & test_props > thresh ~ "fp"))
+          k <- table(factor(confusion$category, levels=c("fp", "tp", "tn", "fn")))
+
+          (k["fp"] / (k["fp"] + k["tn"])) %>% unname
+      }) %>% setNames(thresholds) %>% data.frame(value = .) %>% mutate(method=met, metric = "fpr", dataset = ds) %>% rownames_to_column("thresh"))
+    }) %>% do.call(rbind, .)
+    
+    
+    
+    # For AUPR, only consider ECs
+    ground_truth <- rep(ifelse(grepl("Portal", visium_annot_subset$zonationGroup), 1, 0), 1) %>% matrix(ncol=1) %>%
+      # Central vein only
+      cbind(ifelse(grepl("Central", visium_annot_subset$zonationGroup), 1, 0)) %>%
+      `colnames<-`(c("PortalVeinEndothelialcells",
+                     "CentralVeinEndothelialcells"))
+    
+    deconv_unlist <- lapply(deconv_matrix, function (k) k[rows_to_keep,] %>% select(colnames(ground_truth)) %>%  as.matrix %>% c)
+    scores <- join_scores(deconv_unlist)
+    model <- mmdata(scores, ground_truth %>% melt() %>% select(value), modnames=methods, dsids=ds) # make model
+    curve <- evalmod(model)
+    prcs <- subset(auc(curve), curvetypes == "PRC")
+    #autoplot(curve, "PRC")
+    merge(prcs %>% `colnames<-`(c("method", "dataset", "metric", "value")) %>% mutate(metric=tolower(metric)),
+          fprs, all = TRUE) %>% mutate(digest = dig)
+    
+  }) %>% do.call(rbind, .)
+}) %>% do.call(rbind, .)
 
 
-#### 3. CALCULATE JSD & EMD ####
+dir_auprs <- sapply(1:4, function(ds) {
+  visium_annot <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", ds, ".rds"))
+  rows_to_keep <- which(grepl("Portal|Central", visium_annot$zonationGroup))
+  visium_annot_subset <- visium_annot[,rows_to_keep]
+  
+  ground_truth <- rep(ifelse(grepl("Portal", visium_annot_subset$zonationGroup), 1, 0), 1) %>% matrix(ncol=1) %>%
+    # Central vein only
+    cbind(ifelse(grepl("Central", visium_annot_subset$zonationGroup), 1, 0)) %>%
+    `colnames<-`(c("PortalVeinEndothelialcells",
+                   "CentralVeinEndothelialcells"))
+  
+  dirichlet_props <- DirichletReg::rdirichlet(ncol(visium_annot_subset), rep(1.0, length(cts_keep))) %>% .[,1:2] %>% `colnames<-`(colnames(ground_truth)) %>% as.matrix %>% c %>% join_scores
+  dirichlet_model <- mmdata(dirichlet_props, ground_truth %>% melt() %>% select(value), modnames="dirichlet", dsids=ds) %>% evalmod
+  subset(auc(dirichlet_model), curvetypes == "PRC")$aucs
+})
+
+
+ggplot(auprs %>% filter(metric == "fpr", digest == "noEC"),
+       aes(x=thresh, y=value, color=factor(dataset))) +
+  geom_point() +
+  theme_bw() +
+  facet_wrap(~method)
+
+
+aupr_rankings <- auprs %>% filter(metric == "prc") %>%
+  # Calculate mean of metrics
+  group_by(dataset, digest, metric, thresh) %>%
+  mutate(rank = dense_rank(desc(value))) 
+
+# ggsave("~/Pictures/SCG_poster/liver_data.png",
+#        width=150, height=120, units="mm", dpi=300)
+
+
+#### 4. CALCULATE JSD & EMD ####
 liver_nuc_9cts <- readRDS("spotless-benchmark/data/rds/liver_mouseStSt_nuclei_9celltypes_annot_cd45.rds")
 samples_to_keep <- c("ABU11", "ABU13", "ABU17", "ABU20")
 
@@ -161,47 +323,58 @@ samples_to_keep <- c("ABU11", "ABU13", "ABU17", "ABU20")
 # # Not keeping ABU7
 # samples_to_keep <- samples_to_keep %>% .[!grepl("ABU7", .)]
 
-# Also compare with resolve proportions
-resolve <- read.csv("~/spotless-benchmark/data/resolve/cell_counts.csv", row.names=1) %>%
-  mutate(Others = Total_Cells - rowSums(.[,-ncol(.)])) %>%
-  stack %>% filter(ind != "Total_Cells") %>% 
-  mutate(slide=rep(1:4, length(unique(ind)))) %>%
-  `colnames<-`(c("n", "celltype", "slide")) %>%
-  group_by(slide, celltype) %>% summarise(count=sum(n)) %>%
-  # Rename
-  mutate(celltype = reduce2(c("BCells", "Hep", "TCells", "Kuppfer", "Vein_endothelial_cells"),
-                            c("B cells", "Hepatocytes", "T cells", "Kupffer cells", "Vein endothelial cells"),
-                            str_replace, .init=celltype))
+# Which references do you want to use?
+possible_references <- c("resolve", "bioreps", "dirichlet")
+references <- list("aupr" = possible_references[3],      #aupr
+                   "jsd" = possible_references[c(2,3)], #jsd
+                   "emd" = possible_references[c(2,3)])  #emd
 
-# Get the same celltypes
-props %>% filter(digest != "noEC") %>% distinct(celltype) %>% pull(celltype) %>% sort
-resolve$celltype %>% unique %>% sort
-
-resolve_common <- resolve %>% filter(!celltype %in% c("Stellate", "Fibro", "Others")) %>%
-  group_by(slide) %>% mutate(props=count/sum(count))
+if ("resolve" %in% unlist(references)) {
+  # Also compare with resolve proportions
+  resolve <- read.csv("~/spotless-benchmark/data/resolve/cell_counts.csv", row.names=1) %>%
+    mutate(Others = Total_Cells - rowSums(.[,-ncol(.)])) %>%
+    stack %>% filter(ind != "Total_Cells") %>% 
+    mutate(slide=rep(1:4, length(unique(ind)))) %>%
+    `colnames<-`(c("n", "celltype", "slide")) %>%
+    group_by(slide, celltype) %>% summarise(count=sum(n)) %>%
+    # Rename
+    mutate(celltype = reduce2(c("BCells", "Hep", "TCells", "Kuppfer", "Vein_endothelial_cells"),
+                              c("B cells", "Hepatocytes", "T cells", "Kupffer cells", "Vein endothelial cells"),
+                              str_replace, .init=celltype))
+  # Get the same celltypes
+  props %>% filter(digest != "noEC") %>% distinct(celltype) %>% pull(celltype) %>% sort
+  resolve$celltype %>% unique %>% sort
+  
+  resolve_common <- resolve %>% filter(!celltype %in% c("Stellate", "Fibro", "Others")) %>%
+    group_by(slide) %>% mutate(props=count/sum(count))
+}
 
 props_summ <- props %>% group_by(slice, method, celltype, digest) %>%
   summarise(mean_props = mean(as.numeric(proportion))) %>% ungroup
 
-props_common <- props %>% filter(digest != "noEC", celltype != "Mesothelialcells") %>%
-  mutate(celltype = str_replace(celltype, "Central|Portal", "")) %>%
+# If we want to compare with Resolve, merge CV and PV cells and remove mesothelial cells
+props_common <- props %>% filter(digest != "noEC") %>%
+  { if ("resolve" %in% unlist(references)) filter(., celltype != "Mesothelialcells") %>%
+                                   mutate(celltype = str_replace(celltype, "Central|Portal", ""))
+    else (.)} %>%
   group_by(method,digest,slice,celltype) %>%
   summarise(mean_props = mean(as.numeric(proportion))) %>% group_by(method,digest,slice) %>%
   mutate(props=mean_props/sum(mean_props))
 
-# Using these four as ground truth, calculate JSD and EarthMover's distance for all methods, for all digests
-ground_truth <- liver_nuc_9cts@meta.data %>%
-  filter(sample %in% samples_to_keep, annot_cd45 != "Mesothelial cells") %>%
-  mutate(annot_cd45 = str_replace(annot_cd45, "Central |Portal ", "")) %>%
+
+# Using four bioreps as ground truth, calculate JSD and EarthMover's distance for all methods, for all digests
+ground_truth <- liver_nuc_9cts@meta.data %>% filter(sample %in% samples_to_keep) %>%
+  { if ("resolve" %in% unlist(references)) filter(., annot_cd45 != "Mesothelial cells") %>%
+  mutate(annot_cd45 = str_replace(annot_cd45, "Central |Portal ", ""))
+    else (.)} %>%
   group_by(sample, annot_cd45) %>% count(name="num") %>% group_by(sample) %>%
   mutate(props=num/sum(num)) #%>% pull(props)
-
 props_split <- props_common %>% select(-mean_props) %>% group_by(method, digest, slice) %>%
   arrange(celltype, .by_group = TRUE) %>% group_by(digest, method) %>% group_split %>%
   setNames(paste0(unique(props_common$method), "_", rep(unique(props_common$digest),
                                                         each=length(unique(props_common$method)))))
 
-ct <- resolve_common$celltype %>% unique %>% sort
+ct <- ground_truth$annot_cd45 %>% unique %>% sort
 set.seed(10)
 metrics <- lapply(props_split, function(temp) {
   get_jsd_emd(ground_truth, temp, temp_sample_column = "slice")
@@ -221,146 +394,129 @@ rankings <- metrics_df %>%
   summarise(summed_rank = sum(rank)) %>% group_by(metric) %>%
   arrange(summed_rank, .by_group = TRUE)
 
-
-#### 4. CALCULATE AUPR ####
-auprs <-  lapply(digests, function (dig) {
-  lapply(1:4, function (ds){
-    
-    deconv_matrix <- lapply(tolower(methods), function (method) {
-      read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
-                        method, "_liver_mouseVisium_JB0", ds, "_", dig, "_annot_cd45"), header=TRUE, sep="\t") %>%
-        # Still has . in colnames
-        `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))
-    }) %>% setNames(methods)
-    
-    visium_annot <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", ds, ".rds"))
-    
-    # Cholangiocytes only in portal zones
-    # No portal vein ECs in central region and vice versa
-    # cDC1 and 2 only in portal
-    # Portal-present cells (Cholangiocytes, cDC1 & 2, PVECs, Lymphatic ECs
-    rows_to_keep <- which(grepl("Portal|Central", visium_annot$zonationGroup))
-    visium_annot_subset <- visium_annot[,rows_to_keep]
-    # ground_truth <- rep(ifelse(grepl("ortal", visium_annot_subset$zonationGroup), 1, 0), 5) %>% matrix(ncol=5) %>%
-    # # Central vein only
-    # cbind(ifelse(grepl("Central", visium_annot_subset$zonationGroup), 1, 0)) %>%
-    # # Not portal (LSECs)
-    # cbind(ifelse(!grepl("Portal", visium_annot_subset$zonationGroup), 1, 0)) %>%
-    #   `colnames<-`(c("Cholangiocytes", "cDC1s", "cDC2s", "PortalVeinEndothelialcells",
-    #                  "LymphaticEndothelialcells", "CentralVeinEndothelialcells", "LSECs"))
-    
-    ground_truth <- rep(ifelse(grepl("Portal", visium_annot_subset$zonationGroup), 1, 0), 1) %>% matrix(ncol=1) %>%
-      # Central vein only
-      cbind(ifelse(grepl("Central", visium_annot_subset$zonationGroup), 1, 0)) %>%
-      # Not portal (LSECs)
-      cbind(ifelse(!grepl("Portal", visium_annot_subset$zonationGroup), 1, 0)) %>%
-      `colnames<-`(c("PortalVeinEndothelialcells",
-                     "CentralVeinEndothelialcells", "LSECs"))
-    
-    deconv_unlist <- lapply(deconv_matrix, function (k) k[rows_to_keep,] %>% select(colnames(ground_truth)) %>%  as.matrix %>% c)
-    scores <- join_scores(deconv_unlist)
-    model <- mmdata(scores, ground_truth %>% melt() %>% select(value), modnames=methods, dsids=ds) # make model
-    curve <- evalmod(model)
-    prcs <- subset(auc(curve), curvetypes == "PRC")
-    #autoplot(curve, "PRC")
-    prcs
-  }) %>% do.call(rbind, .) %>% `colnames<-`(c("method", "dataset", "curvetypes", "value")) %>%
-    select(-curvetypes)
-}) %>% setNames(digests) %>%
- melt(id.vars = c("method", "dataset"), measure.vars = "value") %>% select(-variable) %>%
-  `colnames<-`(c("method", "dataset", "aupr", "digest"))
-
-aupr_rankings <- auprs %>% filter(digest != "9celltypes") %>%
-  # Calculate mean of metrics
-  group_by(dataset, digest) %>%
-  mutate(rank = dense_rank(desc(aupr))) 
-
-
-# ggsave("~/Pictures/SCG_poster/liver_data.png",
-#        width=150, height=120, units="mm", dpi=300)
-
 #### 5. PLOTS OF ALL THREE METRICS TOGETHER #####
-all_rankings <- merge(rankings, aupr_rankings %>% group_by(method) %>% summarise(summed_rank = sum(rank)) %>%
-        arrange(summed_rank) %>% mutate(metric = "aupr"), all=TRUE) %>%
+all_rankings <- merge(rankings,
+                      aupr_rankings %>% filter(digest != "noEC") %>% group_by(method) %>%
+                        summarise(summed_rank = sum(rank)) %>% arrange(summed_rank) %>%
+                        mutate(metric = "aupr"),
+                      all=TRUE) %>%
   group_by(metric) %>% arrange(summed_rank, .by_group = TRUE) %>% group_split() %>%
   setNames(c("jsd", "emd", "aupr"))
 
 metrics_all <- merge(metrics_df %>% mutate(digest = str_replace(digest, "noEC_9celltypes", "all")),
-  auprs %>% group_by(method, digest) %>% summarise(value = mean(aupr)) %>%
-    mutate(metric = "aupr", fill_col = digest == "noEC",
-           digest = str_replace(digest, "noEC", "all")) %>%
-    filter(digest != "9celltypes"),
+  auprs %>% filter(metric == "prc") %>% group_by(method, digest) %>% summarise(value = mean(value)) %>%
+    mutate(metric = "aupr", fill_col = digest == "9celltypes",
+           digest = str_replace(digest, "9celltypes", "all")) %>%
+    filter(digest != "noEC"),
   all = TRUE
 )
 
+# saveRDS(metrics_all, "~/spotless-benchmark/results/liver_all_metrics.rds")
+
 args <- list(metric = c("aupr", "jsd", "emd"),
              titles = c("AUPR", "JSD", "Earthmover's Distance"),
-             xbreaks = list(seq(0.5, 1, 0.25), 0:3, seq(0.5, 2, 0.5)),
-             lims = list(c(0.5,1), NULL, NULL))
+             xbreaks = list(seq(0.5, 1, 0.25), seq(0, 1, 0.25), seq(0.5, 2, 0.5)),
+             lims = list(c(0.45,1), c(0, 1), NULL))
 
-dirichlet_props <- DirichletReg::rdirichlet(4, rep(1.0, length(ct))) %>% t %>% data.frame() %>%
-  `colnames<-`(1:4) %>% `row.names<-`(ct) %>%
-  rownames_to_column("celltype") %>%  pivot_longer(!celltype, names_to = "repl", values_to = "props") %>% arrange(repl)
-ref_dirichlet <- get_jsd_emd(ground_truth, dirichlet_props, temp_sample_column = "repl")
-#ref_resolve <- resolve_common %>% group_by(slide) %>% arrange(celltype, .by_group = TRUE) %>% pull(props)
+null_ref <- matrix(runif(8), nrow=2, dimnames = list(c("jsd", "emd")))
+ref_dirichlet <- null_ref; ref_resolve <- null_ref; ref_biorep <- null_ref
 
-ref_resolve <- get_jsd_emd(ground_truth, resolve_common, temp_sample_column = "slide")
+if ("dirichlet" %in% c(references[[2]], references[[3]])){
+  dirichlet_props <- DirichletReg::rdirichlet(4, rep(1.0, length(ct))) %>% t %>% data.frame() %>%
+    `colnames<-`(1:4) %>% `row.names<-`(ct) %>%
+    rownames_to_column("celltype") %>%  pivot_longer(!celltype, names_to = "repl", values_to = "props") %>% arrange(repl)
+  ref_dirichlet <- get_jsd_emd(ground_truth, dirichlet_props, temp_sample_column = "repl")
+  
+  
+}
 
-refs <- list("jsd" = list(mean(ref_resolve["jsd",]), mean(ref_dirichlet["jsd",])),
-             "emd" = list(mean(ref_resolve["emd",]), mean(ref_dirichlet["emd",])))
+if ("resolve" %in% c(references[[2]], references[[3]])) ref_resolve <- get_jsd_emd(ground_truth, resolve_common, temp_sample_column = "slide")
 
+if ("bioreps" %in% c(references[[2]], references[[3]])) {
+  ref_bioreps <- lapply(samples_to_keep, function(samp) {
+    # For each sample compute JSD to the three other samples
+    gt_tmp <- ground_truth %>% rename(celltype = annot_cd45)
+    get_jsd_emd(gt_tmp %>% filter(sample == samp),
+                gt_tmp %>% filter(sample != samp)) %>%
+      # Get the mean of each
+      rowMeans()
+  }) %>% do.call(rbind, .) %>% t
+  
+ 
+}
 
-ps <- lapply(1:3, function(i){
+refs <- list("jsd" = list(mean(ref_resolve["jsd",]), mean(ref_bioreps["jsd",]), mean(ref_dirichlet["jsd",])) %>% setNames(possible_references),
+             "emd" = list(mean(ref_resolve["emd",]), mean(ref_bioreps["emd",]), mean(ref_dirichlet["emd",])) %>% setNames(possible_references),
+             "aupr" = list(NA, NA, mean(dir_auprs)) %>% setNames(possible_references))
+
+ps <- lapply(1:2, function(i){
   # The two datasets are plotted side by side
   best_performers <- all_rankings[[args$metric[i]]] %>% pull(method)
-
+  nnls_pos <- which(best_performers == "nnls")
+  
   # Reference lines for Resolve data and Dirichlet distribution
   p <- ggplot(metrics_all %>% filter(metric==args$metric[i]) %>%
                 # Order based on ranking
                 mutate(method = factor(method, levels = rev(best_performers)),
                        # Plot all datasets (noEC_9celltypes) last
                        digest = factor(digest, levels = c("exVivo", "inVivo", "nuclei", "all"))) %>%
-                arrange(digest),
+                group_by(digest == "all") %>% arrange(value, .by_group = TRUE),
               aes(x=value, y=method, colour=digest, fill=fill_col))
   
   # Add reference lines
-  if (i != 1) {
-    p <- p +
-      geom_vline(aes(xintercept =refs[[args$metric[i]]][[1]],  linetype="Resolve"), colour = "gray50") +
-      geom_vline(aes(xintercept = refs[[args$metric[i]]][[2]],  linetype="Dirichlet"), colour = "gray25")
-
-  }
+  # NOTE: Don't bother trying to change this into a for loop - already tried and failed
+  if ("resolve" %in% references[[i]])  p <- p + geom_vline(aes(xintercept =refs[[args$metric[i]]][[1]],  linetype="Resolve"), colour = "gray50")
+  if ("bioreps" %in% references[[i]]) p <- p + geom_vline(aes(xintercept=refs[[args$metric[i]]][[2]], linetype="Biological var."), colour="gray75")
+  if ("dirichlet" %in% references[[i]]) p <- p + geom_vline(aes(xintercept = refs[[args$metric[i]]][[3]],  linetype="Dirichlet"), colour = "gray25")
     
   # "All" datasets will be smaller than others
-  p + geom_point(aes(size=fill_col), shape=21, stroke=1) + 
+  p <- p + 
+  # Highlight NNLS
+  annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +  
+  geom_point(aes(size=fill_col), shape=21, stroke=1) + 
   # Only add legend on the second plot
-  theme_classic(base_size=20) + theme(axis.title = element_blank(),
+  theme_classic(base_size=15) + theme(axis.title = element_blank(),
                                       legend.title = element_blank(),
-                                      panel.grid = element_blank()) +
+                                      panel.grid = element_blank(),
+                                      legend.text = element_text(margin = margin(7, 0, 7, 0))) +
   scale_y_discrete(labels=proper_method_names) +
   scale_fill_manual(values=c("white", "black")) +
   scale_size_manual(values=c(4, 1.5)) +
-  scale_linetype_manual(values=c("dashed", "dotted"), breaks = c("Resolve", "Dirichlet")) +
+  scale_linetype_manual(values=c("dashed", "solid", "dotted")[which(possible_references %in% references[[i]])],
+                        breaks = c("Resolve", "Biological var.", "Dirichlet")[which(possible_references %in% references[[i]])]) +
   scale_color_manual(values=c(RColorBrewer::brewer.pal(3, "Set1"), "black"),
-                     labels = c("exVivo", "inVivo", "Nuc-seq", "All")) +
+                     labels = c(proper_digest_names, "All" %>% setNames("all"))) +
   scale_x_continuous(limits=args$lims[[i]], breaks=args$xbreaks[[i]]) +
-  ggtitle(args$titles[i]) + guides(fill = "none", size="none")
-
+  ggtitle(args$titles[i]) +
+  guides(fill = "none", size="none",
+         linetype=guide_legend(override.aes = list(color=c("gray50", "gray75", "gray25")[which(possible_references %in% references[[i]])])),
+         color = guide_legend(override.aes = list(shape = c(21, 21, 21, 16),
+                                                  size=c(4, 4, 4, 2.5)), order=1))
+  if (i == 1) p <- p + guides(linetype="none")
   
+  p
 })
 
+
 patchwork::wrap_plots(ps) + plot_layout(guides="collect")
-ggsave("Pictures/benchmark_paper/liver_allmetrics.png",
-       width=500, height=120, units="mm", dpi=300)
+
+# ggsave("Pictures/benchmark_paper/liver_allmetrics.png",
+#        width=500, height=120, units="mm", dpi=300)
+# ggsave("Pictures/benchmark_paper/liver_twometrics_noemd.png",
+#        width=375, height=140, units="mm", dpi=300)
+ggsave("Pictures/benchmark_paper/liver_twometrics_noemd.eps",
+       width=375, height=140, units="mm", dpi=300)
+
 
 #### 6. PLOT PREDICTION ON SPATIALDIMPLOT ####
-ct_oi <- c("PortalVeinEndothelialcells", "CentralVeinEndothelialcells", "LSECs")
-
+ct_oi <- c("PortalVeinEndothelialcells", "CentralVeinEndothelialcells")
+proper_celltype_names <- c("Portal vein ECs", "Central vein ECs") %>% setNames(ct_oi)
+annot <- "_9celltypes_annot_cd45"
 visium_objs <- lapply(1:4, function (ds){
   # Check predictions of using all reference data
   deconv_matrix <- lapply(tolower(methods), function (method) {
     read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
-                      method, "_liver_mouseVisium_JB0", ds, "_noEC_annot_cd45"), header=TRUE, sep="\t") %>%
+                      method, "_liver_mouseVisium_JB0", ds, annot), header=TRUE, sep="\t") %>%
       # Still has . in colnames
       `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))
   }) %>% setNames(methods)
@@ -411,10 +567,56 @@ plots <- lapply(top_n, function(met){
 patchwork::wrap_plots(plots[1:n_methods], nrow=n_methods) #& theme(legend.position = "none")
 
 # Better visualization -> boxplot of mean expression values
+
 preds_df <- do.call(rbind, lapply(visium_objs, function(k) k@meta.data)) %>% group_by(zonationGroup, sample) %>%
-  summarise_at(vars(paste0(methods[1], ".", ct_oi[1]):paste0(last(methods), ".", last(ct_oi))), mean) %>%
+  summarise_at(vars(paste0(methods[1], ".", ct_oi[1]):paste0(last(methods), ".", last(ct_oi))), median) %>%
   pivot_longer(!all_of(c("zonationGroup", "sample")), names_to = c("method", "celltype"), names_sep="\\.")
 
-ggplot(preds_df, aes(x=method, y=value, color=zonationGroup)) + geom_boxplot() + facet_grid(rows=vars(celltype)) +
-  theme_bw()
+# Run aupr to get rankings
+best_performers <- aupr_rankings %>% filter(digest != "noEC") %>% group_by(method) %>%
+  summarise(summed_rank = sum(rank)) %>%
+  arrange(summed_rank) %>% pull(method)
+ggplot(preds_df %>% mutate(method = factor(method, levels=rev(best_performers)),
+                           zonationGroup = factor(zonationGroup, levels=c("Portal", "Central"))),
+       aes(x=value, y=method, color=zonationGroup)) +
+  geom_vline(xintercept=0, color='gray90')+
+  geom_boxplot() + facet_grid(cols=vars(celltype),
+                               labeller = labeller(celltype=proper_celltype_names)) +
+  theme_bw() +
+  labs(x = "Average abundance per sample", color = "Region") +
+  #scale_x_continuous(expand = c(0.01, 0)) +
+  scale_y_discrete(labels = proper_method_names) +
+  scale_color_discrete(breaks = c("Central", "Portal")) +
+  theme(strip.background = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(margin = margin(10, 0, 0,0)))
 
+ggsave("~/Pictures/benchmark_paper/liver_ecs_boxplot.png",
+       width=200, height=120, units="mm", dpi=300)
+
+
+preds_df <- do.call(rbind, lapply(visium_objs, function(k) k@meta.data)) %>% group_by(zonationGroup, sample) %>%
+  filter(sample == "JBO2") %>%
+  select(-c(orig.ident, nCount_Spatial, nFeature_Spatial, UMAP_1, UMAP_2, type, cluster, zonation)) %>%
+  pivot_longer(!all_of(c("zonationGroup", "sample")), names_to = c("method", "celltype"), names_sep="\\.")
+ggplot(preds_df %>% mutate(method = factor(method, levels=rev(best_performers)),
+                           zonationGroup = factor(zonationGroup, levels=c("Portal", "Central"))),
+       aes(x=value, y=method, color=zonationGroup)) +
+  geom_vline(xintercept=0, color='gray90')+
+  geom_boxplot(alpha = 0.1) +
+  facet_grid(cols=vars(celltype),
+                              labeller = labeller(celltype=proper_celltype_names)) +
+  theme_bw() +
+  labs(x = "Abundance per spot for sample JBO2", color = "Region") +
+  #scale_x_continuous(expand = c(0.01, 0)) +
+  scale_y_discrete(labels = proper_method_names) +
+  scale_color_discrete(breaks = c("Central", "Portal")) +
+  theme(strip.background = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.title.x = element_text(margin = margin(10, 0, 0,0)))
+ggsave("~/Pictures/benchmark_paper/liver_ecs_boxplot_spots_jbo2.png",
+       width=200, height=120, units="mm", dpi=300)

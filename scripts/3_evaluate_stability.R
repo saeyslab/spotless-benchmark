@@ -11,6 +11,7 @@ library(ungeviz)
 #### 1. CALCULATE JSD & CORR IN SILVER STANDARD ####
 # Only run once, since it takes a while
 datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus')
+proper_dataset_names[c('cerebellum_cell', 'cerebellum_nucleus')] <- c("Single-cell cerebellum", "Single-nucleus cerebellum")
 ext <- c("10xref", "snref", "scref")
 
 ss_metrics <- lapply(1:length(datasets), function(ds) {
@@ -52,27 +53,43 @@ best_performers <- ss_metrics %>%
   arrange(rank, .by_group = TRUE) %>% select(-avg_perf) %>%
   group_split() %>% setNames(paste0(rep(datasets, each=3), "_", c("corr_ct", "corr_spot",  "jsd")))
 
-ps <- lapply(c("jsd", "corr_ct", "corr_spot"), function(moi) {
+mois <- c("jsd", "corr_ct", "corr_spot")[1]
+ps <- lapply(mois, function(moi) {
   tmp <- lapply(datasets, function (ds) {
     method_order <- best_performers[[paste0(ds, "_", moi)]] %>% pull(method) %>% rev
     
-    ggplot(ss_metrics %>% filter(dataset == ds, metric == moi) %>%
+    nnls_pos <- which(best_performers[[paste0(ds, "_", moi)]] %>% pull(method) == "nnls")
+    
+    p <- ggplot(ss_metrics %>% filter(dataset == ds, metric == moi) %>%
              mutate(method = factor(method, levels=method_order)), aes(x=value, y=method)) +
+      annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
       geom_boxplot(width=0.75) +
       scale_y_discrete(labels=proper_method_names[method_order]) +
-      theme_bw() + xlab(moi) +
+      labs(x = proper_metric_names[moi], title = proper_dataset_names[ds]) +
+      scale_x_continuous(limits=c(0, 1), breaks = seq(0, 1, 0.25)) +
+      theme_classic() +
       theme(legend.position="bottom", legend.direction = "horizontal",
-            axis.title.y = element_blank(),
+            axis.title = element_blank(),
             panel.grid = element_blank(),
             strip.background = element_blank()) +
-      facet_grid(~dataset,
-                 labeller=labeller(dataset=proper_dataset_names)) +
       guides(color = guide_legend(nrow=1))
+    
+    if (ds == datasets[2]) p <- p + theme(axis.title.x = element_text())
+    p
   })
   patchwork::wrap_plots(tmp)
 })
 
-patchwork::wrap_plots(ps, nrow=3)
+
+ps
+
+
+#patchwork::wrap_plots(ps, nrow=3)
+# ggsave("Pictures/benchmark_paper/stability_jsd_noliver.png",
+#        width=400, height=120, units="mm", dpi=300)
+
+ggsave("Pictures/benchmark_paper/stability_jsd_noliver.eps",
+       width=400, height=120, units="mm", dpi=300)
 
 #### 2. LIVER ####
 digests <- c("exVivo", "inVivo", "nuclei")
@@ -146,15 +163,18 @@ datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus', 'liver')
 ps <- lapply(datasets, function(ds) {
   
   method_order <- best_performers[[paste0(ds, "_jsd")]] %>% pull(method) %>% rev
+  nnls_pos <- which(best_performers[[paste0(ds, "_jsd")]] %>% pull(method) == "nnls")
   
   ggplot(metrics_all %>% filter(dataset == ds) %>%
            mutate(method = factor(method, levels=method_order)), aes(x=value, y=method)) +
+    annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
     geom_boxplot(width=0.75) +
     scale_y_discrete(labels=proper_method_names[method_order]) +
     scale_x_continuous(limits = c(-0.01,1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
-    theme_bw()  +
+    theme_classic()  +
+    labs(x = "JSD") +
     theme(legend.position="bottom", legend.direction = "horizontal",
-          axis.title= element_blank(),
+          axis.title.y= element_blank(),
           panel.grid = element_blank(),
           strip.background = element_blank()) +
     facet_grid(~dataset,
@@ -162,11 +182,14 @@ ps <- lapply(datasets, function(ds) {
     guides(color = guide_legend(nrow=1))
 
 })
-patchworked <- patchworkGrob(wrap_plots(ps, nrow = 1))
-p <- grid.arrange(patchworked, bottom = "JSD") 
-
-ggsave("Pictures/benchmark_paper/stability_jsd.png", p,
+#patchworked <- patchworkGrob(wrap_plots(ps, nrow = 1))
+#p <- grid.arrange(patchworked, bottom = "JSD") 
+wrap_plots(ps, nrow = 1)
+ggsave("Pictures/benchmark_paper/stability_jsd_all.png",
        width=500, height=120, units="mm", dpi=300)
+ggsave("Pictures/benchmark_paper/stability_jsd_liver.png", ps[[4]],
+       width=150, height=120, units="mm", dpi=300)
+
 
 ##### 4. COMPARE RMSE BETWEEN REFERENCES #####
 datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus')
@@ -180,7 +203,7 @@ ss_results_both <- lapply(1:length(datasets), function(ds) {
         file_name <- paste0("~/spotless-benchmark/results/", datasets[ds], "_", dt, "/metrics_",
                             method, "_", datasets[ds], "_", dt, "_rep", repl)
         # Read both files (matched and unmatched ref)
-        rbind(read.table(file_name, header=TRUE)[1:10],
+        rbind(read.table(file_name, header=TRUE),
               read.table(paste0(file_name, "_", ext[ds]), header=TRUE)) %>%
           data.frame %>%
           mutate(ref = c("matched", ext[ds])) %>%
@@ -193,43 +216,70 @@ ss_results_both <- lapply(1:length(datasets), function(ds) {
 
 
 ##### Line plot #####
-moi <- "RMSE"
+mois <- c("RMSE", "prc", "jsd")
+proper_dataset_names[c('cerebellum_cell', 'cerebellum_nucleus')] <- c("Cerebellum (sc)", "Cerebellum (sn)")
 
-ss_both_format <- ss_results_both %>% filter(metric == moi) %>%
-  mutate(all_values = as.numeric(value)) %>%
-  mutate(matched = factor(ref == "matched", levels=c(TRUE, FALSE)))
 
-ss_both_summ <- ss_both_format %>% group_by(dataset_type, dataset, method, matched) %>%
-  summarise(avg_perf = median(value)) %>% ungroup() %>% 
-  mutate(paired = rep(1:(n()/2),each=2))
+ps <- lapply(1:length(mois), function (i) {
+  moi <- mois[i]
+  ss_both_format <- ss_results_both %>% filter(metric == moi) %>%
+    mutate(all_values = as.numeric(value)) %>%
+    mutate(matched = factor(ref == "matched", levels=c(TRUE, FALSE)))
+  
+  ss_both_summ <- ss_both_format %>% group_by(dataset_type, dataset, method, matched) %>%
+    summarise(avg_perf = median(value)) %>% ungroup() %>% 
+    mutate(paired = rep(1:(n()/2),each=2))
+  
+  
+  # if consider_perf is false, only consider absolute difference
+  # How to rank the methods?
+  ranking_method <- c("absolute_diff", "absolute_diff_times_metric", "proportions_stability")[3]
+  if (grepl("absolute_diff", ranking_method)) {
+    # If TRUE, order by biggest absolute difference * RMSE (summed rank over median of dataset, dataset type) 
+    # If FALSE, only order by absolute difference
+    consider_perf <- grepl("times_metric", ranking_method)
+    best <- ss_both_summ %>% group_by(paired, method, dataset_type, dataset) %>%
+      mutate(difference = case_when(consider_perf ~ diff(avg_perf) * avg_perf,
+                                    !consider_perf ~ diff(avg_perf))) %>%
+      distinct(dataset_type, dataset, method, .keep_all = TRUE) %>% group_by(dataset, dataset_type) %>%
+      mutate(rank = case_when(moi %in% c("RMSE", "jsd") ~ dense_rank(difference),
+                              TRUE ~ dense_rank(desc(difference)))) %>% group_by(method) %>%
+      summarise(summed_rank = sum(rank)) %>% arrange(summed_rank) %>% pull(method)
+  } else {
+    # Run code in 1. first
+    best <- best_performers[grep("jsd", names(best_performers))] %>% do.call(rbind, .) %>% group_by(method) %>%
+      summarise(summed_rank = sum(rank)) %>% arrange(summed_rank) %>% pull(method)
+  }
+  
+  
+  p <- ggplot(ss_both_summ %>% mutate(method = factor(method, levels = best)), aes(x=matched, y=avg_perf)) +
+    geom_point() + geom_line(aes(group=paired)) +
+    labs(color="Method", x="Matched vs Unmatched Reference", y = paste0("Average ", proper_metric_names[moi]),
+         subtitle = proper_metric_names[moi]) +
+    theme_classic() +
+    theme(legend.position="bottom", legend.direction = "horizontal",
+          axis.text.x=element_blank(), axis.ticks.x=element_blank(),
+          axis.title = element_blank(),
+          strip.background = element_rect(fill = "gray90", color = "gray90"),
+          panel.grid = element_blank(),
+          panel.spacing = unit(0, "lines"),
+          plot.margin = margin(11, 5.5, 11, 5.5)) +
+    # Add lines between facets
+    annotation_custom(grid::linesGrob(y = c(0, 0), gp = grid::gpar(lwd = 3))) +
+    facet_grid(dataset~method,
+               labeller=labeller(dataset=proper_dataset_names,
+                                 method=proper_method_names))
+  
+  if (i == length(mois)) p <- p + theme(axis.title.x=element_text())
+  
+  p
+  
+})
 
-# Order by biggest absolute difference * RMSE (summed rank over median of dataset, dataset type) 
-# if consider_perf is false, only consider absolute difference
-consider_perf <- FALSE
-best <- ss_both_summ %>% group_by(paired, method, dataset_type, dataset) %>%
-  mutate(difference = case_when(consider_perf ~ diff(avg_perf) * avg_perf,
-                                !consider_perf ~ diff(avg_perf))) %>%
-  distinct(dataset_type, dataset, method, .keep_all = TRUE) %>% group_by(dataset, dataset_type) %>%
-  mutate(rank = dense_rank(difference)) %>% group_by(method) %>%
-  summarise(summed_rank = sum(rank)) %>% arrange(summed_rank) %>% pull(method)
+wrap_plots(ps) + plot_layout(nrow=3)
 
-ggplot(ss_both_summ %>% mutate(method = factor(method, levels = best)), aes(x=matched, y=avg_perf)) +
-  geom_point() + geom_line(aes(group=paired)) +
-  labs(color="Method", x="Matched vs Unmatched Reference", y = paste0("Average ", proper_metric_names[moi])) +
-  theme_classic() +
-  theme(legend.position="bottom", legend.direction = "horizontal",
-        axis.text.x=element_blank(), axis.ticks.x=element_blank(),
-        strip.background = element_rect(fill = "gray90", color = "gray90"),
-        panel.grid = element_blank(),
-        panel.spacing = unit(0, "lines")) +
-  # Add lines between facets
-  annotation_custom(grid::linesGrob(y = c(0, 0), gp = grid::gpar(lwd = 3))) +
-  facet_grid(dataset~method,
-             labeller=labeller(dataset=proper_dataset_names,
-                               method=proper_method_names))
-
-ggsave("~/Pictures/benchmark_paper/stability_change_in_RMSE.png",
-       width=300, height=150, units="mm", dpi=300)
+ggsave("~/Pictures/benchmark_paper/stability_change_threemetrics.png",
+       width=300, height=400, units="mm", dpi=300)
 
 
 

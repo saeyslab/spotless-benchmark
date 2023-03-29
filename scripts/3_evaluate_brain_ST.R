@@ -8,13 +8,15 @@ source("~/spotless-benchmark/scripts/0_init.R")
 library(precrec)
 
 techs <- c("ss", "10x")
-sections <- unique(str_extract(list.files("~/spotless-benchmark/data/rds/brain_ortiz/"), "[0-9]+"))
+sections <- unique(str_extract(list.files("~/spotless-benchmark/data/rds/brain_ortiz/"), "[0-9]+")) %>%
+  .[!is.na(.)]
 
 # Load files from prerequisites
 # Seurat object with metadata
 brain_st_seurat <- readRDS("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/brain_st_seurat.rds")
 # Ground truth
-binary_gt <- readRDS("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/binary_gt95.rds") %>%
+file_path <- "binary_gt_type1_presence0.rds" #binary_gt95.rds
+binary_gt <- readRDS(paste0("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/", file_path)) %>%
   mutate(celltype = stringr::str_replace_all(celltype, "[/\\- .]", "")) %>%
   arrange(celltype) %>% column_to_rownames("celltype")
 
@@ -24,7 +26,7 @@ cts_keep <- rownames(binary_gt)
 #### 1. SUMMARIZE DECONVOLUTION RESULTS PER REGION ####
 props <- lapply(sections, function(section) {
   lapply(methods, function (method) {
-    print(paste(method, section))
+    #print(paste(method, section))
     lapply(techs, function(tech) {
       read.table(paste0("~/spotless-benchmark/deconv_proportions/brain_ortiz/proportions_",
                               method, "_brain_ortiz_sec", section, "_", tech), header=TRUE, sep="\t") %>%
@@ -39,28 +41,67 @@ props <- lapply(sections, function(section) {
 # Check if all methods have equal rows
 props %>% group_by(method) %>% tally()
 
-# Only keep cell types that have a regional pattern, add spot number
-props_subset <- props %>% filter(celltype %in% (cts_keep)) %>%
-  group_by(celltype, tech, method, section) %>%
-  mutate(spot_no = 1:n()) #%>%
-  #group_by(spot_no, tech, method, section) %>% 
-  #mutate(scaled_prop = proportion/sum(proportion)) %>%
-  #replace_na(list(scaled_prop = 0))
-
 # Get region information from seurat object
 region_metadata <- brain_st_seurat@meta.data[c("section_index", "metaregion")] %>%
   mutate(section = paste0(str_sub(section_index, 1, 2), ifelse(str_sub(section_index, 3, 3) == "A", "1", "2"))) %>%
   select(-section_index) %>% group_by(section) %>% mutate(spot_no = 1:n())
 
-# Transfer region information, then average proportions per region
-props_summ <- left_join(props_subset %>% group_by(section),
-                                region_metadata) %>%
+# Only keep cell types that have a regional pattern, add spot number,
+# and transfer region information
+props_subset <- props %>% filter(celltype %in% (cts_keep)) %>%
+  group_by(celltype, tech, method, section) %>%
+  mutate(spot_no = 1:n())
+
+props_subset <- left_join(props_subset %>% group_by(section),
+                          region_metadata) 
+
+# Then average proportions per region
+props_summ <- props_subset %>%
   group_by(method, section, metaregion, celltype, tech) %>%
   summarise(mean_props = mean(proportion))
 
 # Split into 10x and ss
 props_summ_split <- props_summ %>% group_by(section, tech) %>% group_split() %>%
   setNames(paste0(rep(props_summ$section %>% unique, each=2), "_", c("10x", "ss")))
+
+#### 2. CALCULATE FPRS ####
+tech = "10x"
+#sections <- unique(region_metadata$section)
+thresholds = seq(0, 0.05, by=0.005)
+
+fprs <- lapply(methods, function(met) {
+  sapply(thresholds, function(thresh) {
+    sapply(sections, function(sect) {
+      test_props <- props_subset %>% filter(method == met, tech == "10x", section == sect)
+      known_props <- binary_gt[,region_metadata %>% filter(section == sect) %>% 
+                                 pull(metaregion)] %>% t %>%
+                              .[,as.character(unique(test_props$celltype))] %>% melt
+      
+      confusion <- data.frame(test_props = test_props %>% pull(proportion),
+                 known_props = known_props %>% pull(value)) %>%
+        mutate(category = case_when(known_props > 0 & test_props > thresh ~ "tp",
+                                    known_props == 0 & test_props <= thresh ~ "tn",
+                                    known_props > 0 & test_props <= thresh ~ "fn",
+                                    known_props == 0 & test_props > thresh ~ "fp"))
+      k <- table(factor(confusion$category, levels=c("fp", "tp", "tn", "fn")))
+      
+      (k["fp"] / (k["fp"] + k["tn"])) %>% unname
+      
+      
+    }) 
+  }) %>% set_colnames(thresholds) %>% melt %>% `colnames<-`(c("section", "thresh", "metric")) %>%
+    mutate(method = met)
+}) %>% do.call(rbind, .)
+
+# saveRDS(fprs, "spotless-benchmark/data/rds/brain_ortiz/fprs.rds")
+
+ggplot(fprs, aes(x=thresh, y=metric)) +
+  geom_point() +
+  facet_wrap(~method)
+
+
+
+#binary_gt
 
 #### 2. CALCULATE AUPRS ####
 # Calculate AUPR
