@@ -50,11 +50,11 @@ To run more methods, type the method names separated with a comma but no spaces,
 ## Running the pipeline
 **Input:**
 - Single-cell reference dataset: a Seurat (.rds) or Anndata (.h5ad) object containing cell type annotations in the object metadata
-- Spatial dataset: a Seurat (.rds) object, Anndata (.h5ad) object, or named list of counts (see [Synthvisium object structure](#synthvisium-object-structure)) 
+- Spatial dataset: a Seurat (.rds) object, Anndata (.h5ad) object, or named list of counts (see [Synthspot object structure](#synthspot-object-structure)) 
 
 **Output:**
 - A spot $\times$ cell type proportion matrix (tab-separated file) 
-- Evaluation metrics (only if synthetic data follows the synthvisium object structure)
+- Evaluation metrics (only if synthetic data follows the synthspot object structure)
 
 You can run the pipeline (`main.nf`) in three modes, `run_dataset` (the default mode, runs deconvolution tools on your own dataset), `generate_and_run` (generates synthetic datasets from your scRNA-seq data and benchmarks it), and `run_standard` (for reproducing our analysis with gold/bronze standards).
 ### *run_dataset*: running/benchmarking deconvolution tools on your own dataset
@@ -70,22 +70,22 @@ nextflow run main.nf -profile <profile_name> --mode run_dataset --sp_input "stan
 ```
 ‼ Don't forget to put any directories with [glob patterns](https://www.malikbrowne.com/blog/a-beginners-guide-glob-patterns) in quotes.
 
-‼ Metric calculation is only possible with an rds file following the [synthvisium object structure](#synthvisium-object-structure) (see `unit-test/test_sp_data.rds`).
+‼ Metric calculation is only possible with an rds file following the [Synthspot object structure](#synthspot-object-structure) (see `unit-test/test_sp_data.rds`).
 
 ### *generate_and_run*: generating and benchmarking your own synthetic datasets
-`generate_and_run` takes two single-cell objects, one to generate the synthetic data (`params.synvis.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthvisium* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. Synthetic datasets will be copied to `params.outdir.synvis`. You can generate the data only or run the whole pipeline immediately after.
+`generate_and_run` takes two single-cell objects, one to generate the synthetic data (`params.synthspot.sc_input`) and one to use as input in deconvolution methods (`params.sc_input`). It uses our *synthspot* tool to generate synthetic data by running `subworkflows/data_generation/generate_data.nf`. Synthetic datasets will be copied to `params.outdir.synthspot`. You can generate the data only or run the whole pipeline immediately after.
 ```
 # Only generate data
-nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file conf/synthvisium.yaml
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file conf/synthspot.yaml
 
 # Generate and run the whole pipeline
 nextflow run main.nf -profile <profile_name> --mode generate_and_run --sc_input standards/reference/silver_standard_1.rds \
--params-file conf/synthvisium.yaml --methods <METHODS>
+-params-file conf/synthspot.yaml --methods <METHODS>
 ```
-The arguments to synthvisium are best provided in a separate yaml/JSON file. Check out `conf/synthvisium.yaml` for a detailed description of arguments. Minimally, you need four arguments:
+The arguments to synthspot are best provided in a separate yaml/JSON file. Check out `conf/synthspot.yaml` for a detailed description of arguments. Minimally, you need four arguments:
 ```
-# conf/synthvisium.yaml
-synvis:
+# conf/synthspot.yaml
+synthspot:
   sc_input: standards/reference/silver_standard_1.rds             # single-cell reference input
   clust_var: celltype                                             # name of metadata column with cell type annotation
   reps: 3                                                         # number of replicates per dataset type (abundance pattern)
@@ -119,7 +119,7 @@ You can find the default arguments of the pipeline in the `nextflow.config` file
 * `outdir`: location to save the proportions, metrics, and synthetic data (default: `deconv_proportions/`, `results/`, `synthetic_data/`). Best to define this under your profiles.
 * `sampleID`: the column containing batch information for the input scRNA-seq Seurat object (default: none) 
 * `deconv_args`: extra parameters to pass onto deconvolution algorithms (default: []). For a more detailed explanation and list of parameters for each method, see `subworkflows/deconvolution/README.md`.
-* `synvis`: synthvisium arguments, see `subworkflows/synthvisium.yaml`
+* `synthspot`: synthspot arguments, see `subworkflows/synthspot.yaml`
 * `gpu`: add this flag to use host GPU, see below
 * `verbose`: add this flag to print input files
 * `skip_metrics`: add this flag to skip the final step which calculates evaluation metrics
@@ -136,16 +136,16 @@ nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold
 ## Running selected parts of the pipeline
 It is also possible to only run a subworkflow instead of the whole pipeline.
 
-### Generating synthvisium data
+### Generating synthspot data
 See __*generate_and_run*: generating and benchmarking your own synthetic datasets__.
 
-Briefly, running the following code will save an rds file to `params.outdir.synvis`:
+Briefly, running the following code will save an rds file to `params.outdir.synthspot`:
 ```
-nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file conf/synthvisium.yaml
+nextflow run subworkflows/data_generation/generate_data.nf -profile <profile_name> -params-file conf/synthspot.yaml
 ```
 
-#### Synthvisium object structure
-The output of synthvisium is a named list of matrices and lists. There are three necessary components:
+#### Synthspot object structure
+The output of synthspot is a named list of matrices and lists. There are three necessary components:
 1) **counts**: a gene $\times$ spot count matrix (preferably raw counts)
 2) **relative_spot_composition**: a spot $\times$ cell types relative proportion matrix
 
@@ -160,7 +160,7 @@ nextflow run subworkflows/deconvolution/run_methods.nf -profile <profile_name> \
 By default, all methods are run (equivalent to giving an argument `--methods music,rctd,spatialdwls,spotlight,stereoscope,cell2location,destvi,dstg,tangram,seurat,stride`). To run only certain methods, make sure the values are comma-separated without any spaces.
 
 ### Computing metrics
-It is possible to add more metrics in the `subworkflows/evaluation/metrics.R` yourself, then recalculate the metrics without running the entire pipeline. You have to provide the ground truth datasets with the synthvisium object structure (`params.sp_input`), and the script will look for the proportions at `params.outdir.props`.
+It is possible to add more metrics in the `subworkflows/evaluation/metrics.R` yourself, then recalculate the metrics without running the entire pipeline. You have to provide the ground truth datasets with the synthspot object structure (`params.sp_input`), and the script will look for the proportions at `params.outdir.props`.
 ```
 nextflow run subworkflows/evaluation/evaluate_methods.nf -profile <profile_name> \
   --sp_input "standards/gold_standard_1/*.rds"
