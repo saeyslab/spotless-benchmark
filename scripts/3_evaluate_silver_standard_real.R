@@ -14,6 +14,7 @@ show_nnls_ref <- TRUE
 format_dataset_type <- function(dataset_type_col) {
   dataset_type_col %>% str_replace_all(., "artificial_", "") %>%
     str_replace_all(., "_", " ") %>%
+    str_replace_all(., "dominant rare", "rare") %>%
     str_wrap(., width = 20) %>%
     factor(., levels=unique(.))
 }
