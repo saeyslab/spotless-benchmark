@@ -256,15 +256,18 @@ df_ss_subset <- plot_celltype_distribution(ctxhipss_metadata, clusters_ss, cellt
                                            type="region_per_celltype")
 
 # TODO: Fix this filtering?
+presence_cutoff <- 0
 df_10x_table <- df_10x_subset %>% mutate(meta_name = cluster_names[metaregion]) %>%
   group_by(celltype) %>%  mutate(props = n/sum(n)) %>% select(celltype, meta_name, props) %>%
-  mutate(presence = case_when(props > 0.01 ~ 1, T ~ 0)) %>%
+  mutate(presence = case_when(props > presence_cutoff ~ 1, T ~ 0)) %>%
   pivot_wider(id_cols = !props, names_from = meta_name, values_from = presence)
 
 df_ss_table <- df_ss_subset %>% mutate(meta_name = cluster_names[metaregion]) %>%
   group_by(celltype) %>% mutate(props = n/sum(n)) %>% select(celltype, meta_name, props) %>%
-  mutate(presence = case_when(props > 0.01 ~ 1, T ~ 0)) %>%
+  mutate(presence = case_when(props > presence_cutoff ~ 1, T ~ 0)) %>%
   pivot_wider(id_cols = !props, names_from = meta_name, values_from = presence)
 
 final_table <- df_10x_table[-which(apply(df_10x_table != df_ss_table, 1, any)),]
 #saveRDS(final_table, "~/spotless-benchmark/data/raw_data/mousebrain_ortiz/binary_gt95.rds")
+
+saveRDS(final_table, "~/spotless-benchmark/data/raw_data/mousebrain_ortiz/binary_gt_type1_presence0.rds")

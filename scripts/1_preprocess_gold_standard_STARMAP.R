@@ -87,7 +87,8 @@ seurat_obj_scrna <- seurat_obj_scrna %>% ScaleData() %>% FindVariableFeatures() 
 DimPlot(seurat_obj_scrna, reduction = "umap", group.by="subclass", label=TRUE)
 df <- seurat_obj_scrna@meta.data %>% select(nCount_RNA, nFeature_RNA) %>% stack
 ggplot(df, aes(x=values)) + geom_density() + facet_grid(vars(ind), scales = "free") + theme_bw()
-p1 <- ggplot(df, aes(y=nCount_RNA, x=subclass)) + geom_violin() + theme_bw()
+
+p1 <- ggplot(seurat_obj_scrna@meta.data, aes(y=nCount_RNA, x=subclass)) + geom_violin() + theme_bw()
 p2 <- ggplot(seurat_obj_scrna@meta.data, aes(y=nFeature_RNA, x=subclass)) + geom_violin() + theme_bw()
 p1 + p2
 
@@ -185,8 +186,10 @@ cells_in_spots <- cells_in_spots_ori %>% filter(celltype != "Filtered" & celltyp
 # Visualization - overlay cells with spots
 p_cells <- ggplot(data=cells_in_spots, aes(x=X, y=Y, color=factor(celltype))) +
   geom_point()
-p <- p_cells + geom_path(data=spot_vis, inherit.aes=FALSE, aes(x,y, group=index)) +
+p <- p_cells + geom_path(data=spot_vis %>% filter(index %in% unique(cells_in_spots$spot_no)),
+                         inherit.aes=FALSE, aes(x,y, group=index)) +
   theme_minimal() +  coord_fixed() + #scale_y_reverse() +
+  labs(color = "Cell type") +
   theme(legend.position = "bottom", legend.direction = "horizontal")
 print(p)
 
@@ -260,4 +263,6 @@ stats_text <- paste("Median # of", paste0(colnames(median_stats), ": ", median_s
 
 p_final <- p + labs(title=filename, subtitle=stats_text) + guides(color=guide_legend(nrow=2,byrow=TRUE))
 ggsave(paste0("~/spotless-benchmark/standards/gold_standard_3/", filename, ".jpeg"),
+       p_final, width = 3000, height = 1600, units="px", bg="white")
+ggsave(paste0("~/Pictures/benchmark_paper/", filename, ".jpeg"),
        p_final, width = 3000, height = 1600, units="px", bg="white")

@@ -57,6 +57,7 @@ df <- left_join(df %>% filter(type != "build"),
       mutate(min_total = sum(mins,min_build, na.rm = TRUE)) %>%
   #spatialDWLS has some duplicate runs, choose minimum
   group_by(method, spots, genes) %>% filter(min_total == min(min_total)) %>% ungroup()
+#saveRDS(df, "~/spotless-benchmark/results/scalability.rds")
 
 df %>% group_by(method) %>% tally
 
@@ -64,7 +65,7 @@ df %>% group_by(method) %>% tally
 method_order <- df %>% group_by(method) %>% summarise(summed_min = sum(min_total)) %>%
   arrange(summed_min) %>% pull(method)
 
-ggplot(df %>% mutate(method = factor(method, levels=method_order)), aes(x=genes, y=spots, fill=min_total)) +
+p_scal <- ggplot(df %>% mutate(method = factor(method, levels=method_order)), aes(x=genes, y=spots, fill=min_total)) +
   geom_tile() +
   geom_text(aes(label=round(signif(min_total, digits=2), digits=2),
                 color=min_total > 90), show.legend = FALSE) +
@@ -80,8 +81,9 @@ ggplot(df %>% mutate(method = factor(method, levels=method_order)), aes(x=genes,
   guides(
     #reverse color order (higher value on top)
     fill = guide_colorbar(reverse = TRUE))
+p_scal
 
-ggsave(paste0("~/Pictures/benchmark_paper/scalability_plot_liver.png"),
+ggsave(paste0("~/Pictures/benchmark_paper/scalability_plot_", dataset, ".png"),
        width=300, height=179, units="mm", dpi=300)
 
          

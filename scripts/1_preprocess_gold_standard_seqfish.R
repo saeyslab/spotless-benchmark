@@ -38,7 +38,7 @@ get_coarse_annot <- function(celltype){
 ## CHANGEABLE PARAMS ##
 path <- "~/spotless-benchmark/data/raw_data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
-dataset <- "ob" # cortex_svz or ob
+dataset <- "cortex_svz" # cortex_svz or ob
 standard_no <- ifelse(dataset == "cortex_svz", 1, 2)
 fov_no <- 0 # 0-6
 combine_all_plots <- FALSE # For powerpoint presentations
@@ -132,9 +132,10 @@ for (fov_no in 0:6){
     group_by(spot_no) %>% tally() %>% summarise(median=median(n))
   p_cells <- ggplot(data=meta_subset, aes(x=X, y=Y, color=factor(celltype))) +
     geom_point(size=pt_size) + xlim(0, 2000) + ylim(0, 2000) + theme_minimal()
-  p <- p_cells + geom_path(data=spot_vis, inherit.aes=FALSE, aes(x,y, group=index))
-  #print(p)
-  
+  p <- p_cells + geom_path(data=spot_vis, inherit.aes=FALSE, aes(x,y, group=index)) +
+    labs(color = "Cell type", title=paste0("FOV", fov_no),
+         subtitle = paste0("Median # of cells: ", avg_cells, "; celltypes: ", avg_celltypes))
+
   if (combine_all_plots) { 
 
     p <- p + theme(legend.position = "none", axis.title = element_blank(),
@@ -142,11 +143,14 @@ for (fov_no in 0:6){
           panel.grid = element_blank()) +
           ggtitle(paste0("FOV ", fov_no), subtitle = paste0("Cells/spot: ", avg_cells,
                                                             "\nCell types/spot: ", avg_celltypes))
-    all_plots[[fov_no+1]] <- p
-    next;
+    
+    # next;
   }
+  
+  all_plots[[fov_no+1]] <- p
+  
   #### FORMATTING GROUND TRUTH OBJECT ####
-  # Follow same format as synthvisium
+  # Follow same format as synthspot
   # synthvisium_data <- readRDS("D:/spotless-benchmark/unit-test/test_sp_data.rds")
   
   ## 1. COUNT MATRIX (genes x spots) ##
@@ -193,7 +197,7 @@ for (fov_no in 0:6){
   # Save rds
   filename <- paste0(dataset_source, "_", dataset, "_fov", fov_no)
   
-  saveRDS(full_data, paste0("~/spotless-benchmark/standards/gold_standard_", standard_no, "/", filename, ".rds"))
+  # saveRDS(full_data, paste0("~/spotless-benchmark/standards/gold_standard_", standard_no, "/", filename, ".rds"))
 
   # Save plot and add additional information on cells, celltypes and counts
   # plot_table <- cells_in_spots %>% group_by(spot_no) %>%
@@ -208,6 +212,14 @@ for (fov_no in 0:6){
 p_all <- patchwork::wrap_plots(all_plots, nrow = 1)
 # ggsave(paste0("D:/PhD/figs/sc_meeting_10012022/", dataset, "_all_fovs.png"),
 #                p_all, width = 4000, height = 800, units="px")
+
+
+for (fov_no in 0:6){
+  filename <- paste0(dataset_source, "_", dataset, "_fov", fov_no)
+  plot <- all_plots[[fov_no+1]] + theme(plot.background = element_rect(fill="white", color = "white")) + coord_fixed()
+  ggsave(paste0("~/Pictures/benchmark_paper/", dataset, "/", filename, ".png"),
+         plot, width = 200,height = 150, units="mm", dpi = 300)
+}
 
 # Spot sample
 p + theme(panel.grid=element_blank(), axis.title=element_blank(),

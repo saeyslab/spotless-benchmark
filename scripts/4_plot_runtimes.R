@@ -6,6 +6,7 @@ source("~/spotless-benchmark/scripts/0_init.R")
 library(ungeviz)
 
 # Add asterisk if method is used with GPU
+methods <- replace(methods, which(methods %in% c("cell2location", "stereoscope")), c("c2l", "stereo"))
 proper_method_names <- c("SPOTlight", "MuSiC", "* Cell2location", "RCTD", "* Stereoscope",
                          "SpatialDWLS", "* DestVI", "NNLS", "DSTG", "Seurat", "* Tangram", "STRIDE") %>%
   setNames(methods)
@@ -37,30 +38,34 @@ df <- hpc_logs %>% filter(exit == "0") %>% mutate(exit = as.numeric(exit)) %>%
   mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20)) %>%
   mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
 
+# saveRDS(df %>% select(-cpus, -memory), "~/spotless-benchmark/results/runtime.rds")
+
+
 df %>% group_by(method) %>% tally()
 
 # Order methods based on median runtimes
-fastest <- df %>% group_by(method) %>% summarise(avg_runtime = mean(mins)) %>%
+fastest <- df %>% group_by(method) %>% summarise(avg_runtime = median(mins)) %>%
   arrange(desc(avg_runtime)) %>% pull(method)
 
 df <- df %>% mutate(method=factor(method, levels=fastest))
 
-ggplot(df %>% filter(type != "build"),
+p_runtime <- ggplot(df %>% filter(type != "build"),
        aes(y=method, x=mins)) + 
-  geom_point(data=df %>% filter(type == "build"), aes(y=method, x=mins, color=type),
+  geom_point(data=df %>% filter(type == "build") %>% arrange(desc(mins)),
+             aes(y=method, x=mins, color=type),
              shape=21, fill="white", size=2, stroke=1, inherit.aes = FALSE) +
   geom_boxplot(color="#619CFF") +
   scale_y_discrete(limits=fastest, labels=proper_method_names[fastest]) +
   scale_x_continuous(expand = c(0,2), breaks=c(0, 50, 100, 150), limits = c(-5, 150)) +
   scale_color_discrete(breaks="build", labels="Model building", name=NULL) +
   xlab("Runtime (min)") +
-  theme_classic(base_size=20) +
+  theme_classic(base_size=15) +
   theme(axis.title.y = element_blank(),
-        legend.position = c(0.85, 0.95),
+        legend.position = c(0.85, 0.85),
         #legend.background = element_rect(fill = "gray95"),
         legend.title = element_blank(),
         legend.margin = margin(0,2.5, 2.5,2.5, unit="mm"))
-
+p_runtime
 
 ## Runtime by dataset and dataset type 
 # If you want to order dataset by total dimensions, # genes, or # cells
@@ -79,5 +84,21 @@ ggplot(df %>% mutate(dataset=factor(dataset, levels = dataset_order_ncells)) %>%
         panel.grid.minor = element_blank(), panel.grid.major.x = element_blank()) +
   facet_wrap(~method, scales="free_y")
 
-ggsave("Pictures/benchmark_paper/runtime.png",
-       width=200, height=150, units="mm", dpi=300)
+# ggsave("Pictures/benchmark_paper/runtime.png",
+#        width=200, height=150, units="mm", dpi=300)
+
+p_runtime + theme(legend.background = element_rect(fill = "gray95"),
+                  legend.margin = margin(-1,2.5, 2.5,2.5, unit="mm"),
+                  plot.margin = margin(10, 10, 10, 10)) +
+                  #plot.tag.position = c(0.1, 1)) +
+  p_scal + #theme(plot.tag.position = c(0.1, 1)) +
+  plot_layout(width=c(4,6)) +
+  plot_annotation(tag_levels = 'a', tag_prefix = '(', tag_suffix = ')') &
+  theme(plot.tag = element_text(size = 15, face="bold"),
+        plot.tag.position = c(0.1, 1))
+  
+# ggsave("Pictures/benchmark_paper/runtime_scalability.png",
+#        width=450, height=200, units="mm", dpi=300)
+
+ggsave("Pictures/benchmark_paper/runtime_scalability.eps",
+       width=450, height=200, units="mm", dpi=300)

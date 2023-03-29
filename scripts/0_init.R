@@ -22,7 +22,7 @@ if (args[1] != "only_libraries"){
   datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus',
                 'hippocampus', 'kidney', 'scc_p5')
   proper_dataset_names <- c("Brain cortex", "Cerebellum (sc)", "Cerebellum (sn)", 
-                            "Hippocampus", "Kidney", "SCC (patient 5)") %>%
+                            "Hippocampus", "Kidney", "SCC") %>%
     setNames(datasets)
   
   methods <- c("spotlight", "music", "cell2location", "rctd", "stereoscope",
