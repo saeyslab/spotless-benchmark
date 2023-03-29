@@ -13,7 +13,7 @@ jobs:
           - 'NXF_VER=21.04.3'
     steps:
       - name: Check out pipeline code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         # with:
         #   lfs: true
 
@@ -49,7 +49,7 @@ jobs:
           then exit 1; fi ; done; done
 
       - name: Upload synthetic data
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: synthetic-data
           path: |
@@ -62,10 +62,10 @@ jobs:
     container: rocker/tidyverse:3.6.3
     steps:
       - name: Check out pipeline code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Download generated synthetic data
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: synthetic-data
 
