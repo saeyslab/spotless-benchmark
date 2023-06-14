@@ -30,8 +30,8 @@ singularity pull docker://csangara/${container_name}:latest
 
 </details>
 
-3. Clone this repository. (If Git LFS isn't installed, you will have to download `unit-test/test_sc_data.rds` and `unit-test/test_sp_data.rds` manually.)
-4. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`.
+3. Clone this repository. Check locally that `unit-test/test_sc_data.rds` is 82.7 MB and `unit-test/test_sp_data.rds` is 290 KB. If not, manually download them [[1]](https://github.com/saeyslab/spotless-benchmark/raw/main/unit-test/test_sc_data.rds)[[2]](https://github.com/saeyslab/spotless-benchmark/raw/main/unit-test/test_sp_data.rds) into the `unit-test` folder. (This occurs when Git LFS is not installed.)
+5. Modify or create a profile in *nextflow.config*. To run the pipeline locally, modify `params.rootdir` under `profiles { local { ... } }` as the directory up to and including the reposity, e.g., `"/home/$USER/spotless-benchmark"`.
 (The other two profiles are used inside computing clusters: *prism* for a Sun Grid Engine cluster, and *hpc* for a Slurm cluster.) 
 5. While in the `spotless-benchmark/` directory:
 ```
