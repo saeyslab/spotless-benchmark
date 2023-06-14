@@ -56,7 +56,7 @@ To run more methods, type the method names separated with a comma but no spaces,
 - A spot $\times$ cell type proportion matrix (tab-separated file) 
 - Evaluation metrics (only if synthetic data follows the synthspot object structure)
 
-You can run the pipeline (`main.nf`) in three modes, `run_dataset` (the default mode, runs deconvolution tools on your own dataset), `generate_and_run` (generates synthetic datasets from your scRNA-seq data and benchmarks it), and `run_standard` (for reproducing our analysis with gold/bronze standards).
+You can run the pipeline (`main.nf`) in three modes, `run_dataset` (the default mode, runs deconvolution tools on your own dataset), `generate_and_run` (generates synthetic datasets from your scRNA-seq data and benchmarks it), and `run_standard` (for reproducing our analysis with gold/silver standards).
 ### *run_dataset*: running/benchmarking deconvolution tools on your own dataset
 The `run_dataset` mode requires a single-cell object (`params.sc_input`), the path to the spatial dataset(s) (`params.sp_input`), and the cell type annotation column (`params.annot`, default: celltype). For real data, use the `skip_metrics` flag to skip the evaluation step.
 ```
