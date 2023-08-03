@@ -1,5 +1,8 @@
 # Spotless: A benchmark pipeline for <br> spatial deconvolution tools
-This is a repository for running spatial deconvolution tools through a Nextflow pipeline. Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SpatialDWLS, SPOTlight, stereoscope, STRIDE, Seurat, and Tangram have been implemented. To add your own method, see [Guideline_for_adding_deconvolution_tools.md](Guideline_for_adding_deconvolution_tools.md).
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8211492.svg)](https://doi.org/10.5281/zenodo.8211492)
+
+This is a repository for running spatial deconvolution tools through a Nextflow pipeline, as described in [Sang-aram et al. (2023)](https://elifesciences.org/reviewed-preprints/88431). <br> Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SpatialDWLS, SPOTlight, stereoscope, STRIDE, Seurat, and Tangram have been implemented. To add your own method, see [Guideline_for_adding_deconvolution_tools.md](Guideline_for_adding_deconvolution_tools.md).
 
 **Quickstart guide**
 1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
@@ -94,10 +97,10 @@ synthspot:
 This will return 3 replicates for each dataset type, resulting in 6 files. You can also adjust other parameters such as the number of spots and mean or standard deviation per spot. Note that in this example, the same file was used to generate synthetic data and to integrate with deconvolution methods. In our benchmark we use different files for this (akin to the training and test datasets in machine learning).
 
 ### *run_standard*: reproducing our analysis
-Download the datasets from Zenodo and extract the file.
+Download and extract `standards.tar.gz` from [Zenodo](https://zenodo.org/record/8211492).
 ```
 cd spotless-benchmark
-wget https://zenodo.org/record/6786528/files/standards.tar.gz?download=1 -O standards.tar.gz
+wget https://zenodo.org/record/8211492/files/standards.tar.gz?download=1 -O standards.tar.gz
 tar -xvzf standards.tar.gz 
 ```
 Then run the pipeline with the `run_standard` mode.
@@ -110,6 +113,18 @@ All folder names (except `reference`) can be used as the *standard_name*. For in
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard gold_standard_1 -c standards/standard.config
 nextflow run main.nf -profile <profile_name> --mode run_standard --standard silver_standard_1-1 -c standards/standard.config
 ```
+
+### Running the liver dataset
+Download and extract `liver_dataset.tar.gz` from [Zenodo](https://zenodo.org/record/8211492). `liver_README.txt` contains a description of the files. You could run the analysis by using `--mode run_dataset`, but we also provide the `conf/liver_mouse_visium.config` file which contains the parameters we used for each method as well as an additional argument (`ref_type`) you could add to automatically select a certain reference dataset. (You will however have to replace the base directories of `sc_input` and `sp_input` in this config file.) The following code snippet uses the Nuc-seq dataset for deconvolution:
+
+```
+nextflow run main.nf -profile hpc --mode run_dataset --methods rctd -c conf/liver_mouse_visium.config \
+--ref_type nuclei  # options: nuclei, inVivo, exVivo, noEC, 9celltypes \
+--annot annot_cd45 # options: annot, annot_fine, annot_cd45 \
+--file_type rds    # options: rds, h5ad \
+#--gpu
+```
+Note that it is much more efficient to directly use the appropriate file types (rds/h5ad) rather than using the internal conversion. Therefore, it is best to run R and Python methods separately.
 
 ## Pipeline arguments (Advanced use)
 You can find the default arguments of the pipeline in the `nextflow.config` file, under the `params` scope. These can be overwritten by parameters provided in the command line or in an external JSON/YAML file (see exact priorities [here](https://www.nextflow.io/docs/latest/config.html)).
