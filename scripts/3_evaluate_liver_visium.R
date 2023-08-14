@@ -6,7 +6,7 @@
 # 5. Plot JSD, EMD, and AUPR together
 # 6. Show predictions in SpatialDimPlot
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(ungeviz)
 library(precrec)
 library(philentropy)
@@ -55,7 +55,7 @@ coarse=TRUE # This will group DCs together
 props <- lapply(datasets, function(ds) {
   lapply(digests, function(dig) {
     lapply(methods, function (method) {
-      read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
+      read.table(paste0("deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
                         method, "_liver_mouseVisium_JB0", ds, "_", dig, "_annot_cd45"), header=TRUE, sep="\t") %>%
         # Still has . in colnames
         `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))
@@ -131,7 +131,7 @@ props_summ2 <- props_summ %>% mutate(celltype = ifelse(celltype %in% cts_keep, c
 sorting_scheme <- c("stability", "jsd", "aupr", "none")[4]
 if (sorting_scheme == "stability") {
   # If you want to sort the methods - prerequisites: evaluate_stability
-  liver_metrics <- readRDS("~/spotless-benchmark/data/rds/liver_metrics_ref_sensitivity.rds")
+  liver_metrics <- readRDS("data/rds/liver_metrics_ref_sensitivity.rds")
   
   # Process the liver metrics a bit more - remove duplicates
   best_performers <- liver_metrics %>% rowwise() %>% mutate(combi = paste0(sort(c(as.character(other_digest), digest)), collapse="_")) %>%
@@ -206,13 +206,13 @@ auprs <-  lapply(digests, function (dig) {
   lapply(1:4, function (ds){
     
     deconv_matrix <- lapply(tolower(methods), function (method) {
-      read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
+      read.table(paste0("deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
                         method, "_liver_mouseVisium_JB0", ds, "_", dig, "_annot_cd45"), header=TRUE, sep="\t") %>%
         # Still has . in colnames
         `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))
     }) %>% setNames(methods)
     
-    visium_annot <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", ds, ".rds"))
+    visium_annot <- readRDS(paste0("data/rds/liver_mouseVisium_JB0", ds, ".rds"))
     rows_to_keep <- which(grepl("Portal|Central", visium_annot$zonationGroup))
     visium_annot_subset <- visium_annot[,rows_to_keep]
     
@@ -268,7 +268,7 @@ auprs <-  lapply(digests, function (dig) {
 
 
 dir_auprs <- sapply(1:4, function(ds) {
-  visium_annot <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", ds, ".rds"))
+  visium_annot <- readRDS(paste0("data/rds/liver_mouseVisium_JB0", ds, ".rds"))
   rows_to_keep <- which(grepl("Portal|Central", visium_annot$zonationGroup))
   visium_annot_subset <- visium_annot[,rows_to_keep]
   
@@ -331,7 +331,7 @@ references <- list("aupr" = possible_references[3],      #aupr
 
 if ("resolve" %in% unlist(references)) {
   # Also compare with resolve proportions
-  resolve <- read.csv("~/spotless-benchmark/data/resolve/cell_counts.csv", row.names=1) %>%
+  resolve <- read.csv("data/resolve/cell_counts.csv", row.names=1) %>%
     mutate(Others = Total_Cells - rowSums(.[,-ncol(.)])) %>%
     stack %>% filter(ind != "Total_Cells") %>% 
     mutate(slide=rep(1:4, length(unique(ind)))) %>%
@@ -411,7 +411,7 @@ metrics_all <- merge(metrics_df %>% mutate(digest = str_replace(digest, "noEC_9c
   all = TRUE
 )
 
-# saveRDS(metrics_all, "~/spotless-benchmark/results/liver_all_metrics.rds")
+# saveRDS(metrics_all, "results/liver_all_metrics.rds")
 
 args <- list(metric = c("aupr", "jsd", "emd"),
              titles = c("AUPR", "JSD", "Earthmover's Distance"),
@@ -515,13 +515,13 @@ annot <- "_9celltypes_annot_cd45"
 visium_objs <- lapply(1:4, function (ds){
   # Check predictions of using all reference data
   deconv_matrix <- lapply(tolower(methods), function (method) {
-    read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
+    read.table(paste0("deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
                       method, "_liver_mouseVisium_JB0", ds, annot), header=TRUE, sep="\t") %>%
       # Still has . in colnames
       `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))
   }) %>% setNames(methods)
   
-  visium_annot <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", ds, ".rds"))
+  visium_annot <- readRDS(paste0("data/rds/liver_mouseVisium_JB0", ds, ".rds"))
   
   rows_to_keep <- which(grepl("Portal|Central", visium_annot$zonationGroup))
   visium_annot_subset <- visium_annot[,rows_to_keep]

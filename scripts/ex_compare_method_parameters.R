@@ -1,4 +1,4 @@
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 
 possible_dataset_types <- possible_dataset_types[-9]
 folder_path <- "~/Pictures/benchmark_paper/compare_params/"
@@ -14,7 +14,7 @@ format_dataset_type <- function(dataset_type_col, width=20) {
 
 read_results_one_ds <- function(comparisons, method, dataset,
                                 dt_subset=possible_dataset_types,
-                                path="~/spotless-benchmark/results/",
+                                path="results/",
                                 rep_text="rep") {
   # comparison is a named vector
   if (rep_text == "rep") reps <- 1:10 else reps <- 0:6
@@ -60,7 +60,7 @@ plot_one_ds <- function(results, moi, nrow=2, dataset_name=NULL, width=20){
 
 read_results <- function(comparisons, method, dataset_subset=datasets,
                          dt_subset=possible_dataset_types,
-                          path="~/spotless-benchmark/results/") {
+                          path="results/") {
   # Read more than one dataset"
   lapply(dataset_subset, function (dataset) {
     lapply(comparisons, function (ext) {
@@ -373,7 +373,7 @@ dataset <- "cortex_svz"
 fovs <- 0:6
 results <- lapply(seq(10,50,10), function (n_cells) {
   lapply(fovs, function(fov){
-    read.table(paste0("~/spotless-benchmark/results/Eng2019_", dataset, "/metrics_cell2location",
+    read.table(paste0("results/Eng2019_", dataset, "/metrics_cell2location",
                       "_Eng2019_", dataset, "_fov", fov, "_", n_cells, "cells"),
                header = TRUE, sep= " ")}) %>%
     setNames(fovs) %>% melt(id.vars=NULL) %>%

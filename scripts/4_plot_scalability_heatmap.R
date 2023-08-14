@@ -1,6 +1,6 @@
 ## CONTENTS 
 # Plot a heatmap of scalability
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(pheatmap)
 library(ungeviz) # geom_hpline
 
@@ -24,7 +24,7 @@ dimensions <- data.frame(cbind(paste0(spots_comb[perms[,1]], "spots"),
               tidyr::unite(., "all") %>% pull(all)
 
 fields <- str_split("task_id,hash,name,tag,status,exit,container,duration,realtime,cpus,disk,memory,attempt,pcpu,pmem,rss,peak_rss,vmem,peak_vmem", ",")[[1]]
-hpc_logs <- read.table(paste0("~/spotless-benchmark/logs_scalability_", dataset, ".txt"), sep="\t") %>%
+hpc_logs <- read.table(paste0("logs_scalability_", dataset, ".txt"), sep="\t") %>%
   setNames(fields)
 
 # These are spatialDWLS runs that should be filtered
@@ -57,7 +57,7 @@ df <- left_join(df %>% filter(type != "build"),
       mutate(min_total = sum(mins,min_build, na.rm = TRUE)) %>%
   #spatialDWLS has some duplicate runs, choose minimum
   group_by(method, spots, genes) %>% filter(min_total == min(min_total)) %>% ungroup()
-#saveRDS(df, "~/spotless-benchmark/results/scalability.rds")
+#saveRDS(df, "results/scalability.rds")
 
 df %>% group_by(method) %>% tally
 

@@ -2,7 +2,7 @@
 # 1. Plots pr curves ordered by abundance
 
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(gridExtra)
 library(precrec)
 library(grid)
@@ -38,7 +38,7 @@ results <- lapply(datasets, function(ds) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
         #print(paste(method, ds, dt, repl))
-        read.table(paste0("~/spotless-benchmark/results/", ds, "_", dt, "/metrics_",
+        read.table(paste0("results/", ds, "_", dt, "/metrics_",
                           method, "_", ds, "_", dt, "_rep", repl)) %>%
           t %>% data.frame %>%
           mutate("method" = method, "rep" = repl, "dataset" = ds, "dataset_type" = dt) 
@@ -71,13 +71,13 @@ if (plot_type == "all_replicates"){
     
     deconv_props <- lapply(methods, function (method){
       #print(method)
-      read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
+      read.table(paste0("deconv_proportions/", ds, "_", dt,
                         "/proportions_", method, "_", ds, "_", dt, "_rep", r),
                  header=TRUE)
     }) %>% setNames(methods)
     
     # Load ground truth data
-    ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
+    ground_truth_data <- readRDS(paste0("standards/silver_standard_",
                                         dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
     ncells <- ncol(ground_truth_data$spot_composition)-2
     col_order <- ground_truth_data$gold_standard_priorregion %>% group_by(celltype) %>%
@@ -163,7 +163,7 @@ if (plot_type == "all_replicates"){
   ## TODO: DO THIS PROGRAMMATICALLY INSTEAD
 x_lines <- c(0.0415, 0.1, 0.1, 0.07, 0.05, 0.06)
   
-dir.create(paste0("~/spotless-benchmark/plots/pr_curves_by_abundance/", ds),
+dir.create(paste0("plots/pr_curves_by_abundance/", ds),
            showWarnings = FALSE)
 # p <- patchworkGrob(wrap_plots(all_plots, ncol=ncells))
 # p
@@ -175,7 +175,7 @@ dir.create(paste0("~/spotless-benchmark/plots/pr_curves_by_abundance/", ds),
 p <- wrap_plots(all_plots, ncol=ncells)
 p_patch <- patchworkGrob(p + plot_spacer() + plot_layout(nrow = 2, heights = c(0.995, 0.005)))
 
-png(paste0("~/spotless-benchmark/plots/pr_curves_by_abundance/", ds,
+png(paste0("plots/pr_curves_by_abundance/", ds,
       "/", ds, "_", dt, "_withboxplot.png"), width=70*ncells, height=1000, units = "px")
 grid.arrange(p_patch, top = paste0(proper_dataset_names[ds], ", ",
                                   dt %>% str_replace_all("_", " ") %>% str_remove("artificial ")))
@@ -187,7 +187,7 @@ dev.off()
 p
 
 
-# ggsave(p, filename = paste0("~/spotless-benchmark/plots/pr_curves_by_abundance/", ds,
+# ggsave(p, filename = paste0("plots/pr_curves_by_abundance/", ds,
 #       "/", ds, "_", dt, ".png"),
 #       width=400*ncells, height=4000, units = "px")
 
@@ -206,13 +206,13 @@ dt <- possible_dataset_types[dti]
 r <- 2
 
 deconv_props <- lapply(methods, function (method){
-  read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
+  read.table(paste0("deconv_proportions/", ds, "_", dt,
                     "/proportions_", method, "_", ds, "_", dt, "_rep", r),
              header=TRUE)
 }) %>% setNames(methods)
   
 # Load ground truth data
-ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
+ground_truth_data <- readRDS(paste0("standards/silver_standard_",
                              dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
 ncells <- ncol(ground_truth_data$spot_composition)-2
 
@@ -283,13 +283,13 @@ df <- lapply(1:6, function (dsi){
     dt <- possible_dataset_types[dti]
     lapply (1:10, function (r) {
         deconv_props <- lapply(tolower(methods), function (method){
-          read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
+          read.table(paste0("deconv_proportions/", ds, "_", dt,
                             "/proportions_", method, "_", ds, "_", dt, "_rep", r),
                      header=TRUE)
         }) %>% setNames(methods)
         
         # Load ground truth data
-        ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
+        ground_truth_data <- readRDS(paste0("standards/silver_standard_",
                                             dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
         ncells <- ncol(ground_truth_data$spot_composition)-2
         

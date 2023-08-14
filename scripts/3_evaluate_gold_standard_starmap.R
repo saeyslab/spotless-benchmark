@@ -3,12 +3,12 @@
 # 2. Plot performance of each method
 # 3. Proportions plot
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(ungeviz) # geom_hpline
 library(ggtext) # Bold ground truth label
 library(precrec)
 library(philentropy)
-path <- "~/spotless-benchmark/results/"
+path <- "results/"
 
 
 qual_col_pals <- brewer.pal.info %>% filter(rownames(.) %in% c("Dark2", "Paired"))
@@ -29,14 +29,14 @@ results <- lapply(methods, function (method) {
 
 #### 1. RECALCULATE METRICS FOR 19 CELL TYPES ####
 # Only consider 12 cell types
-cts_12 <- unique(readRDS("~/spotless-benchmark/standards/reference/gold_standard_3_12celltypes.rds")$celltype)
+cts_12 <- unique(readRDS("standards/reference/gold_standard_3_12celltypes.rds")$celltype)
 ncells <- length(cts_12)
-known_props <- readRDS(paste0("~/spotless-benchmark/standards/gold_standard_3/Wang2018_visp_rep0410.rds"))$relative_spot_composition %>%
+known_props <- readRDS(paste0("standards/gold_standard_3/Wang2018_visp_rep0410.rds"))$relative_spot_composition %>%
   .[,1:ncells]
 colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
 
 results_recalc <- lapply(methods, function (method) {
-  deconv_matrix <- read.table(paste0("~/spotless-benchmark/deconv_proportions/Wang2018_visp/proportions_", method,
+  deconv_matrix <- read.table(paste0("deconv_proportions/Wang2018_visp/proportions_", method,
                     "_Wang2018_visp_rep0410_19celltypes"),
              header = TRUE, sep= "\t") %>% .[,colnames(known_props)]
   
@@ -109,7 +109,7 @@ patchwork::wrap_plots(ps) + plot_layout(guides = 'collect') & theme(legend.posit
 #### 3. PLOT PROPORTIONS ####
 props <- lapply(methods, function (method) {
     lapply(types, function(type){
-      read.table(paste0("~/spotless-benchmark/deconv_proportions/Wang2018_visp/proportions_", method,
+      read.table(paste0("deconv_proportions/Wang2018_visp/proportions_", method,
                         "_Wang2018_visp_rep0410", type),
                  header = TRUE, sep= "\t")
     }) %>%
@@ -121,7 +121,7 @@ props <- lapply(methods, function (method) {
 celltypes <- props %>% pull(celltype) %>% unique
 
 # Download ground truth and add extra columns
-known_props <- readRDS(paste0("~/spotless-benchmark/standards/gold_standard_3/Wang2018_visp_rep0410.rds"))$relative_spot_composition
+known_props <- readRDS(paste0("standards/gold_standard_3/Wang2018_visp_rep0410.rds"))$relative_spot_composition
 colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
 columns_to_add <- celltypes[!celltypes %in% colnames(known_props)]
 known_props <- cbind(known_props %>% .[,!grepl("spot_no", colnames(.))],

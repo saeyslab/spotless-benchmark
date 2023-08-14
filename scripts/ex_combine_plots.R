@@ -2,7 +2,7 @@
 # 1. Combine seqfish+ and STARmap results
 # 2. Then combine it with the silver standard
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(ggtext)
 
 #### 1. COMBINE SEQFISH+ AND STARMAP ####
@@ -12,7 +12,7 @@ results_seqfish <- lapply(c("cortex_svz", "ob"), function (dataset) {
   lapply(methods, function (method) {
     lapply(fovs, function(fov){
       #print(paste(method, dataset, fov))
-      read.table(paste0("~/spotless-benchmark/results/Eng2019_", dataset, "/metrics_", method,
+      read.table(paste0("results/Eng2019_", dataset, "/metrics_", method,
                         "_Eng2019_", dataset, "_fov", fov),
                  header = TRUE, sep= " ")}) %>%
       setNames(fovs) %>% melt(id.vars=NULL) %>%
@@ -26,7 +26,7 @@ types <- c("_12celltypes", "_19celltypes")
 results_starmap <- lapply(methods, function (method) {
   lapply(types, function(type){
     #print(paste(method, type))
-    read.table(paste0("~/spotless-benchmark/results/Wang2018_visp/metrics_", method,
+    read.table(paste0("results/Wang2018_visp/metrics_", method,
                       "_Wang2018_visp_rep0410", type),
                header = TRUE, sep= " ")}) %>%
     setNames(types) %>% melt(id.vars=NULL) %>%
@@ -103,7 +103,7 @@ results_silver <- lapply(datasets, function(ds) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
         #print(paste(method, ds, dt, repl))
-        read.table(paste0("~/spotless-benchmark/results/", ds, "_", dt, "/metrics_",
+        read.table(paste0("results/", ds, "_", dt, "/metrics_",
                           method, "_", ds, "_", dt, "_rep", repl)) %>%
           t %>% data.frame %>%
           mutate("method" = method, "rep" = repl, "dataset" = ds, "dataset_type" = dt) 

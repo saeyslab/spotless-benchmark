@@ -9,12 +9,12 @@
 # Visium: MouseStSt, Visium spatial
 
 commandArgs <- function(...) "only_libraries"
-source("~/spotless-benchmark/scripts/0_init.R"); rm(commandArgs)
+source("scripts/0_init.R"); rm(commandArgs)
 
 #### 1. PREPROCESS SINGLE-CELL DATA ####
-liver_all <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allcells/",
+liver_all <- Read10X("data/raw_data/liver_guilliams2022/mouseStSt_allcells/",
                     gene.column=1)
-liver_all_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allcells/",
+liver_all_annot <- read.csv(paste0("data/raw_data/liver_guilliams2022/mouseStSt_allcells/",
                            "mouseStSt_annot.csv")) %>%
                             column_to_rownames("cell")
 
@@ -31,7 +31,7 @@ liver_seurat_obj <- CreateSeuratObject(counts = liver_all,
 
 ## COMBINING FINER ANNOTATION ##
 # Use finer annotation of CD45- cells to differentiate ECs
-annot_cd45_file <- read.csv("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allCells/annot_mouseStStCD45neg.csv")
+annot_cd45_file <- read.csv("data/raw_data/liver_guilliams2022/mouseStSt_allCells/annot_mouseStStCD45neg.csv")
 all(annot_cd45_file$cell %in% colnames(liver_seurat_obj))
 
 # Create dataframe with all cells of liver data; cells not in fine annotation will be NA
@@ -52,7 +52,7 @@ all(rownames(liver_seurat_obj@meta.data) == annot_cd45$cell)
 
 # Using even finer annotation of Myeloid, CD45-, and fibroblasts (from robin)
 # This is not really necessary, as we are mostly interested in endothelial cell zonation
-annot_fine_file <- readRDS("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_allCells/metadata_combined_robin.rds")
+annot_fine_file <- readRDS("data/raw_data/liver_guilliams2022/mouseStSt_allCells/metadata_combined_robin.rds")
 annot_fine <- annot_fine_file[match(Cells(liver_seurat_obj), annot_fine_file$cell),]
 all(Cells(liver_seurat_obj) == annot_fine$cell)
 
@@ -60,10 +60,10 @@ all(Cells(liver_seurat_obj) == annot_fine$cell)
 liver_seurat_obj$annot_cd45 <- annot_cd45$annot_fine
 liver_seurat_obj$annot_fine <- annot_fine$annot
 
-#saveRDS(liver_seurat_obj, "~/spotless-benchmark/data/rds/liver_mouseStSt_guilliams2022.rds")
+#saveRDS(liver_seurat_obj, "data/rds/liver_mouseStSt_guilliams2022.rds")
 
 ## EXPLORE SINGLE-CELL DATA ##
-liver_seurat_obj <- readRDS("~/spotless-benchmark/data/rds/liver_mouseStSt_guilliams2022.rds")
+liver_seurat_obj <- readRDS("data/rds/liver_mouseStSt_guilliams2022.rds")
 
 # Plot cell type proportions of different samples and digests
 col_vector2 <- c(brewer.pal(12, "Paired"), brewer.pal(8, "Dark2"))
@@ -222,12 +222,12 @@ for (dig in unique(liver_seurat_obj$digest)){
 }
 
 liver_seurat_obj <- liver_seurat_obj[,liver_seurat_obj$annot_cd45 %in% cts_to_keep]
-#saveRDS(liver_seurat_obj, "~/spotless-benchmark/data/rds/liver_mouseStSt_9celltypes.rds")
+#saveRDS(liver_seurat_obj, "data/rds/liver_mouseStSt_9celltypes.rds")
 
 #### 3. PREPROCESS SPATIAL DATA #####
-liver_spatial <- Read10X("~/spotless-benchmark/data/raw_data/liver_guilliams2022/mouseStSt_visium/countTable_mouseStStVisium/",
+liver_spatial <- Read10X("data/raw_data/liver_guilliams2022/mouseStSt_visium/countTable_mouseStStVisium/",
                          gene.column=1)
-liver_spatial_annot <- read.csv(paste0("~/spotless-benchmark/data/raw_data/liver_guilliams2022/",
+liver_spatial_annot <- read.csv(paste0("data/raw_data/liver_guilliams2022/",
                                        "mouseStSt_visium/annot_mouseStStVisium.csv")) %>%
                         column_to_rownames("spot")
 table(liver_spatial_annot$sample)
@@ -257,12 +257,12 @@ for (i in 1:4){
   liver_spatial_seurat_obj@images$image <- image
   
   # print(SpatialDimPlot(liver_spatial_seurat_obj, "zonationGroup"))
-  # saveRDS(liver_spatial_seurat_obj, paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
+  # saveRDS(liver_spatial_seurat_obj, paste0("data/rds/liver_mouseVisium_JB0", i, ".rds"))
 }
 
 # Plot Central and Portal spots only
 for (i in 1:4) {
-  liver_spatial <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
+  liver_spatial <- readRDS(paste0("data/rds/liver_mouseVisium_JB0", i, ".rds"))
   SpatialDimPlot(liver_spatial[,grepl("Central|Portal", liver_spatial$zonationGroup)], "zonationGroup")
   
   liver_spatial_subset <- liver_spatial[,grepl("Central|Portal", liver_spatial$zonationGroup)]
@@ -292,7 +292,7 @@ for (i in 1:4) {
 }
 
 ps <- lapply(1:4, function(i){
-  liver_spatial <- readRDS(paste0("~/spotless-benchmark/data/rds/liver_mouseVisium_JB0", i, ".rds"))
+  liver_spatial <- readRDS(paste0("data/rds/liver_mouseVisium_JB0", i, ".rds"))
   SpatialDimPlot(liver_spatial[,grepl("Central|Portal", liver_spatial$zonationGroup)], "zonationGroup",
                  pt.size.factor = 2)
 }
@@ -397,7 +397,7 @@ ggsave("~/Pictures/benchmark_paper/liver_proportions_figure1D_stacked.eps",
 
 
 # Read in proportions for RCTD
-prop_RCTD <- read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", 1, "/proportions_",
+prop_RCTD <- read.table(paste0("deconv_proportions/liver_mouseVisium_JB0", 1, "/proportions_",
                                "rctd", "_liver_mouseVisium_JB0", 1, "_", "noEC", "_annot_cd45"), header=TRUE, sep="\t") %>%
   colMeans() %>% data.frame("props" = .) %>% rownames_to_column("annot") %>%
   mutate(annot = sapply(as.character(annot), get_coarse_annot)) %>%
@@ -433,7 +433,7 @@ ggsave("~/Pictures/benchmark_paper/liver_jsd_figure1D.png",
 props <- lapply(1:4, function(ds) {
   lapply(c("exVivo", "inVivo", "nuclei"), function(dig) {
     lapply(c("rctd", 'nnls'), function (method) {
-      read.table(paste0("~/spotless-benchmark/deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
+      read.table(paste0("deconv_proportions/liver_mouseVisium_JB0", ds, "/proportions_",
                         method, "_liver_mouseVisium_JB0", ds, "_", dig, "_annot_cd45"), header=TRUE, sep="\t") %>%
         # Still has . in colnames
         `colnames<-`(stringr::str_replace_all(colnames(.), "[/ .]", ""))

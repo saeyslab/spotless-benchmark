@@ -10,7 +10,7 @@
 # Cluster annotations were first modified in excel so there are only two columns - "louvain" and "celltype"
 
 commandArgs <- function(...) "only_libraries"
-source("~/spotless-benchmark/scripts/0_init.R"); rm(commandArgs)
+source("scripts/0_init.R"); rm(commandArgs)
 
 #### HELPER FUNCTIONS ####
 # Returns data frame of circle points to visualize with ggplot
@@ -36,7 +36,7 @@ get_coarse_annot <- function(celltype){
 }
 
 ## CHANGEABLE PARAMS ##
-path <- "~/spotless-benchmark/data/raw_data/seqFISH_eng2019/"
+path <- "data/raw_data/seqFISH_eng2019/"
 dataset_source <- "Eng2019"
 dataset <- "cortex_svz" # cortex_svz or ob
 standard_no <- ifelse(dataset == "cortex_svz", 1, 2)
@@ -74,7 +74,7 @@ if (dataset == "ob"){
 seurat_obj <- CreateSeuratObject(counts=t(counts[metadata$celltype != "Unannotated",]),
                                  meta.data=metadata[metadata$celltype != "Unannotated",])
 seurat_obj <- RenameCells(seurat_obj, add.cell.id = "cell")
-# saveRDS(seurat_obj, paste0("~/spotless-benchmark/data/gold_standard_", standard_no, "/reference/reference_", dataset, ".rds"))
+# saveRDS(seurat_obj, paste0("data/gold_standard_", standard_no, "/reference/reference_", dataset, ".rds"))
 
 # Plot
 # seurat_obj <- seurat_obj %>% ScaleData() %>% FindVariableFeatures() %>%
@@ -197,7 +197,7 @@ for (fov_no in 0:6){
   # Save rds
   filename <- paste0(dataset_source, "_", dataset, "_fov", fov_no)
   
-  # saveRDS(full_data, paste0("~/spotless-benchmark/standards/gold_standard_", standard_no, "/", filename, ".rds"))
+  # saveRDS(full_data, paste0("standards/gold_standard_", standard_no, "/", filename, ".rds"))
 
   # Save plot and add additional information on cells, celltypes and counts
   # plot_table <- cells_in_spots %>% group_by(spot_no) %>%
@@ -233,7 +233,7 @@ args <- list(disp = c(0, 0.2),
 
 # Read and preprocess reference data
 scRNA_objs <- lapply(1:2, function(i) {
-  readRDS(paste0("~/spotless-benchmark/standards/reference/gold_standard_", i, ".rds")) %>%
+  readRDS(paste0("standards/reference/gold_standard_", i, ".rds")) %>%
     .[apply(GetAssayData(.), 1, max) > args$min_count[i],] %>%
     .[, colSums(.) >= args$colsums_cutoff[i]] %>%
     NormalizeData() %>%
@@ -306,7 +306,7 @@ ggplot(data=df_comb, aes(x=value, color=factor(dataset))) + geom_density() +
 datasets <- c("cortex_svz", "ob")
 spots_df <- lapply(1:2, function(i) {
   lapply(0:6, function(fov_no) {
-    spatial_data <- readRDS(paste0("~/spotless-benchmark/standards/gold_standard_", i,
+    spatial_data <- readRDS(paste0("standards/gold_standard_", i,
                                    "/Eng2019_", datasets[i], "_fov", fov_no, ".rds"))
     colSums(spatial_data$counts)
   }) %>% melt() 

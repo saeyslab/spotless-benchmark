@@ -9,14 +9,14 @@
 # For count matrices, down "Gene expression matrix (HDF5)"
 
 commandArgs <- function(...) "only_libraries"
-source("~/spotless-benchmark/scripts/0_init.R"); rm(commandArgs)
+source("scripts/0_init.R"); rm(commandArgs)
 
 library(hdf5r)
 library(pheatmap)
 
 #### 1. SAVE SC MATRICES AS SEURAT OBJECTS ####
 ## Read in metadata files
-path <- "~/spotless-benchmark/data/raw_data/"
+path <- "data/raw_data/"
 ctxhip10x_metadata <- merge(
   read.csv(paste0(path, "mousebrain_ABA_CTXHIP_10x/metadata.csv")),
   read.csv(paste0(path, "mousebrain_ABA_CTXHIP_10x/tsne.csv")),

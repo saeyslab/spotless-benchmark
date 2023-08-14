@@ -6,13 +6,13 @@ library(Seurat)
 library(precrec)
 library(stringr)
 
-path <- "~/spotless-benchmark/deconv_proportions/"
+path <- "deconv_proportions/"
 datasets_liver <- 1:4
 
 read_results_liver <- function(comparisons, method,
                                 dt_subset=1:4,
                                 dataset="liver_mouseVisium_JB0",
-                                path="~/spotless-benchmark/deconv_proportions/") {
+                                path="deconv_proportions/") {
   # comparison is a named vector
   lapply(comparisons, function (ext) {
     lapply(dt_subset, function(dt){

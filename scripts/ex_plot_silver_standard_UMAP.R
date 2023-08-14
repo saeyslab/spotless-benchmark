@@ -2,10 +2,10 @@
 # 1. Plot example synthspot UMAP with region composition labels
 # 1. Plot UMAP and violin plots of single-cell data
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 
 ### 1. PLOTTING REGION COMPOSITIONS ON UMAP ###
-data_path <- "~/spotless-benchmark/standards/silver_standard_"
+data_path <- "standards/silver_standard_"
 
 # Choose single-cell cerebellum dataset
 dsi <- 2; repl <- 1
@@ -94,7 +94,7 @@ ps <- lapply(1:length(datasets), function(dsi){
   gc()
   
   # Read in single-cell data
-  seurat_obj_scRNA <- readRDS(paste0("~/spotless-benchmark/standards/reference/silver_standard_",
+  seurat_obj_scRNA <- readRDS(paste0("standards/reference/silver_standard_",
                                      dsi, "_", datasets[dsi], ".rds"))
   
   celltypes <- unique(seurat_obj_scRNA$celltype)

@@ -12,7 +12,7 @@
 # ST: https://www.molecularatlas.org/download-data
 
 commandArgs <- function(...) "only_libraries"
-source("~/spotless-benchmark/scripts/0_init.R"); rm(commandArgs)
+source("scripts/0_init.R"); rm(commandArgs)
 
 library(pheatmap)
 
@@ -76,7 +76,7 @@ plot_celltype_distribution <- function(scref_metadata, clusters, celltypes_subse
 }
 
 ## LOAD SC METADATA FILES ##
-path <- "~/spotless-benchmark/data/raw_data/"
+path <- "data/raw_data/"
 ctxhip10x_metadata <- merge(
   read.csv(paste0(path, "mousebrain_ABA_CTXHIP_10x/metadata.csv")),
   read.csv(paste0(path, "mousebrain_ABA_CTXHIP_10x/tsne.csv")),
@@ -167,8 +167,8 @@ all(metadata_subset$spot_id %in% rownames(brain_expr))
 
 #### 3. SAVE ST OBJECTS FOR DECONVOLUTION ####
 ## LOAD SC REFERENCE FOR FILTERING GENES ##
-sc_10x <- readRDS("~/spotless-benchmark/data/rds/ctxhip10x_151060cells.rds")
-sc_ss <- readRDS("~/spotless-benchmark/data/rds/ctxhipss.rds")
+sc_10x <- readRDS("data/rds/ctxhip10x_151060cells.rds")
+sc_ss <- readRDS("data/rds/ctxhipss.rds")
 
 # Keep only genes that are present in all three datasets
 set1 <- intersect(rownames(sc_ss), rownames(sc_10x))
@@ -181,23 +181,23 @@ sc_ss <- sc_ss[genes_to_keep,]
 brain_expr_subset <- brain_expr_subset[genes_to_keep,]
 
 # Save
-# saveRDS(sc_10x, "~/spotless-benchmark/data/rds/ctxhip10x_151060cells_19231genes.rds")
-# saveRDS(sc_ss, "~/spotless-benchmark/data/rds/ctxhipss_19231genes.rds")
-# saveRDS(brain_expr_subset, "~/spotless-benchmark/data/raw_data/mousebrain_ortiz/expr_raw_counts_subset.rds")
-# saveRDS(metadata_subset, "~/spotless-benchmark/data/raw_data/mousebrain_ortiz/meta_table_subset.rds")
+# saveRDS(sc_10x, "data/rds/ctxhip10x_151060cells_19231genes.rds")
+# saveRDS(sc_ss, "data/rds/ctxhipss_19231genes.rds")
+# saveRDS(brain_expr_subset, "data/raw_data/mousebrain_ortiz/expr_raw_counts_subset.rds")
+# saveRDS(metadata_subset, "data/raw_data/mousebrain_ortiz/meta_table_subset.rds")
 
-# sc_10x <- readRDS("~/spotless-benchmark/data/rds/ctxhip10x_151060cells_19231genes.rds")
-# sc_ss <- readRDS("~/spotless-benchmark/data/rds/ctxhipss_19231genes.rds")
+# sc_10x <- readRDS("data/rds/ctxhip10x_151060cells_19231genes.rds")
+# sc_ss <- readRDS("data/rds/ctxhipss_19231genes.rds")
 
-brain_expr_subset <- readRDS("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/expr_raw_counts_subset.rds")
-metadata_subset <- readRDS("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/meta_table_subset.rds")
+brain_expr_subset <- readRDS("data/raw_data/mousebrain_ortiz/expr_raw_counts_subset.rds")
+metadata_subset <- readRDS("data/raw_data/mousebrain_ortiz/meta_table_subset.rds")
 
 # Create Seurat object for each section
 brain_st_seurat <- CreateSeuratObject(counts = brain_expr_subset,
                                       meta.data = metadata_subset,
                                       assay = "Spatial")
 brain_st_seurat.list <- SplitObject(brain_st_seurat, split.by = "section_index")
-# saveRDS(brain_st_seurat, "~/spotless-benchmark/data/raw_data/mousebrain_ortiz/brain_st_seurat.rds")
+# saveRDS(brain_st_seurat, "data/raw_data/mousebrain_ortiz/brain_st_seurat.rds")
 
 for (section in names(brain_st_seurat.list)){
   num <- str_sub(section, 1, 2)
@@ -211,7 +211,7 @@ library(imager)
 for (section_id in unique(metadata_subset$section_index)){
   print(section_id)
   # Load corresponding H&E image and resize
-  section_he <- load.image(paste0("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/HE/HE_", section_id, ".jpg"))
+  section_he <- load.image(paste0("data/raw_data/mousebrain_ortiz/HE/HE_", section_id, ".jpg"))
   section_he <- resize(section_he, size_x = dim(section_he)[1]/4,
                        size_y = dim(section_he)[2]/4)
   gc()
@@ -224,7 +224,7 @@ for (section_id in unique(metadata_subset$section_index)){
     scale_size(range=c(2,4)) + theme_classic() + guides(size="none") +
     theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
           axis.line = element_blank(), legend.position = "bottom", legend.direction = "horizontal")
-  ggsave(paste0("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/HE_spots2/HE_spots", section_id, ".jpg"),
+  ggsave(paste0("data/raw_data/mousebrain_ortiz/HE_spots2/HE_spots", section_id, ".jpg"),
          width = dim(section_he)[1], height=dim(section_he)[2], units = "px")
   gc()
 }
@@ -268,6 +268,6 @@ df_ss_table <- df_ss_subset %>% mutate(meta_name = cluster_names[metaregion]) %>
   pivot_wider(id_cols = !props, names_from = meta_name, values_from = presence)
 
 final_table <- df_10x_table[-which(apply(df_10x_table != df_ss_table, 1, any)),]
-#saveRDS(final_table, "~/spotless-benchmark/data/raw_data/mousebrain_ortiz/binary_gt95.rds")
+#saveRDS(final_table, "data/raw_data/mousebrain_ortiz/binary_gt95.rds")
 
-saveRDS(final_table, "~/spotless-benchmark/data/raw_data/mousebrain_ortiz/binary_gt_type1_presence0.rds")
+saveRDS(final_table, "data/raw_data/mousebrain_ortiz/binary_gt_type1_presence0.rds")

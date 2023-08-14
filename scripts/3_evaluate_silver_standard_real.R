@@ -5,7 +5,7 @@
 # 2. Boxplot of method performance on the "real" dataset type
 # 3. Calculate rank sum and plot
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 possible_dataset_types <- c(possible_dataset_types,  "real", "real_missing_celltypes_visium")
 datasets <- c('brain_cortex')
 show_nnls_ref <- TRUE
@@ -24,7 +24,7 @@ results <- lapply(methods, function (method) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
         #print(paste(method, datasets, dt, repl))
-        read.table(paste0("~/spotless-benchmark/results/", datasets, "_", dt, "/metrics_",
+        read.table(paste0("results/", datasets, "_", dt, "/metrics_",
                           method, "_", datasets, "_", dt, "_rep", repl)) %>%
           t %>% data.frame %>%
           mutate("method" = method, "rep" = repl, "dataset" = datasets, "dataset_type" = dt) 
@@ -36,7 +36,7 @@ results <- lapply(methods, function (method) {
 
 ###### 1. COMPARE PROPORTIONS ########
 # Show how each region is composed in the "real" dataset type vs actual data
-path <- "~/spotless-benchmark/standards/"
+path <- "standards/"
 synthvisium_real <- readRDS(paste0(path, "silver_standard_1-10/brain_cortex_real_rep1.rds"))
 sc_reference <- readRDS(paste0(path, "reference/silver_standard_1_brain_cortex.rds"))
 synthvisium_diverse_overlap <- readRDS(paste0(path, "silver_standard_1-4/brain_cortex_artificial_diverse_overlap_rep1.rds"))

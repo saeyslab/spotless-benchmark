@@ -4,19 +4,19 @@
 # 1. Summarize deconvolution results per region
 # 2. Calculate AUPR
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(precrec)
 
 techs <- c("ss", "10x")
-sections <- unique(str_extract(list.files("~/spotless-benchmark/data/rds/brain_ortiz/"), "[0-9]+")) %>%
+sections <- unique(str_extract(list.files("data/rds/brain_ortiz/"), "[0-9]+")) %>%
   .[!is.na(.)]
 
 # Load files from prerequisites
 # Seurat object with metadata
-brain_st_seurat <- readRDS("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/brain_st_seurat.rds")
+brain_st_seurat <- readRDS("data/raw_data/mousebrain_ortiz/brain_st_seurat.rds")
 # Ground truth
 file_path <- "binary_gt_type1_presence0.rds" #binary_gt95.rds
-binary_gt <- readRDS(paste0("~/spotless-benchmark/data/raw_data/mousebrain_ortiz/", file_path)) %>%
+binary_gt <- readRDS(paste0("data/raw_data/mousebrain_ortiz/", file_path)) %>%
   mutate(celltype = stringr::str_replace_all(celltype, "[/\\- .]", "")) %>%
   arrange(celltype) %>% column_to_rownames("celltype")
 
@@ -28,7 +28,7 @@ props <- lapply(sections, function(section) {
   lapply(methods, function (method) {
     #print(paste(method, section))
     lapply(techs, function(tech) {
-      read.table(paste0("~/spotless-benchmark/deconv_proportions/brain_ortiz/proportions_",
+      read.table(paste0("deconv_proportions/brain_ortiz/proportions_",
                               method, "_brain_ortiz_sec", section, "_", tech), header=TRUE, sep="\t") %>%
         `colnames<-`(stringr::str_replace_all(colnames(.), "[/\\- .]", ""))
       }) %>% setNames(techs)

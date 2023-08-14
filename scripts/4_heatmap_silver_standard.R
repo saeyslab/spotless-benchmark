@@ -1,7 +1,7 @@
 ## CONTENTS 
 # 1. Plot a heatmap of metrics with ggplot
 # 2. Plot a heatmap with pheatmap (obsolete)
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(pheatmap)
 
 #### READ RESULTS ####
@@ -9,7 +9,7 @@ results <- lapply(datasets, function(ds) {
   lapply(methods, function (method) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
-        read.table(paste0("~/spotless-benchmark/results/", ds, "_", dt, "/metrics_",
+        read.table(paste0("results/", ds, "_", dt, "/metrics_",
                           method, "_", ds, "_", dt, "_rep", repl)) %>% t %>% data.frame %>%
           mutate("method" = method, "rep" = repl, "dataset" = ds, "dataset_type" = dt) 
       }) %>% do.call(rbind, .)

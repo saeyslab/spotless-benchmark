@@ -17,7 +17,7 @@ dim(tasic@assays$RNA) # 17538 x 5162
 tasic$brain_region %>% unique # VISp
 
 # Only use 10x data
-path <- "~/spotless-benchmark/data/raw_data/"
+path <- "data/raw_data/"
 ctxhip10x_metadata <- merge(
   read.csv(paste0(path, "mousebrain_ABA_CTXHIP_10x/metadata.csv")),
   read.csv(paste0(path, "mousebrain_ABA_CTXHIP_10x/tsne.csv")),

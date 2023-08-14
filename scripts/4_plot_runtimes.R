@@ -2,7 +2,7 @@
 # 1. Plot runtime distribution
 # 2. Plot runtime per dataset
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(ungeviz)
 
 # Add asterisk if method is used with GPU
@@ -12,7 +12,7 @@ proper_method_names <- c("SPOTlight", "MuSiC", "* Cell2location", "RCTD", "* Ste
   setNames(methods)
 
 fields <- str_split("task_id,hash,name,tag,status,exit,container,duration,realtime,cpus,disk,memory,attempt,pcpu,pmem,rss,peak_rss,vmem,peak_vmem", ",")[[1]]
-hpc_logs <- read.table("~/spotless-benchmark/logs_silverstandard.txt", sep="\t") %>%
+hpc_logs <- read.table("logs_silverstandard.txt", sep="\t") %>%
   setNames(fields)
 
 df <- hpc_logs %>% filter(exit == "0") %>% mutate(exit = as.numeric(exit)) %>%
@@ -38,7 +38,7 @@ df <- hpc_logs %>% filter(exit == "0") %>% mutate(exit = as.numeric(exit)) %>%
   mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20)) %>%
   mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
 
-# saveRDS(df %>% select(-cpus, -memory), "~/spotless-benchmark/results/runtime.rds")
+# saveRDS(df %>% select(-cpus, -memory), "results/runtime.rds")
 
 
 df %>% group_by(method) %>% tally()

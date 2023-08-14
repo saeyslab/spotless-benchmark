@@ -1,4 +1,4 @@
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(DirichletReg)
 library(precrec)
 library(philentropy)
@@ -77,7 +77,7 @@ if (standard_type == "silver"){
         
         # Read in ground truth data
         file_name <- paste0(datasets[dsi], "_", possible_dataset_types[dti], "_rep", repl, ".rds")
-        ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_", dsi, "-", dti, "/", file_name))
+        ground_truth_data <- readRDS(paste0("standards/silver_standard_", dsi, "-", dti, "/", file_name))
         celltype_cols <- !grepl("^name$|^region$|^spot_no$",
                                 colnames(ground_truth_data$relative_spot_composition))
         ncells <- sum(celltype_cols)
@@ -105,7 +105,7 @@ if (standard_type == "silver"){
     }
   }
   
-  saveRDS(metric_df, "~/spotless-benchmark/standards/ref_all_metrics_silver.rds")
+  saveRDS(metric_df, "standards/ref_all_metrics_silver.rds")
 
   # Gold standard - seqFISH
 } else if (standard_type == "seqfish"){
@@ -115,14 +115,14 @@ if (standard_type == "silver"){
                           stringsAsFactors = FALSE)
   
   for (dsi in 1:2){
-    reference_data <- readRDS(paste0("~/spotless-benchmark/standards/reference/gold_standard_", dsi, ".rds"))
+    reference_data <- readRDS(paste0("standards/reference/gold_standard_", dsi, ".rds"))
     for (fov in 0:6){
       # Get number of cells from reference
       ncells <- length(unique(reference_data$celltype))
       celltypes <- stringr::str_replace_all(unique(reference_data$celltype), "[ /]", "\\.")
       
       # Spots from synthetic data
-      synthetic_data <- readRDS(paste0("~/spotless-benchmark/standards/gold_standard_", dsi,"/Eng2019_",
+      synthetic_data <- readRDS(paste0("standards/gold_standard_", dsi,"/Eng2019_",
                                        datasets[dsi], "_fov", fov, ".rds"))
       nspots <- nrow(synthetic_data$spot_composition)
       
@@ -152,7 +152,7 @@ if (standard_type == "silver"){
       metric_df <- merge(metric_df, temp_df, all=TRUE)
     }
   }
-  saveRDS(metric_df, "~/spotless-benchmark/standards/ref_all_metrics_seqfish.rds")
+  saveRDS(metric_df, "standards/ref_all_metrics_seqfish.rds")
   
   
 } else {

@@ -4,7 +4,7 @@
 # (3. Calculate best performer bar plot)
 # 3. Dotplot of ranks
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 
 qual_col_pals <- brewer.pal.info %>% filter(rownames(.) %in% c("Dark2", "Paired"))
 col_vector <- unlist(mapply(brewer.pal, qual_col_pals$maxcolors, rownames(qual_col_pals)))
@@ -24,7 +24,7 @@ results <- lapply(datasets, function(ds) {
     lapply(possible_dataset_types, function (dt) {
       lapply(1:10, function(repl){
         #print(paste(method, ds, dt, repl))
-        read.table(paste0("~/spotless-benchmark/results/", ds, "_", dt, "/metrics_",
+        read.table(paste0("results/", ds, "_", dt, "/metrics_",
                                          method, "_", ds, "_", dt, "_rep", repl)) %>%
           t %>% data.frame %>%
           mutate("method" = method, "rep" = repl, "dataset" = ds, "dataset_type" = dt) 
@@ -56,9 +56,9 @@ for (show_dirichlet_ref in c(TRUE, FALSE)){
     if (show_dirichlet_ref){
       if (calculate_dirichlet_ref){
         standard_type = "silver"
-        source("~/spotless-benchmark/scripts/ex_reference_metric.R")
+        source("scripts/ex_reference_metric.R")
       }
-      results_ref_dirichlet <- readRDS("~/spotless-benchmark/standards/ref_all_metrics_silver.rds")
+      results_ref_dirichlet <- readRDS("standards/ref_all_metrics_silver.rds")
       results_ref_dirichlet <- results_ref_dirichlet %>% filter(metric == moi) %>%
         group_by(dataset, dataset_type) %>% summarise(all_values = median(value)) %>%
         mutate(dt_linebreak = format_dataset_type(dataset_type))

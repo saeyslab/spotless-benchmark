@@ -3,7 +3,7 @@
 # 2. Plot example for 1 dataset
 # (3. Determine optimal threshold for AUPR)
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(precrec)
 library(ungeviz)
 
@@ -19,13 +19,13 @@ metrics <- lapply (1:6, function(dsi) {
     all_known_matrices <- list()
     for (r in 1:10){
       deconv_props <- lapply(methods, function (method){
-        read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
+        read.table(paste0("deconv_proportions/", ds, "_", dt,
                           "/proportions_", method, "_", ds, "_", dt, "_rep", r),
                    header=TRUE)
       }) %>% setNames(methods)
       
       # Load ground truth data
-      ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
+      ground_truth_data <- readRDS(paste0("standards/silver_standard_",
                                           dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
       ncells <- ncol(ground_truth_data$spot_composition)-2
       rare_celltype <- ground_truth_data$gold_standard_priorregion %>% filter(present) %>%
@@ -102,9 +102,9 @@ metrics <- lapply (1:6, function(dsi) {
   }) %>% do.call(rbind, .)
 }) %>% do.call(rbind ,.)
 
-# saveRDS(metrics, "~/spotless-benchmark/results/rare_celltype_detection.rds")
+# saveRDS(metrics, "results/rare_celltype_detection.rds")
 
-metrics <- readRDS("~/spotless-benchmark/results/rare_celltype_detection.rds")
+metrics <- readRDS("results/rare_celltype_detection.rds")
 
 best_performers <- metrics %>% filter(metric == "prc") %>% group_by(dataset, dataset_type) %>%
   mutate(rank=dense_rank(desc(value))) %>% group_by(method) %>%
@@ -147,7 +147,7 @@ lapply (1, function(dsi) {
     for (r in 1:10){
       print(paste("rep", r))
       # Load ground truth data
-      ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
+      ground_truth_data <- readRDS(paste0("standards/silver_standard_",
                                           dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
       gs <- ground_truth_data$gold_standard_priorregion %>% filter(present) %>% group_by(prior_region) %>% arrange(freq, .by_group = TRUE)
       print(gs, n=Inf)
@@ -167,13 +167,13 @@ ds <- datasets[dsi]
 dt <- possible_dataset_types[dti]
 
 deconv_props <- lapply(methods, function (method){
-  read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
+  read.table(paste0("deconv_proportions/", ds, "_", dt,
                     "/proportions_", method, "_", ds, "_", dt, "_rep", r),
              header=TRUE)
 }) %>% setNames(methods)
 
 # Load ground truth data
-ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
+ground_truth_data <- readRDS(paste0("standards/silver_standard_",
                                     dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
 # Print gold standard prior
 gs <- ground_truth_data$gold_standard_priorregion %>% filter(present) %>%
@@ -267,13 +267,13 @@ opt_points <- lapply (1:6, function(dsi) {
     
     lapply(1:10, function(r){
       deconv_props <- lapply(methods, function (method){
-        read.table(paste0("~/spotless-benchmark/deconv_proportions/", ds, "_", dt,
+        read.table(paste0("deconv_proportions/", ds, "_", dt,
                           "/proportions_", method, "_", ds, "_", dt, "_rep", r),
                    header=TRUE)
       }) %>% setNames(methods)
     
       # Load ground truth data
-      ground_truth_data <- readRDS(paste0("~/spotless-benchmark/standards/silver_standard_",
+      ground_truth_data <- readRDS(paste0("standards/silver_standard_",
                                           dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
       rare_celltype <- ground_truth_data$gold_standard_priorregion %>% filter(present) %>%
         slice_min(freq, with_ties = FALSE) %>% pull(celltype)

@@ -10,7 +10,7 @@
 # Sc data: https://portal.brain-map.org/atlases-and-data/rnaseq/mouse-v1-and-alm-smart-seq
 
 commandArgs <- function(...) "only_libraries"
-source("~/spotless-benchmark/scripts/0_init.R"); rm(commandArgs)
+source("scripts/0_init.R"); rm(commandArgs)
 
 #### HELPER FUNCTIONS ####
 # Returns data frame of circle points to visualize with ggplot
@@ -46,7 +46,7 @@ get_coarse_annot_sc <- function(celltype){
 #### 1. CREATE SEURAT OBJECTS AND EXPLORE DATA ####
 ## READ IN STARMAP DATA ##
 dataset <- "20180410"
-folder_path <- paste0("~/spotless-benchmark/data/raw_data/STARMAP_mouseVIS_wang2018/", dataset, "_BY3_1kgenes/")
+folder_path <- paste0("data/raw_data/STARMAP_mouseVIS_wang2018/", dataset, "_BY3_1kgenes/")
 annot <- read.csv(paste0(folder_path, "class_labels.csv")) %>%
   add_column(read.csv(paste0(folder_path, "positions.csv"))) %>%
   set_colnames(c("cell_id", "cluster_id", "celltype", "Y", "X")) %>%
@@ -252,7 +252,7 @@ full_data <- list(counts = spot_counts_sparse,
 
 # Save rds
 filename <- "Wang2018_visp_rep0410"
-saveRDS(full_data, paste0("~/spotless-benchmark/standards/gold_standard_3/", filename, ".rds"))
+saveRDS(full_data, paste0("standards/gold_standard_3/", filename, ".rds"))
 
 # Save plot and add additional information on cells, celltypes and counts
 median_stats <- cells_in_spots %>% group_by(spot_no) %>%
@@ -262,7 +262,7 @@ median_stats <- cells_in_spots %>% group_by(spot_no) %>%
 stats_text <- paste("Median # of", paste0(colnames(median_stats), ": ", median_stats, collapse="; "))
 
 p_final <- p + labs(title=filename, subtitle=stats_text) + guides(color=guide_legend(nrow=2,byrow=TRUE))
-ggsave(paste0("~/spotless-benchmark/standards/gold_standard_3/", filename, ".jpeg"),
+ggsave(paste0("standards/gold_standard_3/", filename, ".jpeg"),
        p_final, width = 3000, height = 1600, units="px", bg="white")
 ggsave(paste0("~/Pictures/benchmark_paper/", filename, ".jpeg"),
        p_final, width = 3000, height = 1600, units="px", bg="white")

@@ -2,7 +2,7 @@ library(dplyr)
 library(Seurat)
 library(synthspot)
 
-path <- "~/spotless-benchmark/downsampling/liver/"
+path <- "downsampling/liver/"
 dir.create(paste0(path, "downsampled_spatial_datasets/"), recursive = TRUE)
 dir.create(paste0(path, "downsampled_scref/"), recursive = TRUE)
 
@@ -99,7 +99,7 @@ all_scales_ref %>% data.frame() %>% mutate(new = paste0(format(n_cells, scientif
   pull(new) %>% gsub(" ", "", .) %>% paste0("'", ., "'", collapse = ",")
 
 # Only get the names of cells and genes (and metadata) to save space
-seurat_obj_scRNA <- readRDS("~/spotless-benchmark/data/rds/liver_mouseStSt_9celltypes.rds")
+seurat_obj_scRNA <- readRDS("data/rds/liver_mouseStSt_9celltypes.rds")
 seurat_obj_scRNA <- seurat_obj_scRNA %>% .[,.$digest != "nuclei"] # Remove nuclei
 
 Idents(seurat_obj_scRNA) <- seurat_obj_scRNA$annot_cd45

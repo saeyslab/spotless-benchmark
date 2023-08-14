@@ -2,7 +2,7 @@
 # 1. Plot performance of each method
 # 2. Proportions plot
 
-source("~/spotless-benchmark/scripts/0_init.R")
+source("scripts/0_init.R")
 library(ungeviz) # geom_hpline
 library(ggtext) # Bold ground truth label
 
@@ -26,7 +26,7 @@ results <- lapply(c("cortex_svz", "ob"), function (dataset) {
   lapply(tolower(methods), function (method) {
     lapply(fovs, function(fov){
       #print(paste(method, dataset, fov))
-      read.table(paste0("~/spotless-benchmark/results/Eng2019_", dataset, "/metrics_", method,
+      read.table(paste0("results/Eng2019_", dataset, "/metrics_", method,
                         "_Eng2019_", dataset, "_fov", fov),
                  header = TRUE, sep= " ")}) %>%
       setNames(fovs) %>% melt(id.vars=NULL) %>%
@@ -111,11 +111,11 @@ show_dirichlet_ref <- TRUE
 
 if (calculate_dirichlet_ref){
   standard_type <- "seqfish"
-  source("~/spotless-benchmark/scripts/ex_reference_metric.R")
+  source("scripts/ex_reference_metric.R")
 }
 
 if (show_dirichlet_ref){
-  df_ref_dirichlet <- readRDS("~/spotless-benchmark/standards/ref_all_metrics_seqfish.rds")
+  df_ref_dirichlet <- readRDS("standards/ref_all_metrics_seqfish.rds")
   df_ref_dirichlet <- df_ref_dirichlet %>%  group_by(dataset, metric) %>% summarise(value = median(value))
 }
 
@@ -149,7 +149,7 @@ ggplot(results %>% filter(grepl(paste0(moi, collapse="|"), metric)),
 props <- lapply(c("cortex_svz", "ob"), function (dataset) {
   lapply(methods, function (method) {
     lapply(fovs, function(fov){
-      read.table(paste0("~/spotless-benchmark/deconv_proportions/Eng2019_", dataset, "/proportions_", method,
+      read.table(paste0("deconv_proportions/Eng2019_", dataset, "/proportions_", method,
                         "_Eng2019_", dataset, "_fov", fov),
                  header = TRUE, sep= "\t")
       }) %>%
@@ -160,14 +160,14 @@ props <- lapply(c("cortex_svz", "ob"), function (dataset) {
 }) %>% do.call(rbind, .)
 
 celltypes_list <- lapply(1:2, function(i) {
-  unique(readRDS(paste0("~/spotless-benchmark/standards/reference/gold_standard_", i, ".rds"))$celltype) %>%
+  unique(readRDS(paste0("standards/reference/gold_standard_", i, ".rds"))$celltype) %>%
     setNames(str_replace_all(., "[/ .]", "")) %>% gsub("II", "2", .) 
 })
 
 ground_truth <- lapply(1:2, function (i) {
   celltypes <- names(celltypes_list[[i]])
     lapply(fovs, function(fov){
-      known_props <- readRDS(paste0("~/spotless-benchmark/standards/gold_standard_",
+      known_props <- readRDS(paste0("standards/gold_standard_",
                                     i, "/Eng2019_", datasets[i],
                                     "_fov", fov, ".rds"))$relative_spot_composition
       colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
@@ -236,7 +236,7 @@ ggsave("~/Pictures/benchmark_paper/seqFISH_abundance_barplot.png",
 
 ## Barplot of just the reference ##
 ref_meta <- lapply(1:2, function(dataset_i) {
-  readRDS(paste0("~/spotless-benchmark/standards/reference/gold_standard_", dataset_i, ".rds")) %>% 
+  readRDS(paste0("standards/reference/gold_standard_", dataset_i, ".rds")) %>% 
     .@meta.data %>% mutate(dataset=dataset_i)
 }) %>% do.call(rbind, .)
 
