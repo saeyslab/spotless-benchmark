@@ -57,7 +57,7 @@ df <- left_join(df %>% filter(type != "build"),
       mutate(min_total = sum(mins,min_build, na.rm = TRUE)) %>%
   #spatialDWLS has some duplicate runs, choose minimum
   group_by(method, spots, genes) %>% filter(min_total == min(min_total)) %>% ungroup()
-#saveRDS(df, "results/scalability.rds")
+#saveRDS(df, "data/metrics/scalability.rds")
 
 df %>% group_by(method) %>% tally
 

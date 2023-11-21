@@ -131,7 +131,7 @@ props_summ2 <- props_summ %>% mutate(celltype = ifelse(celltype %in% cts_keep, c
 sorting_scheme <- c("stability", "jsd", "aupr", "none")[4]
 if (sorting_scheme == "stability") {
   # If you want to sort the methods - prerequisites: evaluate_stability
-  liver_metrics <- readRDS("data/rds/liver_metrics_ref_sensitivity.rds")
+  liver_metrics <- readRDS("data/metrics/liver_metrics_ref_sensitivity.rds")
   
   # Process the liver metrics a bit more - remove duplicates
   best_performers <- liver_metrics %>% rowwise() %>% mutate(combi = paste0(sort(c(as.character(other_digest), digest)), collapse="_")) %>%
@@ -411,7 +411,7 @@ metrics_all <- merge(metrics_df %>% mutate(digest = str_replace(digest, "noEC_9c
   all = TRUE
 )
 
-# saveRDS(metrics_all, "results/liver_all_metrics.rds")
+# saveRDS(metrics_all, "data/metrics/liver_all_metrics.rds")
 
 args <- list(metric = c("aupr", "jsd", "emd"),
              titles = c("AUPR", "JSD", "Earthmover's Distance"),

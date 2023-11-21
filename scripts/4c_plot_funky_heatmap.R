@@ -114,7 +114,7 @@ results_gs_dataset <- results_gs %>% filter(metric %in% c("RMSE", "prc", "jsd"))
   group_by(method) %>% summarise(gold = mean(geomean)) %>% select(method, gold)
 
 # Load liver data
-results_liver <- readRDS("results/liver_all_metrics.rds") %>% select(-fill_col) %>%
+results_liver <- readRDS("data/metrics/liver_all_metrics.rds") %>% select(-fill_col) %>%
   group_by(metric, method) %>%  summarise(avg_val = mean(as.numeric(value))) %>%
   pivot_wider(names_from = metric, values_from = avg_val) %>%
   mutate(scaled_EMD = minmax(emd, reciprocal = TRUE),
@@ -137,7 +137,7 @@ results_gs_agg_metric <- results_gs %>% filter(metric %in% c("RMSE", "prc", "jsd
                                 metric != "prc" ~ minmax(avg_val, reciprocal = TRUE))) %>%
   group_by(metric, method) %>% summarise(scaled_val = mean(scaled_val))
 
-results_liver_agg_metric <- readRDS("results/liver_all_metrics.rds") %>% select(-fill_col) %>%
+results_liver_agg_metric <- readRDS("data/metrics/liver_all_metrics.rds") %>% select(-fill_col) %>%
   group_by(metric, method) %>% summarise(avg_val = mean(as.numeric(value))) %>%
   group_by(metric) %>% mutate(scaled_val = case_when(metric == "aupr" ~ minmax(avg_val),
                                                      metric != "aupr" ~ minmax(avg_val, reciprocal = TRUE))) %>%
@@ -158,18 +158,18 @@ results_agg_metric <- merge(results_ss_agg_metric %>% ungroup() %>% mutate(sourc
   
 
 ### Rare celltype detection ###
-rarecelltypes <- readRDS("results/rare_celltype_detection.rds") %>% select(-threshold, -metric) %>%
+rarecelltypes <- readRDS("data/metrics/rare_celltype_detection.rds") %>% select(-threshold, -metric) %>%
   mutate(metric = "dummy") %>%
   aggregate_by(levels = c(1, 2, 3)) %>% ungroup() %>% select(-metric) %>%
   rename(rarecelltype_detection = avg_val)
   
 ### Robustness ###
-ss_stability <- readRDS("data/rds/ssmetrics_ref_sensitivity.rds") %>%
+ss_stability <- readRDS("data/metrics/ssmetrics_ref_sensitivity.rds") %>%
   filter(metric == "jsd") %>% aggregate_by(levels = c(1, 2, 3)) %>%
   pivot_wider(names_from = metric, values_from = avg_val) %>%
   mutate(scaled_JSD = minmax(jsd, reciprocal = TRUE))
 
-liver_stability <- readRDS("data/rds/liver_metrics_ref_sensitivity.rds") %>%
+liver_stability <- readRDS("data/metrics/liver_metrics_ref_sensitivity.rds") %>%
   rowwise() %>% mutate(combi = paste0(sort(c(as.character(other_digest), digest)), collapse="_")) %>%
   distinct(method, dataset, combi, jsd) %>% group_by(method, combi) %>% summarise(mean_jsd = mean(jsd)) %>%
   group_by(method) %>%  summarise(jsd = mean(mean_jsd)) %>%
@@ -180,7 +180,7 @@ stability_all <- merge(liver_stability %>% select(-jsd) %>% rename(jsd_liver = s
   mutate(robustness = (jsd_liver+jsd_ss)/2) %>% select(method, robustness)
 
 # Scalability
-runtime_rds <- readRDS("results/runtime.rds")
+runtime_rds <- readRDS("data/metrics/runtime.rds")
 runtime <- left_join(runtime_rds %>% filter(type != "build"),
                      runtime_rds %>% filter(type == "build") %>% group_by(method) %>% summarise(min_build = mean(mins)),
                     by = "method") %>%
@@ -196,7 +196,7 @@ runtime <- left_join(runtime_rds %>% filter(type != "build"),
                              avg_runtime < 1 ~ "<1m",
                              TRUE ~ paste0(round(avg_runtime), "m")))
 
-scalability <- readRDS("results/scalability.rds") %>% select(-realtime, -cpus, -mins, -min_build) %>%
+scalability <- readRDS("data/metrics/scalability.rds") %>% select(-realtime, -cpus, -mins, -min_build) %>%
   filter(spots %in% c(100, 1000, 10000), genes == 30000, type != "build") %>%
   pivot_wider(-type, names_from = c(spots, genes), values_from = min_total, names_glue = "{spots}spots_{genes}genes") %>%
   mutate(method = str_replace(method, "stereo", "stereoscope"),

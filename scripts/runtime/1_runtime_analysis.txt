@@ -1,0 +1,9 @@
+# Here we assume the variable "method" contains one or more method names
+
+## Runtime analysis
+for i in {1..6}
+do
+nextflow run main.nf -profile hpc --mode run_standard --standard silver_standard_${i} \
+--methods $method -c conf/runtime.config \
+#--gpu --file_type h5ad
+done

@@ -58,7 +58,7 @@ for (show_dirichlet_ref in c(TRUE, FALSE)){
         standard_type = "silver"
         source("scripts/ex_reference_metric.R")
       }
-      results_ref_dirichlet <- readRDS("standards/ref_all_metrics_silver.rds")
+      results_ref_dirichlet <- readRDS("data/metrics/ref_all_metrics_silver.rds")
       results_ref_dirichlet <- results_ref_dirichlet %>% filter(metric == moi) %>%
         group_by(dataset, dataset_type) %>% summarise(all_values = median(value)) %>%
         mutate(dt_linebreak = format_dataset_type(dataset_type))

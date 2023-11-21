@@ -42,8 +42,8 @@ ss_metrics <- lapply(1:length(datasets), function(ds) {
   }) %>% do.call(rbind, .)
 }) %>% do.call(rbind, .)
 
-# saveRDS(ss_metrics, "data/rds/ssmetrics_ref_sensitivity.rds")
-ss_metrics <- readRDS("data/rds/ssmetrics_ref_sensitivity.rds")
+# saveRDS(ss_metrics, "data/metrics/ssmetrics_ref_sensitivity.rds")
+ss_metrics <- readRDS("data/metrics/ssmetrics_ref_sensitivity.rds")
 
 # Plot all of them together
 best_performers <- ss_metrics %>%
@@ -117,8 +117,8 @@ liver_metrics <- lapply(datasets, function(ds) {
     do.call(rbind, .)}) %>%
   do.call(rbind, .) %>% `colnames<-`(c("other_digest", "digest", "jsd", "method", "dataset"))
 
-# saveRDS(liver_metrics, "data/rds/liver_metrics_ref_sensitivity.rds")
-liver_metrics <- readRDS("data/rds/liver_metrics_ref_sensitivity.rds")
+# saveRDS(liver_metrics, "data/metrics/liver_metrics_ref_sensitivity.rds")
+liver_metrics <- readRDS("data/metrics/liver_metrics_ref_sensitivity.rds")
 
 # Process the liver metrics a bit more - remove duplicates
 liver_metrics <- liver_metrics %>% rowwise() %>% mutate(combi = paste0(sort(c(as.character(other_digest), digest)), collapse="_")) %>%
@@ -151,8 +151,8 @@ ggplot(liver_metrics %>% mutate(method = factor(method, levels = best_performers
         panel.grid = element_blank())
 
 #### 3. COMBINE ####
-ss_metrics <- readRDS("data/rds/ssmetrics_ref_sensitivity.rds")
-liver_metrics <- readRDS("data/rds/liver_metrics_ref_sensitivity.rds")
+ss_metrics <- readRDS("data/metrics/ssmetrics_ref_sensitivity.rds")
+liver_metrics <- readRDS("data/metrics/liver_metrics_ref_sensitivity.rds")
 
 metrics_all <- merge(liver_metrics %>% rename(rep = dataset, dataset_type = combi, value = jsd) %>%
                                        mutate(dataset = "liver", metric = "jsd"),

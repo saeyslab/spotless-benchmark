@@ -115,7 +115,7 @@ if (calculate_dirichlet_ref){
 }
 
 if (show_dirichlet_ref){
-  df_ref_dirichlet <- readRDS("standards/ref_all_metrics_seqfish.rds")
+  df_ref_dirichlet <- readRDS("data/metrics/ref_all_metrics_seqfish.rds")
   df_ref_dirichlet <- df_ref_dirichlet %>%  group_by(dataset, metric) %>% summarise(value = median(value))
 }
 

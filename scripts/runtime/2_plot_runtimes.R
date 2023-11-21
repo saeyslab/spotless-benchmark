@@ -38,7 +38,7 @@ df <- hpc_logs %>% filter(exit == "0") %>% mutate(exit = as.numeric(exit)) %>%
   mutate(dt_linebreak = str_wrap(str_replace_all(str_replace_all(dataset_type, "artificial_", ""), "_", " "), width = 20)) %>%
   mutate(dt_linebreak = factor(dt_linebreak, levels=unique(dt_linebreak)))
 
-# saveRDS(df %>% select(-cpus, -memory), "results/runtime.rds")
+# saveRDS(df %>% select(-cpus, -memory), "data/metrics/runtime.rds")
 
 
 df %>% group_by(method) %>% tally()

@@ -105,7 +105,7 @@ if (standard_type == "silver"){
     }
   }
   
-  saveRDS(metric_df, "standards/ref_all_metrics_silver.rds")
+  saveRDS(metric_df, "data/metrics/ref_all_metrics_silver.rds")
 
   # Gold standard - seqFISH
 } else if (standard_type == "seqfish"){
@@ -152,7 +152,7 @@ if (standard_type == "silver"){
       metric_df <- merge(metric_df, temp_df, all=TRUE)
     }
   }
-  saveRDS(metric_df, "standards/ref_all_metrics_seqfish.rds")
+  saveRDS(metric_df, "data/metrics/ref_all_metrics_seqfish.rds")
   
   
 } else {

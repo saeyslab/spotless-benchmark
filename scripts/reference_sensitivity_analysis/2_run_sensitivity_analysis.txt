@@ -1,0 +1,17 @@
+# Here we assume the variable "method" contains one or more method names
+
+## Running the reference sensitivity analysis
+# Brain cortex
+nextflow run main.nf -profile hpc \
+--methods $method \
+-c conf/ref_sensitivity_brain.config \
+#--gpu --file_type h5ad
+# By default, this returns results with extensions "_10xref"
+
+# Cerebellum
+# ref_type sc uses single-cell dataset as the reference
+nextflow run main.nf -profile hpc \
+--methods $method \
+--ref_type sc # sc or sn \ 
+-c conf/ref_sensitivity_cerebellum.config \
+#--gpu --file_type h5ad

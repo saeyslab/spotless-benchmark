@@ -1,0 +1,9 @@
+# Here we assume the variable "method" contains one or more method names
+## Downsampling analysis
+for i in {1..16}
+do nextflow run main.nf -profile hpc --methods $method \
+-c conf/downsampling_liver.config \
+--ds_type spatial --i $i
+#--gpu --file_type h5ad
+done
+# Note that destvi will have to be run separately by itself

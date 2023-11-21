@@ -102,9 +102,9 @@ metrics <- lapply (1:6, function(dsi) {
   }) %>% do.call(rbind, .)
 }) %>% do.call(rbind ,.)
 
-# saveRDS(metrics, "results/rare_celltype_detection.rds")
+# saveRDS(metrics, "data/metrics/rare_celltype_detection.rds")
 
-metrics <- readRDS("results/rare_celltype_detection.rds")
+metrics <- readRDS("data/metrics/rare_celltype_detection.rds")
 
 best_performers <- metrics %>% filter(metric == "prc") %>% group_by(dataset, dataset_type) %>%
   mutate(rank=dense_rank(desc(value))) %>% group_by(method) %>%
