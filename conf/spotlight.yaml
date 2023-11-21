@@ -1,2 +1,0 @@
-deconv_args:
-  spotlight: "--logfc.threshold 1 --min.pct 0.9 --cl_n 50 --min_cont 0.09"
