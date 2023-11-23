@@ -1,0 +1,14 @@
+deconv_args:
+  stereoscope: ""
+  cell2location:
+    build: ""
+    fit: ""
+  dstg:
+    dir: ""
+  spotlight: "--conserve.memory TRUE --logfc.threshold 1 --min.pct 0.9 --cl_n 50 --min_cont 0.09"
+  music: ""
+  destvi:
+    build: "-e 5000"
+    fit: "-e 5000 -b 64"
+  seurat: "--norm.method sct"
+  stride: "--normalize"
