@@ -4,8 +4,8 @@ include { runMethods } from './subworkflows/deconvolution/run_methods'
 include { computeMetrics } from './subworkflows/evaluation/evaluate_methods'
 include { generateSyntheticData } from './subworkflows/data_generation/generate_data'
 
-silver_standards = ((1..6)*9).sort().withIndex().collect{ it, i -> "silver_standard_$it-${ -> i%9+1}".toString() }
-silver_standards_coarse = (1..6).collect{ it -> "silver_standard_$it".toString()}
+silver_standards = ((1..7)*9).sort().withIndex().collect{ it, i -> "silver_standard_$it-${ -> i%9+1}".toString() }
+silver_standards_coarse = (1..7).collect{ it -> "silver_standard_$it".toString()}
 gold_standards = (1..3).collect{ it -> "gold_standard_$it".toString()}
 all_standards = gold_standards + silver_standards + silver_standards_coarse + ["silver_standard_1-10", "silver_standard_1-11"]
 all_modes = ["run_standard", "run_dataset", "generate_and_run"]
@@ -13,7 +13,7 @@ all_modes = ["run_standard", "run_dataset", "generate_and_run"]
 
 workflow {
     main:
-
+               
         if (!all_modes.contains(params.mode)){
             throw new Exception("Error: please enter --mode as 'run_standard', 'run_dataset', or 'generate_and_run'")
         }
