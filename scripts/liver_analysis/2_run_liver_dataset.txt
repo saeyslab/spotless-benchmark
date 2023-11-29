@@ -7,3 +7,11 @@ nextflow run main.nf -profile hpc --mode run_dataset \
 --annot annot_cd45 # options: annot, annot_fine, annot_cd45 \
 --file_type rds    # options: rds, h5ad \
 #--gpu
+
+# Run on synthetic data
+nextflow run main.nf -profile hpc --mode run_dataset \
+--methods $method \
+-c conf/liver_exvivo.config \
+--ref_type nuclei  # options: nuclei, inVivo
+--file_type rds    # options: rds, h5ad \
+#--gpu
