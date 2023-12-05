@@ -72,7 +72,7 @@ DimPlot(seurat_obj, reduction = "umap", group.by="celltype", label=TRUE)
 
 
 ## READ IN SINGLE-CELL REFERENCE ##
-data_path <- "spotless-benchmark/data/raw_data/mousebrain_ABA_VISp/mouse_VISp_2018-06-14_"
+data_path <- "data/raw_data/mousebrain_ABA_VISp/mouse_VISp_2018-06-14_"
 scrnaseq_vis <- read.csv(paste0(data_path, "exon-matrix.csv"))
 vis_genes <- read.csv(paste0(data_path, "genes-rows.csv"))
 vis_annot <- read.csv(paste0(data_path, "samples-columns.csv")) %>%
@@ -252,7 +252,7 @@ full_data <- list(counts = spot_counts_sparse,
 
 # Save rds
 filename <- "Wang2018_visp_rep0410"
-saveRDS(full_data, paste0("standards/gold_standard_3/", filename, ".rds"))
+# saveRDS(full_data, paste0("standards/gold_standard_3/", filename, ".rds"))
 
 # Save plot and add additional information on cells, celltypes and counts
 median_stats <- cells_in_spots %>% group_by(spot_no) %>%
@@ -262,7 +262,7 @@ median_stats <- cells_in_spots %>% group_by(spot_no) %>%
 stats_text <- paste("Median # of", paste0(colnames(median_stats), ": ", median_stats, collapse="; "))
 
 p_final <- p + labs(title=filename, subtitle=stats_text) + guides(color=guide_legend(nrow=2,byrow=TRUE))
-ggsave(paste0("standards/gold_standard_3/", filename, ".jpeg"),
+ggsave(paste0("standards/gold_standard_3/", filename, ".png"),
        p_final, width = 3000, height = 1600, units="px", bg="white")
-ggsave(paste0("~/Pictures/benchmark_paper/", filename, ".jpeg"),
+ggsave(paste0("~/Pictures/benchmark_paper/supp_table_1a_starmap.png"),
        p_final, width = 3000, height = 1600, units="px", bg="white")
