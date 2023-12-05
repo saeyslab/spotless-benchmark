@@ -3,7 +3,6 @@
 # 2. Proportions plot
 
 source("scripts/0_init.R")
-library(ungeviz) # geom_hpline
 library(ggtext) # Bold ground truth label
 
 datasets <- c("cortex_svz", "ob")
@@ -21,6 +20,7 @@ get_coarse_annot <- function(celltype){
 
 
 #### 1. PLOT PERFORMANCE METRICS ####
+## These plots aren't used in the final paper, just for demonstration ##
 ## READ IN METRIC FILES ##
 results <- lapply(c("cortex_svz", "ob"), function (dataset) {
   lapply(tolower(methods), function (method) {
@@ -45,6 +45,8 @@ df_ranked <- results %>%
   mutate(rank = case_when(metric %in% c("RMSE", "jsd") ~ dense_rank(mean_val),
                           TRUE ~ dense_rank(desc(mean_val))))
 
+# saveRDS(df_ranked, "data/metrics/seqfish_rankings.rds")
+
 # Sum up rank of the two
 moi <- "prc"
 df_ranked %>% group_by(method, metric) %>% summarise(summed_rank= sum(rank)) %>%
@@ -52,7 +54,7 @@ df_ranked %>% group_by(method, metric) %>% summarise(summed_rank= sum(rank)) %>%
   filter(metric == moi)
 
 
-#### PLOT RESULTS ####
+## Vertical lines with mean ##
 args <- list(metric = c("RMSE", "prc", "jsd"),
              xlims = list(c(0, 0.3), c(0, 1), c(0, 1)),
              xbreaks = list(c(0, 0.1, 0.2, 0.3), c(0, 0.5, 1), c(0, 0.5, 1)),
@@ -68,14 +70,18 @@ ps <- lapply(1:3, function(i){
   nnls_pos <- which(best_performers == "nnls")
   
   p <- ggplot(results %>% filter(metric == args$metric[i]) %>%
-                mutate(method = factor(method, levels = rev(best_performers))),
-              aes(y=method, x=value, colour=dataset, group=dataset))
+                mutate(method = factor(method, levels = rev(best_performers)),
+                       dataset = factor(dataset, levels=c("cortex_svz", "ob"))),
+              aes(y=method, x=value, colour=dataset))
   
   if (!only_show_mean){
     # If we don't show the mean, positiondodge the two datasets
     # Use horizontal lines as data points, and the circle is the mean
-    p <- p + geom_vpline(height=0.3, size=0.3, position=position_dodge(0.6)) +
-      stat_summary(geom = "point", fun = "mean", position=position_dodge(0.6), size=1.5)
+    p <- p +
+      geom_segment(aes(x=value, xend=value,
+                       y=as.numeric(method)-ifelse(as.numeric(dataset) == 1, 0.4, 0),
+                       yend=as.numeric(method)+ifelse(as.numeric(dataset) == 1, 0, 0.4))) +
+      stat_summary(geom = "point", fun = "mean", position=position_dodge(0.8), size=1.5)
   } else {
     # If we show only the mean, fill it with white
     p <- p + stat_summary(geom = "point", fun = "mean", size=4, shape=21, fill="white", stroke=1.5)
@@ -103,7 +109,7 @@ wrap_plots(ps) + plot_layout(guides='collect') & theme(legend.position="bottom")
 # ggsave(paste0("~/Pictures/SCG_poster/goldstandard_", args$titles[i], ".png"),
 #        ps[[i]], width=150, height=120, units="mm", dpi=300)
 
-#### ALTERNATIVE PLOT: FACET GRID ####
+## ALTERNATIVE PLOT: FACET GRID ##
 # I don't really like this one because I can't change the method order for each facet
 # But it is nice to see the Dirichlet reference line
 calculate_dirichlet_ref <- FALSE
@@ -120,26 +126,30 @@ if (show_dirichlet_ref){
 }
 
 moi <- c("prc", "RMSE", "jsd")
-ggplot(results %>% filter(grepl(paste0(moi, collapse="|"), metric)),
+
+ggplot(results %>%
+         # Sort alphabetically
+         mutate(method = factor(method, levels = rev(sort(best_performers)))) %>%
+         filter(grepl(paste0(moi, collapse="|"), metric)),
        aes(y=method, x=value)) + 
+  stat_summary(geom = "point", fun = "mean") +
   # Reference
   geom_vline(data=df_ref_dirichlet %>% filter(grepl(paste0(moi, collapse="|"), metric)),
              aes(xintercept = value), color = "gray80", linetype = "dashed") +
   # Use horizontal lines as data points, and the circle is the mean
-  geom_vpline(eight=0.4, size=0.3) +
-  stat_summary(geom = "point", fun = "mean") +
-  # Reduce noise
+  geom_segment(aes(x=value, xend=value,
+                   y=as.numeric(method)-0.4,
+                   yend=as.numeric(method)+0.4), inherit.aes = FALSE) +
   theme_bw() + theme(legend.position="bottom",
                      axis.title.y = element_blank(),
                      axis.title.x = element_blank(),
                      legend.title = element_blank(),
                      panel.grid = element_blank(),
                      strip.background = element_blank()) +
-  # Swap position of y-axis and facet titles
-  #scale_color_discrete(labels=c("cell2location", "MuSiC", "RCTD", "SPOTlight", "stereoscope")) +
-  #scale_x_continuous(position="right") +
+  scale_y_discrete(labels=proper_method_names) +
   facet_grid(dataset~metric, scales = "free",
-             labeller=labeller(dataset=proper_dataset_names, metric=proper_metric_names))
+             labeller=labeller(dataset=proper_dataset_names,
+                               metric=proper_metric_names))
 
 # ggsave("D:/PhD/figs/benchmark_paper/gold_standard_a.png", units="px", width=1600, height=1000)
 
