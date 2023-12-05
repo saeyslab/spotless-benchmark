@@ -1,15 +1,15 @@
 ## CONTENTS
 # 1. Calculate AUPR (+ other metrics) for rare cell types
-# 2. Plot example for 1 dataset
-# (3. Determine optimal threshold for AUPR)
+# 2. Plot boxplot of AUPR for rare cell types
+# 3. Plot example for 1 dataset
 
 source("scripts/0_init.R")
 library(precrec)
-library(ungeviz)
 
+save_plot <- TRUE
 #### 1. Calculate AUPR #####
 calculate_other_metrics <- FALSE
-metrics <- lapply (1:6, function(dsi) {
+metrics <- lapply (1:7, function(dsi) {
   ds <- datasets[dsi]
   lapply (7:8, function (dti){
     dt <- possible_dataset_types[dti]
@@ -104,6 +104,7 @@ metrics <- lapply (1:6, function(dsi) {
 
 # saveRDS(metrics, "data/metrics/rare_celltype_detection.rds")
 
+#### 2. BOXPLOT ####
 metrics <- readRDS("data/metrics/rare_celltype_detection.rds")
 
 best_performers <- metrics %>% filter(metric == "prc") %>% group_by(dataset, dataset_type) %>%
@@ -112,20 +113,25 @@ best_performers <- metrics %>% filter(metric == "prc") %>% group_by(dataset, dat
 nnls_pos <- which(best_performers == "nnls")
 # Plot AUPR
 col_vector2 <- brewer.pal(3, "Set1")
+
+theme_base_size <- ifelse(save_plot, 8, 11)
+boxplot_size <- ifelse(save_plot, 0.25, 0.5)
 p1 <- ggplot(metrics %>% filter(metric == "prc") %>%
                mutate(method=factor(method, levels=rev(best_performers))) %>%
                arrange(dataset_type, value),
        aes(y=method, x=value, color=dataset_type)) +
   annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
   #geom_point(shape=21, stroke = 1, size=2, position=position_dodge(width=0.3), fill="white") +
-  geom_boxplot() +
+  geom_boxplot(size = boxplot_size, outlier.size = boxplot_size) +
   #stat_summary(geom="point", fun="mean", position=position_dodge(width=0.3), aes(fill="Mean")) +
-  theme_classic() +
+  theme_classic(base_size = theme_base_size) +
   theme(legend.position = "bottom", axis.title=element_blank(),
+        legend.justification = "right",
         legend.title = element_blank(),
         panel.grid.major.y = element_line(),
+        axis.line = element_line(linewidth = boxplot_size),
         #legend.text = element_text(size=6),
-        #legend.key.size = unit(3, 'mm'),
+        legend.key.size = unit(3, 'mm'),
         legend.margin = margin(-3, 0, 0, 0, unit="mm")) +
   labs(title = "(a) AUPR of rare cell type") +
   scale_y_discrete(labels=proper_method_names) +
@@ -133,27 +139,26 @@ p1 <- ggplot(metrics %>% filter(metric == "prc") %>%
                      labels=c("Present in one region", "Present in all regions"))
   # Override aesthetic in legend so both Mean and normal shapes are the same
   #guides(colour = guide_legend(override.aes = list(shape = c(21, 21), size=c(1.5, 1.5)), order=1)) 
-p1                     
 
 
-#### 2. PLOT EXAMPLE FOR ONE DATASET ####
-
-# P all gold standard prior regions to look for the best representative dataset
-lapply (1, function(dsi) {
-  ds <- datasets[dsi]
-  lapply (8, function (dti){
-    dt <- possible_dataset_types[dti]
-    print(paste(ds, dt))
-    for (r in 1:10){
-      print(paste("rep", r))
-      # Load ground truth data
-      ground_truth_data <- readRDS(paste0("standards/silver_standard_",
-                                          dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
-      gs <- ground_truth_data$gold_standard_priorregion %>% filter(present) %>% group_by(prior_region) %>% arrange(freq, .by_group = TRUE)
-      print(gs, n=Inf)
-    }
-  })
-})
+#### 3. PLOT EXAMPLE FOR ONE DATASET ####
+#### Calculate curves ####
+# print all gold standard prior regions to look for the best representative dataset
+# lapply (1, function(dsi) {
+#   ds <- datasets[dsi]
+#   lapply (8, function (dti){
+#     dt <- possible_dataset_types[dti]
+#     print(paste(ds, dt))
+#     for (r in 1:10){
+#       print(paste("rep", r))
+#       # Load ground truth data
+#       ground_truth_data <- readRDS(paste0("standards/silver_standard_",
+#                                           dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
+#       gs <- ground_truth_data$gold_standard_priorregion %>% filter(present) %>% group_by(prior_region) %>% arrange(freq, .by_group = TRUE)
+#       print(gs, n=Inf)
+#     }
+#   })
+# })
 
 # Option 1 - SCC
 # celltypes_oi <- c("CD1C3", "NK2", "CD1C1")
@@ -188,7 +193,6 @@ known_props <- ground_truth_data$relative_spot_composition[,celltypes_oi]
 colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
 
 known_binary_all <- ifelse(known_props > 0, 1, 0)
-
 deconv_props <- lapply(deconv_props, function(k) {k[,colnames(known_props), drop=FALSE]})
 
 # Calculate AUPR of each cell type separately
@@ -214,98 +218,47 @@ curve2 <- evalmod(model2)
 prc2 <- subset(auc(curve2), curvetypes=="PRC") %>% rename(method=modnames)
 method_order <- prc2 %>% arrange(desc(aucs)) %>% pull(method)
 
+#### Plot curves ####
 
+theme_base_size <- ifelse(save_plot, 8, 11)
+linewidth_size <- ifelse(save_plot, 0.25, 0.5)
+legend_text_size <- ifelse(save_plot, 6, 8)
+dot_size <- ifelse(save_plot, 1, 1.5)
 p2 <- ggplot(curve_df %>% mutate(method=factor(method, levels = best_performers)),
        aes(group=dsid, x=x, y=y, color=dsid)) +
-  geom_line() +
+  geom_line(linewidth = linewidth_size) +
   geom_point(data=prc %>% mutate(dsid = factor(dsids),
                                   method=factor(method, levels=best_performers)),
-              aes(x=-0.05, y=aucs, shape="AUPR"), fill="white") +
+              aes(x=-0.05, y=aucs, shape="AUPR"), fill="white", size = dot_size, stroke=linewidth_size*2) +
   facet_wrap(~method, labeller = labeller(method=proper_method_names)) +
   labs(x = "Recall", y = "Precision", title = "(b) Example precision-recall curves of different cell type abundances") +
   scale_color_discrete(name="Cell type abundance",
                        labels=paste0(gs_filtered$labels, " (", round(gs_filtered$freq, 2)*100, "%)")) +
   scale_shape_manual(values = 21, guide=guide_legend(title=NULL)) +
-  theme_bw() +
+  theme_bw(base_size = theme_base_size) +
   theme(legend.position = "bottom",
+        axis.text = element_text(size=legend_text_size-1),
+        axis.title = element_text(size=legend_text_size),
+        axis.ticks = element_line(linewidth = linewidth_size),
         strip.background = element_blank(),
         panel.grid = element_blank(),
         legend.margin = margin(-2, 0, 0, 0, unit="mm"),
-        legend.title = element_text(size=8),
-        #legend.text = element_text(size=6),
+        legend.text = element_text(margin=margin(l=-2, r=3)),
+        legend.title = element_text(size=legend_text_size),
         plot.title = element_text()) +
   # Override aesthetic in legend so both Mean and normal shapes are the same
   guides(colour = guide_legend(override.aes = list(shape = c(NA, NA, NA)), order=1)) 
-p2
 
+plot_title_size <- ifelse(save_plot, 7, 12)
+p_combined <- p1 + p2 + plot_layout(width=c(3, 7)) +
+  theme(plot.margin = margin(5.5, 5.5, 5.5, 35)) &
+  theme(plot.title = element_text(face="bold", size=plot_title_size))
 
-# ggsave("~/Pictures/benchmark_paper/prcurve_representative.png", p2,
-#        width=250, height=150, units="mm", dpi=300)
-
-
-p1 + p2 + plot_layout(width=c(3, 7)) + theme(plot.margin = margin(5.5, 5.5, 5.5, 35)) &
-  theme(plot.title = element_text(face="bold", size=12))
-# ggsave("~/Pictures/benchmark_paper/rarecelltype_prcurve_auprboxplot.png",
-#        width=300, height=150, units="mm", dpi=300)
-
-ggsave("~/Pictures/benchmark_paper/rarecelltype_prcurve_auprboxplot.eps",
-       width=400, height=200, units="mm", dpi=300)
-
-#### 3. OPTIMAL POINTS ####
-
-library(reticulate)
-use_condaenv("squidpy", required=TRUE)
-py_config()
-sklearn <- import("sklearn.metrics")
-
-opt_points <- lapply (1:6, function(dsi) {
-  ds <- datasets[dsi]
-  lapply (7:8, function (dti){
-    dt <- possible_dataset_types[dti]
-  
-    print(paste(ds, dt))
-    
-    lapply(1:10, function(r){
-      deconv_props <- lapply(methods, function (method){
-        read.table(paste0("deconv_proportions/", ds, "_", dt,
-                          "/proportions_", method, "_", ds, "_", dt, "_rep", r),
-                   header=TRUE)
-      }) %>% setNames(methods)
-    
-      # Load ground truth data
-      ground_truth_data <- readRDS(paste0("standards/silver_standard_",
-                                          dsi, "-", dti, "/", ds, "_", dt, "_rep", r, ".rds"))
-      rare_celltype <- ground_truth_data$gold_standard_priorregion %>% filter(present) %>%
-        slice_min(freq, with_ties = FALSE) %>% pull(celltype)
-      
-      # Get rare cell type
-      known_props <- ground_truth_data$relative_spot_composition[,rare_celltype, drop=FALSE]
-      colnames(known_props) <- stringr::str_replace_all(colnames(known_props), "[/ .]", "")
-      
-      known_binary_all <- ifelse(known_props > 0, 1, 0)
-      deconv_props <- lapply(deconv_props, function(k) {k[,colnames(known_props), drop=FALSE]})
-    
-      # Calculate optimum points
-      known_binary_all_python <- reticulate::r_to_py(known_binary_all)
-      
-      
-      sapply(methods, function(method) {
-        deconv_props_python <- reticulate::r_to_py(deconv_props[[method]])
-        
-        # Returns arrays of precision, recall, and thresholds
-        res <- sklearn$precision_recall_curve(known_binary_all_python, deconv_props_python)
-        fscore <- (2 * res[[1]] * res[[2]]) / (res[[1]] + res[[2]])
-        res[[3]][which.max(fscore)]
-      }) %>% melt %>% rownames_to_column("method") %>% mutate(repl = r, dataset_type = dt, dataset = ds)
-    }) %>% do.call(rbind, .)
-  }) %>% do.call(rbind, .)
-}) %>% do.call(rbind, .)
-     
-
-ggplot(opt_points, aes(x=method, y=value)) + geom_violin()
-
-summary(opt_points$value)
-
-
-
-
+if (save_plot){
+  pdf("~/Pictures/benchmark_paper/fig_4_rarecelltype_prcuve_boxplot.pdf",
+         width=7.5, height=4)
+  print(p_combined)
+  dev.off()
+} else {
+  print(p_combined)
+}

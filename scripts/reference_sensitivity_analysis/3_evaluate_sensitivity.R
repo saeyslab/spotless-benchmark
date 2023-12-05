@@ -6,7 +6,6 @@
 
 source("scripts/0_init.R")
 library(philentropy)
-library(ungeviz)
 
 #### 1. CALCULATE JSD & CORR IN SILVER STANDARD ####
 # Only run once, since it takes a while
@@ -54,6 +53,9 @@ best_performers <- ss_metrics %>%
   group_split() %>% setNames(paste0(rep(datasets, each=3), "_", c("corr_ct", "corr_spot",  "jsd")))
 
 mois <- c("jsd", "corr_ct", "corr_spot")[1]
+save_plot <- TRUE
+theme_base_size <- ifelse(save_plot, 8.5, 12)
+boxplot_size <- ifelse(save_plot, 0.25, 0.6)
 ps <- lapply(mois, function(moi) {
   tmp <- lapply(datasets, function (ds) {
     method_order <- best_performers[[paste0(ds, "_", moi)]] %>% pull(method) %>% rev
@@ -63,33 +65,29 @@ ps <- lapply(mois, function(moi) {
     p <- ggplot(ss_metrics %>% filter(dataset == ds, metric == moi) %>%
              mutate(method = factor(method, levels=method_order)), aes(x=value, y=method)) +
       annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
-      geom_boxplot(width=0.75) +
+      geom_boxplot(width=0.75, size = boxplot_size, outlier.size = boxplot_size) +
       scale_y_discrete(labels=proper_method_names[method_order]) +
       labs(x = proper_metric_names[moi], title = proper_dataset_names[ds]) +
       scale_x_continuous(limits=c(0, 1), breaks = seq(0, 1, 0.25)) +
-      theme_classic() +
-      theme(legend.position="bottom", legend.direction = "horizontal",
-            axis.title = element_blank(),
-            panel.grid = element_blank(),
-            strip.background = element_blank()) +
-      guides(color = guide_legend(nrow=1))
+      theme_classic(base_size = theme_base_size) +
+      theme(axis.title = element_blank())
     
-    if (ds == datasets[2]) p <- p + theme(axis.title.x = element_text())
+    if (ds == datasets[2]) p <- p + theme(axis.title.x = element_text(size = theme_base_size-1, margin=margin(t=5)))
     p
   })
   patchwork::wrap_plots(tmp)
 })
 
-
-ps
-
-
-#patchwork::wrap_plots(ps, nrow=3)
-# ggsave("Pictures/benchmark_paper/stability_jsd_noliver.png",
-#        width=400, height=120, units="mm", dpi=300)
-
-ggsave("Pictures/benchmark_paper/stability_jsd_noliver.eps",
-       width=400, height=120, units="mm", dpi=300)
+if (save_plot) {
+  pdf("~/Pictures/benchmark_paper/fig_5_stability_jsd.pdf",
+       width=7.5, height=2.5)
+  print(ps[[1]] & theme(plot.title = element_text(size=8),
+                        axis.line = element_line(linewidth = boxplot_size),
+                        axis.ticks = element_line(linewidth = boxplot_size)))
+  dev.off()
+} else{
+  print(ps)
+}
 
 #### 2. LIVER ####
 digests <- c("exVivo", "inVivo", "nuclei")
@@ -130,65 +128,76 @@ best_performers[["liver_jsd"]] <- liver_metrics %>% group_by(method) %>% #group_
   mutate(rank = dense_rank(avg_perf)) %>%
   group_by(method) %>% summarise(rank = sum(rank)) %>% ungroup() %>%
   arrange(rank, .by_group = TRUE) %>% mutate(dataset = "liver", metric = "jsd")
+nnls_pos <- which(best_performers[["liver_jsd"]] %>% pull(method) == "nnls")
 
-ggplot(liver_metrics %>% mutate(method = factor(method, levels = best_performers[["liver_jsd"]] %>%
-                                                  pull(method) %>% rev)),
-       aes(x=jsd, y=method, color=combi, group=combi)) +
-  geom_vpline(size = 0.2) +
-  stat_summary(geom="point", fun="mean") +
-  theme_bw() +
-  theme(legend.position="bottom", legend.direction = "horizontal",
-        axis.title.y=element_blank(),
-        panel.grid = element_blank())
+save_plot <- TRUE
+theme_base_size <- ifelse(save_plot, 11, 12)
+boxplot_size <- ifelse(save_plot, 0.4, 0.6)
 
-ggplot(liver_metrics %>% mutate(method = factor(method, levels = best_performers[["liver_jsd"]] %>%
-                                                  pull(method) %>% rev)),
+p_liver <- ggplot(liver_metrics %>% mutate(method = factor(method, levels = best_performers[["liver_jsd"]] %>%
+                                                pull(method) %>% rev)),
         aes(x=jsd, y=method)) +
-  geom_boxplot(width=0.75, position = position_dodge(width=0.5)) +
-  theme_bw() +
-  theme(legend.position="bottom", legend.direction = "horizontal",
-        axis.title.y=element_blank(),
-        panel.grid = element_blank())
+  annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
+  geom_boxplot(width=0.6, size = boxplot_size, outlier.size = boxplot_size) +
+  scale_y_discrete(labels=proper_method_names[best_performers[["liver_jsd"]]$method]) +
+  scale_x_continuous(limits=c(min(liver_metrics$jsd), 1), breaks = seq(0, 1, 0.25)) +
+  labs(x = "JSD", title = "Liver") +
+  theme_classic(base_size = theme_base_size) +
+  theme(axis.title.y=element_blank(),
+        axis.title.x = element_text(size = theme_base_size-1, margin=margin(t=5)))
 
-#### 3. COMBINE ####
-ss_metrics <- readRDS("data/metrics/ssmetrics_ref_sensitivity.rds")
-liver_metrics <- readRDS("data/metrics/liver_metrics_ref_sensitivity.rds")
 
-metrics_all <- merge(liver_metrics %>% rename(rep = dataset, dataset_type = combi, value = jsd) %>%
-                                       mutate(dataset = "liver", metric = "jsd"),
-                     ss_metrics %>% filter(metric == "jsd"),
-                     all = TRUE)
+if (save_plot) {
+  svg("~/Pictures/benchmark_paper/fig_s14_stability_liver.svg",
+      width=5.5, height=4.25)
+  print(p_liver & theme(plot.title = element_text(size=12),
+                        axis.line = element_line(linewidth = boxplot_size),
+                        axis.ticks = element_line(linewidth = boxplot_size)))
+  dev.off()
+} else{
+  print(p_liver)
+}
 
-datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus', 'liver')
-ps <- lapply(datasets, function(ds) {
   
-  method_order <- best_performers[[paste0(ds, "_jsd")]] %>% pull(method) %>% rev
-  nnls_pos <- which(best_performers[[paste0(ds, "_jsd")]] %>% pull(method) == "nnls")
-  
-  ggplot(metrics_all %>% filter(dataset == ds) %>%
-           mutate(method = factor(method, levels=method_order)), aes(x=value, y=method)) +
-    annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
-    geom_boxplot(width=0.75) +
-    scale_y_discrete(labels=proper_method_names[method_order]) +
-    scale_x_continuous(limits = c(-0.01,1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
-    theme_classic()  +
-    labs(x = "JSD") +
-    theme(legend.position="bottom", legend.direction = "horizontal",
-          axis.title.y= element_blank(),
-          panel.grid = element_blank(),
-          strip.background = element_blank()) +
-    facet_grid(~dataset,
-               labeller=labeller(dataset=c(proper_dataset_names, "Liver" %>% setNames("liver")))) +
-    guides(color = guide_legend(nrow=1))
 
-})
-#patchworked <- patchworkGrob(wrap_plots(ps, nrow = 1))
-#p <- grid.arrange(patchworked, bottom = "JSD") 
-wrap_plots(ps, nrow = 1)
-ggsave("Pictures/benchmark_paper/stability_jsd_all.png",
-       width=500, height=120, units="mm", dpi=300)
-ggsave("Pictures/benchmark_paper/stability_jsd_liver.png", ps[[4]],
-       width=150, height=120, units="mm", dpi=300)
+#### 3. COMBINE (NOT USED) ####
+# ss_metrics <- readRDS("data/metrics/ssmetrics_ref_sensitivity.rds")
+# liver_metrics <- readRDS("data/metrics/liver_metrics_ref_sensitivity.rds")
+# 
+# metrics_all <- merge(liver_metrics %>% rename(rep = dataset, dataset_type = combi, value = jsd) %>%
+#                                        mutate(dataset = "liver", metric = "jsd"),
+#                      ss_metrics %>% filter(metric == "jsd"),
+#                      all = TRUE)
+# 
+# datasets <- c('brain_cortex', 'cerebellum_cell', 'cerebellum_nucleus', 'liver')
+# ps <- lapply(datasets, function(ds) {
+#   
+#   method_order <- best_performers[[paste0(ds, "_jsd")]] %>% pull(method) %>% rev
+#   nnls_pos <- which(best_performers[[paste0(ds, "_jsd")]] %>% pull(method) == "nnls")
+#   
+#   ggplot(metrics_all %>% filter(dataset == ds) %>%
+#            mutate(method = factor(method, levels=method_order)), aes(x=value, y=method)) +
+#     annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
+#     geom_boxplot(width=0.75) +
+#     scale_y_discrete(labels=proper_method_names[method_order]) +
+#     scale_x_continuous(limits = c(-0.01,1), breaks = c(0, 0.25, 0.5, 0.75, 1)) +
+#     theme_classic()  +
+#     labs(x = "JSD") +
+#     theme(legend.position="bottom", legend.direction = "horizontal",
+#           axis.title.y= element_blank(),
+#           panel.grid = element_blank(),
+#           strip.background = element_blank()) +
+#     facet_grid(~dataset,
+#                labeller=labeller(dataset=c(proper_dataset_names, "Liver" %>% setNames("liver")))) +
+#     guides(color = guide_legend(nrow=1))
+# 
+# })
+# 
+# wrap_plots(ps, nrow = 1)
+# ggsave("Pictures/benchmark_paper/stability_jsd_all.png",
+#        width=500, height=120, units="mm", dpi=300)
+# ggsave("Pictures/benchmark_paper/stability_jsd_liver.png", ps[[4]],
+#        width=150, height=120, units="mm", dpi=300)
 
 
 ##### 4. COMPARE RMSE BETWEEN REFERENCES #####
@@ -215,11 +224,14 @@ ss_results_both <- lapply(1:length(datasets), function(ds) {
 }) %>% do.call(rbind, .)
 
 
-##### Line plot #####
+## Line plot ##
 mois <- c("RMSE", "prc", "jsd")
 proper_dataset_names[c('cerebellum_cell', 'cerebellum_nucleus')] <- c("Cerebellum (sc)", "Cerebellum (sn)")
 
-
+save_plot <- FALSE
+theme_base_size <- ifelse(save_plot, 7.5, 11)
+dot_size <- ifelse(save_plot, 0.75, 1.5)
+linewidth_size <- ifelse(save_plot, 0.25, 1.5)
 ps <- lapply(1:length(mois), function (i) {
   moi <- mois[i]
   ss_both_format <- ss_results_both %>% filter(metric == moi) %>%
@@ -231,7 +243,7 @@ ps <- lapply(1:length(mois), function (i) {
     mutate(paired = rep(1:(n()/2),each=2))
   
   
-  # if consider_perf is false, only consider absolute difference
+  # If consider_perf is false, only consider absolute difference
   # How to rank the methods?
   ranking_method <- c("absolute_diff", "absolute_diff_times_metric", "proportions_stability")[3]
   if (grepl("absolute_diff", ranking_method)) {
@@ -253,10 +265,11 @@ ps <- lapply(1:length(mois), function (i) {
   
   
   p <- ggplot(ss_both_summ %>% mutate(method = factor(method, levels = best)), aes(x=matched, y=avg_perf)) +
-    geom_point() + geom_line(aes(group=paired)) +
+    geom_point(size = dot_size) +
+    geom_line(aes(group=paired), linewidth = linewidth_size, alpha = 0.5) +
     labs(color="Method", x="Matched vs Unmatched Reference", y = paste0("Average ", proper_metric_names[moi]),
          subtitle = proper_metric_names[moi]) +
-    theme_classic() +
+    theme_classic(base_size = theme_base_size) +
     theme(legend.position="bottom", legend.direction = "horizontal",
           axis.text.x=element_blank(), axis.ticks.x=element_blank(),
           axis.title = element_blank(),
@@ -265,7 +278,7 @@ ps <- lapply(1:length(mois), function (i) {
           panel.spacing = unit(0, "lines"),
           plot.margin = margin(11, 5.5, 11, 5.5)) +
     # Add lines between facets
-    annotation_custom(grid::linesGrob(y = c(0, 0), gp = grid::gpar(lwd = 3))) +
+    annotation_custom(grid::linesGrob(y = c(0, 0), gp = grid::gpar(lwd = 0.75))) +
     facet_grid(dataset~method,
                labeller=labeller(dataset=proper_dataset_names,
                                  method=proper_method_names))
@@ -276,11 +289,15 @@ ps <- lapply(1:length(mois), function (i) {
   
 })
 
-wrap_plots(ps) + plot_layout(nrow=3)
+p_combined <- wrap_plots(ps) + plot_layout(nrow=3)
 
-ggsave("~/Pictures/benchmark_paper/stability_change_threemetrics.png",
-       width=300, height=400, units="mm", dpi=300)
-
-
+if (save_plot) {
+  svg("~/Pictures/benchmark_paper/fig_s10_stability_change_lineplot.svg",
+       width=7.5, height=8.5)
+  print(p_combined + theme(axis.title.x = element_text(size=9)) & theme(plot.subtitle = element_text(size=9)))
+  dev.off()
+} else {
+  print(p_combined)
+}
 
  

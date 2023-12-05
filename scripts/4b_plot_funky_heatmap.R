@@ -288,4 +288,4 @@ p <- funky_heatmap(df_all,
               palettes = palette)
 p
 # ggsave("plots/funky_heatmap.png", p, width = p$width * 1.5, height = p$height * 1.5, bg="white")
-ggsave("~/Pictures/benchmark_paper/funky_heatmap.pdf", p, width = p$width * 1.5, height = p$height * 1.5, bg="white")
+ggsave("~/Pictures/benchmark_paper/fig_2_funky_heatmap.pdf", p, width = p$width * 1.5, height = p$height * 1.5, bg="white")

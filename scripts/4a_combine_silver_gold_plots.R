@@ -4,6 +4,15 @@
 
 source("scripts/0_init.R")
 library(ggtext)
+library(glue)
+
+save_plot <- FALSE
+theme_base_size <- ifelse(save_plot, 8, 11)
+subtitle_size <- ifelse(save_plot, 8, 10)
+dot_size <- ifelse(save_plot, 1.5, 3)
+stroke_size <- ifelse(save_plot, 0.75, 1.5)
+linewidth_size <- ifelse(save_plot, 0.25, 0.5)
+legend_text_size <- ifelse(save_plot, 6, 8)
 
 #### 1. COMBINE SEQFISH+ AND STARMAP ####
 # Read in seqFISH+ data
@@ -40,9 +49,9 @@ comb_results <- rbind(results_starmap, results_seqfish)
 args <- list(metric = c("RMSE", "prc", "jsd"),
              xlims = list(c(0, 0.3), c(0, 1), c(0, 1)),
              xbreaks = list(c(0, 0.1, 0.2, 0.3), c(0, 0.5, 1), c(0, 0.5, 1)),
-             titles = c("RMSE <span style = 'font-size:10pt;color:#b3b3b3;'>(lower = better)</span>",
-                        "AUPR <span style = 'font-size:10pt;color:#b3b3b3;'>(higher = better)</span>",
-                        "JSD <span style = 'font-size:10pt;color:#b3b3b3;'>(lower = better)</span>"))
+             titles = c(glue("RMSE <span style = 'font-size:{legend_text_size}pt;color:#b3b3b3;'>(lower = better)</span>"),
+                        glue("AUPR <span style = 'font-size:{legend_text_size}pt;color:#b3b3b3;'>(higher = better)</span>"),
+                        glue("JSD <span style = 'font-size:{legend_text_size}pt;color:#b3b3b3;'>(lower = better)</span>")))
 
 df <- comb_results %>%
   filter(fov != "_19celltypes") %>%
@@ -71,29 +80,34 @@ ps_gold <- lapply(1:3, function(i){
   p <- ggplot(comb_results %>% filter(metric==args$metric[i]) %>%
                 mutate(method = factor(method, levels = rev(best_performers))),
               aes(x=value, y=method, colour=dataset, group=dataset)) +
-    stat_summary(geom = "point", fun = "mean", size=3,
-                 shape=21, fill="white", stroke=1.5) +
+    annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
+    scale_x_continuous(limits = args$xlims[[i]], breaks=args$xbreaks[[i]]) +
+    stat_summary(geom = "point", fun = "mean", size=dot_size,
+                 shape=21, fill="white", stroke=stroke_size) +
     # Reduce noise
-    theme_classic(base_size=15) + theme(#legend.position = "none",
+    theme_classic(base_size=theme_base_size) +
+    theme(
+      axis.line = element_line(linewidth = linewidth_size),
+      axis.ticks = element_line(linewidth = linewidth_size),
       axis.title = element_blank(),
       plot.subtitle = element_markdown(),
       legend.title = element_blank(),
+      legend.position = "right",
+      legend.justification = "top",
       panel.grid = element_blank()) +
     scale_y_discrete(labels=proper_method_names) +
-    scale_color_manual(labels=c("seqFISH+ cortex", "seqFISH+ OB", "STARMap VISp"),
+    scale_color_manual(labels=c("seqFISH+\ncortex", "seqFISH+\nOB", "STARMap\nVISp"),
                        values = col_vector) +
     # Highlight NNLS
-    annotate("rect", ymin=12-nnls_pos+0.5, ymax=12-nnls_pos+1.5, xmin=-Inf, xmax=Inf, fill="gray25", alpha=0.1) +
-    scale_x_continuous(limits = args$xlims[[i]], breaks=args$xbreaks[[i]]) +
     labs(subtitle = args$titles[i])
+  
+  if (i != 3){
+    p <- p + theme(legend.position = "none")
+  }
   
   p
 })
-wrap_plots(ps_gold, guides = "collect") &   theme(legend.position = "right", legend.justification = "top")
-
-# ggsave("~/Pictures/benchmark_paper/goldstandard_all_three.png",
-#        width=350, height=120, units="mm", dpi=300)
-
+# wrap_plots(ps_gold)
 
 ##### 2. COMBINE WITH SILVER STANDARD #####
 
@@ -143,64 +157,86 @@ ps_silver <- lapply(mois, function (moi) {
               aes(x=method, y=rank, color=rank)) +
     annotate("rect", xmin=12-nnls_pos+0.5, xmax=12-nnls_pos+1.5, ymin=-Inf, ymax=Inf, fill="gray25", alpha=0.1) +
     geom_count() +
-    labs(x = "Method", y="Rank distribution <span style = 'font-size:10pt;color:#b3b3b3;'>(lower = better)</span>",
+    labs(x = "Method", y=glue("<span style = 'font-size:{legend_text_size+1}pt'>Rank distribution</span><br><span style = 'font-size:{legend_text_size}pt;color:#b3b3b3;'>(lower = better)</span>"),
          subtitle = proper_metric_names[moi], size = "Count") +
     scale_x_discrete(breaks = rev(best_performers),
                      limits = rev(best_performers),
                      labels = proper_method_names[rev(best_performers)]) +
     scale_color_gradient() +
     scale_y_discrete(breaks = factor(1:12), limits = factor(1:12)) +
-    scale_radius(range=c(1, 6), breaks = c(5, 10, 20, 30), limits = c(0, 30))+
+    #scale_radius(range=c(1, 3))+
+    scale_size_area(max_size=3) +
     coord_flip() +
-    theme_classic(base_size=15) +
+    theme_classic(base_size=theme_base_size) +
     guides(color = "none") +
-    theme(axis.title.y = element_blank(),
+    theme(axis.line = element_line(linewidth = linewidth_size),
+          axis.ticks = element_line(linewidth = linewidth_size),
+          axis.title.y = element_blank(),
           axis.title.x = element_markdown(),
-          plot.title = element_blank()) +
+          plot.title = element_blank(),
+          legend.justification = "top", legend.position = "right")
     guides(fill = guide_legend(ncol=2))
   
   if (moi != "prc"){
     p <- p + theme(axis.title.x = element_blank())
   }
+  
+  if (moi != "jsd"){
+    p <- p + theme(legend.position = "none")
+  }
+  
   p
   
 })
 
-wrap_plots(ps_silver) + plot_layout(guides="collect") & theme(legend.justification = "top")
-
+wrap_plots(ps_silver)
 
 ##### COMBINE ALL #####
-gold_wrapped <- patchworkGrob(wrap_plots(ps_gold, guides = "collect") +
-                              plot_annotation(title = '(b) Gold standard',
-                                              theme = theme(plot.title = element_text(size = 18, face = 'bold'))) &
-                              theme(legend.position = "right", legend.justification = "top",
-                                    legend.text = element_text(size=9)))
-
-silver_wrapped <- patchworkGrob(wrap_plots(ps_silver) + plot_layout(guides="collect") +
-                                  plot_annotation(title = '(a) Silver standard',
-                                                  theme = theme(plot.title = element_text(size = 18, face='bold'))) & 
-                                  theme(legend.justification = "top", legend.position = "right",
-                                        legend.margin = margin(0, 65, 0, 0)))
-
-all_plots <- grid.arrange(silver_wrapped, gold_wrapped)
-
-
-ggsave("~/Pictures/benchmark_paper/silver_and_gold.eps", all_plots,
-        width=500, height=270, units="mm", dpi=300)
-# ggsave("~/Pictures/benchmark_paper/silver_and_gold.pdf", all_plots,
-#        width = 210, height = 297, units="mm")
-
-
-# ps_gold2 <- wrap_plots(ps_gold, guides = "collect") +
-#   plot_layout(nrow = 1) +
-#   plot_annotation(title = '(b) Gold standard',
-#                   theme = theme(plot.title = element_text(size = 18, face = 'bold'))) &
-#   theme(legend.position = "right", legend.justification = "top",
-#         legend.text = element_text(size=9))
+# Patchwork solution
+# gold_wrapped <- patchworkGrob(wrap_plots(ps_gold, guides = "collect") +
+#                               plot_annotation(title = '(b) Gold standard',
+#                                               theme = theme(plot.title = element_text(size = subtitle_size, face = 'bold'))) &
+#                               theme(legend.position = "right", legend.justification = "top",
+#                                     legend.text = element_text(size=legend_text_size)))
 # 
-# ps_silver2 <- wrap_plots(ps_silver) + plot_layout(guides="collect", nrow = 1) +
-#   plot_annotation(title = '(a) Silver standard',
-#                   theme = theme(plot.title = element_text(size = 18, face='bold'))) & 
-#   theme(legend.justification = "top")
-# 
-# cowplot::plot_grid(ps_silver2, ps_gold2, nrow = 2)
+# silver_wrapped <- patchworkGrob(wrap_plots(ps_silver) +
+#                                   plot_annotation(title = '(a) Silver standard',
+#                                                   theme = theme(plot.title = element_text(size = subtitle_size, face='bold'))))
+
+# all_plots <- grid.arrange(silver_wrapped, gold_wrapped)
+
+# Cowplot solution
+library(cowplot)
+# extract the legend from one of the plots
+ss_legend <- get_legend(ps_silver[[3]] +
+                          theme(legend.box.margin = margin(0, 0, 0, -30),
+                                legend.title = element_text(size = legend_text_size),
+                                legend.key.height= unit(4, "mm"),
+                                legend.spacing.y = unit(1.5, 'mm')))
+gs_legend <- get_legend(ps_gold[[3]] + theme(legend.box.margin = margin(0, 0, 0, -10),
+                                             #legend.spacing.y = unit(10, 'mm'),
+                                             legend.key.height = unit(7, "mm")))
+
+aligned1 <- cowplot::align_plots(ps_gold[[1]], ps_silver[[1]], align = "v")
+aligned2 <- cowplot::align_plots(ps_gold[[2]], ps_silver[[2]], align = "v")
+aligned3 <- cowplot::align_plots(ps_gold[[3]]  + theme(legend.position="none"), ps_silver[[3]]  + theme(legend.position="none"), align = "v")
+
+first_row <- plot_grid(aligned1[[2]], aligned2[[2]], aligned3[[2]], nrow = 1, align = "h")
+first_row_with_legend <- plot_grid(first_row, ss_legend, nrow=1, rel_widths = c(3, 0.3))
+second_row <- plot_grid(aligned1[[1]], aligned2[[1]], aligned3[[1]], nrow = 1, align = "h")
+second_row_with_legend <- plot_grid(second_row, gs_legend, nrow=1, rel_widths = c(3, 0.3))
+
+p_cowplot <- plot_grid(NULL, first_row_with_legend, NULL, second_row_with_legend, nrow = 4, rel_heights = c(0.1, 1.1, 0.1, 1),
+                       labels = c("(a) Silver standard", "", "(b) Gold standard", ""), hjust = -0.1, label_size = subtitle_size)
+#p_cowplot
+
+if (save_plot) {
+  pdf("~/Pictures/benchmark_paper/fig_3_silver_and_gold.pdf",
+      width=7.5, height=4.5)
+  print(p_cowplot)
+  dev.off()
+} else {
+  print(p_cowplot)
+}
+
+
