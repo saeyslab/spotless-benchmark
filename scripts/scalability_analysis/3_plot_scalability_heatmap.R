@@ -2,7 +2,6 @@
 # Plot a heatmap of scalability
 source("scripts/0_init.R")
 library(pheatmap)
-library(ungeviz) # geom_hpline
 
 dataset <- "liver" # liver, brain
 methods <- replace(methods, which(methods %in% c("cell2location", "stereoscope")), c("c2l", "stereo"))
@@ -74,6 +73,8 @@ p_scal <- ggplot(df %>% mutate(method = factor(method, levels=method_order)), ae
   labs(x = "Genes", y = "Spots", fill = "Minutes") +
   coord_fixed() +
   theme_classic() +
+  scale_y_discrete(labels = rev(c("100", "1k", "5k", "10k"))) +
+  scale_x_discrete(labels = c("5k", "10k", "20k", "30k")) +
   scale_color_manual(values=c("white", "black")) +
   theme(axis.ticks = element_blank(),
         axis.line = element_blank(),
@@ -83,7 +84,7 @@ p_scal <- ggplot(df %>% mutate(method = factor(method, levels=method_order)), ae
     fill = guide_colorbar(reverse = TRUE))
 p_scal
 
-ggsave(paste0("~/Pictures/benchmark_paper/scalability_plot_", dataset, ".png"),
-       width=300, height=179, units="mm", dpi=300)
+# ggsave(paste0("~/Pictures/benchmark_paper/scalability_plot_", dataset, ".png"),
+#        width=300, height=179, units="mm", dpi=300)
 
          

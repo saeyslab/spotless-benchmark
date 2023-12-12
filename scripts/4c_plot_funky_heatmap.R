@@ -122,6 +122,11 @@ results_liver <- readRDS("data/metrics/liver_all_metrics.rds") %>% select(-fill_
          scaled_AUPR = minmax(aupr)) %>%
   mutate(liver = (scaled_JSD*scaled_AUPR)**(1/2)) %>% select(method, liver)
 
+# Load melanoma data
+results_mel <- readRDS("data/metrics/melanoma_metrics.rds")[["jsd"]] %>% 
+  mutate(scaled_JSD = minmax(jsd, reciprocal = TRUE)) %>% 
+  rename(melanoma = scaled_JSD) %>% select(method, melanoma)
+
 ### Aggregate by metrics ###
 results_ss_agg_metric <- results_ss %>% filter(metric %in% c("RMSE", "prc", "jsd")) %>%
   aggregate_by(levels=c(1, 2)) %>%
@@ -150,9 +155,12 @@ results_agg_metric <- merge(results_ss_agg_metric %>% ungroup() %>% mutate(sourc
             filter(metric != "emd") %>%
             mutate(metric = str_replace(metric, "aupr", "prc")),
         all = TRUE) %>%
+  merge(., results_mel %>% mutate(source="melanoma", metric="jsd") %>% rename(scaled_val=melanoma),
+        all = TRUE) %>% 
   mutate(weights = case_when(source == "gold" ~ 3,
                              source == "silver" ~ 9,
-                             source == "liver" ~ 1)) %>%
+                             source == "liver" ~ 1,
+                             source == "melanoma" ~ 1)) %>%
   group_by(metric, method) %>% summarise(agg_metric = weighted.mean(scaled_val, weights)) %>%
   pivot_wider(names_from = metric, values_from = agg_metric)
   
@@ -219,6 +227,7 @@ df_all <- results_agg_metric %>%
   inner_join(results_ss_dataset) %>%
   inner_join(results_gs_dataset) %>%
   inner_join(results_liver) %>%
+  inner_join(results_mel) %>% 
   inner_join(rarecelltypes) %>%
   inner_join(stability_all) %>%
   inner_join(runtime) %>%
@@ -228,14 +237,15 @@ df_all <- results_agg_metric %>%
 rankings <- df_all %>% select(!c(jsd, prc, RMSE, silver, realtime, proper_method_names) & !contains('spots')) %>%
   mutate(avg_runtime = minmax(avg_runtime, reciprocal = TRUE)) %>%
   pivot_longer(!method, names_to = "criteria") %>% group_by(criteria) %>%
-  mutate(rank = dense_rank(desc(value))) %>% group_by(method) %>% mutate(weight = c(rep(0.5, 9), rep(1, 5))) %>%
+  mutate(rank = dense_rank(desc(value))) %>% group_by(method) %>% mutate(weight = c(rep(0.5, 9), rep(1, 6))) %>%
   summarise(total_rank = weighted.mean(rank, weight)) %>% arrange(total_rank, desc(method))
 
-df_all <- df_all %>% inner_join(rankings) %>% arrange(total_rank)
+df_all <- df_all %>% inner_join(rankings) %>% arrange(total_rank) %>%
+  mutate(num_rank = as.character(min_rank(total_rank)))
 
 column_info <- tribble(
   ~id,                                         ~group,                      ~name,                       ~geom,           ~palette,        ~options,
-  "proper_method_names",                       "info",                      NA,                           "text",           NA,             lst(),
+  "proper_method_names",                       "info",                      NA,                           "text",           NA,             list(width=4),
   "RMSE",                                      "per_metric",                "1/RMSE",                     "funkyrect",      "performance",  lst(),
   "jsd",                                       "per_metric",                "1/JSD",                      "funkyrect",      "performance",  lst(),
   "prc",                                       "per_metric",                "AUPR",                       "funkyrect",      "performance",  lst(),
@@ -251,6 +261,7 @@ column_info <- tribble(
   "silver",                                    "per_data_source",           "Silver standard",            "funkyrect",      "performance",  lst(),
   "gold",                                      "per_data_source",           "Gold standard",              "funkyrect",      "performance",  lst(),
   "liver",                                     "per_data_source",           "Liver",                      "funkyrect",      "performance",  lst(),
+  "melanoma",                                  "per_data_source",           "Melanoma",                   "funkyrect",      "performance",  lst(),
   "rarecelltype_detection",                    "misc",                      "Rare cell type detection",   "funkyrect",      "misc",         lst(),
   "robustness",                                "misc",                      "Stability",                  "funkyrect",      "misc",         lst(),
   "avg_runtime",                               "runtime",                   "Average runtime",            "rect",           "scaling",      lst(),
@@ -260,7 +271,8 @@ column_info <- tribble(
   "1000spots_30000genes",                      "scalability",               "1k × 30k",                   "rect",           "scaling",      list(),
   "1000spots_30000genes",                      "scalability",               "",                           "text",           "white6black4", list(label="str_1000spots_30000genes", overlay=TRUE, size=3),
   "10000spots_30000genes",                     "scalability",               "10k × 30k",                  "rect",           "scaling",      list(),
-  "10000spots_30000genes",                     "scalability",               "",                           "text",           "white6black4", list(label="str_10000spots_30000genes", overlay=TRUE, size=3)
+  "10000spots_30000genes",                     "scalability",               "",                           "text",           "white6black4", list(label="str_10000spots_30000genes", overlay=TRUE, size=3),
+  "num_rank",                                  "ranking",                   "",                           "text",           NA,             list(width=2.5)
 )
 
 column_groups <- tribble( 
@@ -271,7 +283,8 @@ column_groups <- tribble(
   "Performance",            "Per data source",         "per_data_source",   "performance",
   "Performance",            "",                        "misc",              "performance",
   "Scalability",            "",                        "runtime",           "scaling",
-  "Scalability",            "Spots × Genes",           "scalability",       "scaling"
+  "Scalability",            "Spots × Genes",           "scalability",       "scaling",
+  "Rank",                   "",                        "ranking",           "ranking"
   
 ) 
 
@@ -280,12 +293,13 @@ palette <- list('white6black4' = rev(dynbenchmark_data$palettes[7,]$colours[[1]]
                 'scaling' = rev(dynbenchmark_data$palettes[3,]$colours[[1]]),
                 'performance' = dynbenchmark_data$palettes[2,]$colours[[1]],
                 'misc' = dynbenchmark_data$palettes[4,]$colours[[1]],
-                'overall' = dynbenchmark_data$palettes[1,]$colours[[1]])
+                'overall' = dynbenchmark_data$palettes[1,]$colours[[1]],
+                'ranking' = dynbenchmark_data$palettes[5,]$colours[[1]])
 
 p <- funky_heatmap(df_all,
               column_info = column_info,
               column_groups = column_groups,
               palettes = palette)
-p
+# p
 # ggsave("plots/funky_heatmap.png", p, width = p$width * 1.5, height = p$height * 1.5, bg="white")
-ggsave("~/Pictures/benchmark_paper/funky_heatmap.pdf", p, width = p$width * 1.5, height = p$height * 1.5, bg="white")
+ggsave("~/Pictures/benchmark_paper/fig_2_funky_heatmap.pdf", p, width = p$width * 1.5, height = p$height * 1.5, bg="white")

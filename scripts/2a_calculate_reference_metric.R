@@ -65,6 +65,7 @@ calculate_metrics <- function(known_props, dir_dist, ncells){
 possible_metrics <- c("corr", "RMSE", "accuracy", "balanced_accuracy", "sensitivity", "specificity", "precision",
                       "F1", "F2", "prc", "roc", "jsd")
 
+standard_type = "silver" #silver or seqfish
 # SILVER STANDARD #
 if (standard_type == "silver"){
   metric_df <- data.frame(rep = character(), metric = factor(),
@@ -74,7 +75,6 @@ if (standard_type == "silver"){
   for (dsi in 1:length(datasets)){
     for (dti in 1:length(possible_dataset_types)){
       for (repl in 1:10){
-        
         # Read in ground truth data
         file_name <- paste0(datasets[dsi], "_", possible_dataset_types[dti], "_rep", repl, ".rds")
         ground_truth_data <- readRDS(paste0("standards/silver_standard_", dsi, "-", dti, "/", file_name))
@@ -105,8 +105,6 @@ if (standard_type == "silver"){
     }
   }
   
-  saveRDS(metric_df, "data/metrics/ref_all_metrics_silver.rds")
-
   # Gold standard - seqFISH
 } else if (standard_type == "seqfish"){
   datasets <- c("cortex_svz", "ob")
@@ -152,11 +150,6 @@ if (standard_type == "silver"){
       metric_df <- merge(metric_df, temp_df, all=TRUE)
     }
   }
-  saveRDS(metric_df, "data/metrics/ref_all_metrics_seqfish.rds")
-  
-  
-} else {
-  cat("Please define standard_type.")
-}
+} 
 
-
+saveRDS(metric_df, paste0("data/metrics/ref_all_metrics_", standard_type, ".rds"))

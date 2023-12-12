@@ -2,8 +2,8 @@
 
 ## CONTENTS
 # 1. Compare proportions of "real" dataset type and the single-cell data
-# 2. Boxplot of method performance on the "real" dataset type
-# 3. Calculate rank sum and plot
+# 2. Boxplot of method performance on the "real" dataset type (not used)
+# 3. Calculate rank sum and plot (not used)
 
 source("scripts/0_init.R")
 possible_dataset_types <- c(possible_dataset_types,  "real", "real_missing_celltypes_visium")
@@ -48,20 +48,26 @@ df <- rbind(synthvisium_real$spot_composition %>% data.frame %>% select(-name) %
 df_all <- sc_reference@meta.data %>% select(celltype, brain_subregion) %>% mutate(count=1, source="sc") %>%
   rename(region = brain_subregion) %>% merge(df, all=TRUE) %>%
   mutate(region = str_replace_all(region, "priorregion", "")) %>%
-  mutate(region = factor(region, levels = region %>% unique %>% rev))
+  mutate(region = factor(region, levels = region %>% unique %>% rev)) 
 
+df_all_summ <- df_all %>% group_by(region, source, celltype) %>%
+  summarise(counts = sum(count))
 
+save_plot <- TRUE
+theme_base_size <- ifelse(save_plot, 8, 11)
+boxplot_size <- ifelse(save_plot, 0.25, 0.5)
+legend_text_size <- ifelse(save_plot, 6, 9)
 # Plot the composition
 dt_oi_names <- c("Diverse overlap", "Real", "Single-cell") %>% setNames(c("diverse_overlap", "real", "sc"))
 ps1 <- lapply(1:3, function(i) {
-  p <- ggplot(df_all %>% filter(source == names(dt_oi_names)[i]),
-         aes(x=region, y=count, fill=celltype)) +
+  p <- ggplot(df_all_summ %>% filter(source == names(dt_oi_names)[i]),
+         aes(x=region, y=counts, fill=celltype)) +
     geom_bar(stat="identity", position=position_fill(reverse=TRUE), width=0.5) +
     coord_flip() +
     scale_fill_manual(values=col_vector) +
     scale_y_continuous(expand= expansion(mult=c(0, 0.05))) +
     labs(y = "Cell type composition", x = "Region", subtitle = dt_oi_names[i]) +
-    theme_classic(base_size = 15) +
+    theme_classic(base_size = theme_base_size) +
     theme(strip.background = element_blank(),
           panel.grid = element_blank(),
           legend.position = "bottom") +
@@ -75,10 +81,9 @@ ps1 <- lapply(1:3, function(i) {
 })
 
 ps1_wrap <- wrap_plots(ps1, ncol=1) + plot_layout(guides = 'collect') &
-  theme(legend.position = "bottom", legend.text = element_text(size=9),
+  theme(legend.position = "bottom", legend.text = element_text(size=legend_text_size),
         legend.key.size = unit(3, 'mm'), legend.title = element_blank(),
         legend.justification = "left")
-ps1_wrap
 
 # Plot boxplot of the two chosen dataset types
 moi <- "RMSE"
@@ -98,11 +103,11 @@ ps2 <- lapply(1:2, function(i) {
   p <- ggplot(results_format %>% filter(dataset_type == dt_oi[i]) %>%
            mutate(method = factor(method, levels = best_performers)),
          aes(y=method, x=all_values)) +
-    geom_boxplot(width=0.75) +
+    geom_boxplot(width=0.75, size = boxplot_size, outlier.size = boxplot_size) +
     scale_y_discrete(labels = proper_method_names) + 
     scale_x_continuous(limits = c(0, 0.16), expand= expansion(mult=c(0, 0.05))) +
     labs(x = paste0("Average ", proper_metric_names[moi]), color="Method", subtitle = title) +
-    theme_classic(base_size = 15) +
+    theme_classic(base_size = theme_base_size) +
     theme(legend.position="bottom", legend.direction = "horizontal",
           axis.title.y=element_blank(),
           panel.grid = element_blank())#,
@@ -116,9 +121,12 @@ ps2 <- lapply(1:2, function(i) {
 ps2_wrap <- wrap_plots(ps2, ncol=1) + plot_spacer() 
 
 # Combine plots
-wrap_plots(ps1_wrap, ps2_wrap)
-ggsave("~/Pictures/benchmark_paper/compare_props_and_results_real_synthetic.png",
-       width=270, height=230, units="mm", dpi=300)
+p_combined <- wrap_plots(ps1_wrap, ps2_wrap)
+
+svg("~/Pictures/benchmark_paper/supp_notes_fig_5_compare_real_and_synth.svg",
+       width=7.5, height=7)
+print(p_combined)
+dev.off()
 
 ##### 2. BOXPLOT #####
 moi <- "prc"
@@ -150,7 +158,7 @@ p <- p + geom_boxplot(width=0.75) +
   guides(color = guide_legend(nrow=1))
 
 p
-ggsave("~/Pictures/facetgrid_AUPR.png", width=330, height=210, units="mm", dpi=200)
+# ggsave("~/Pictures/facetgrid_AUPR.png", width=330, height=210, units="mm", dpi=200)
 
 ####### 3. RANK SUM #######
 results_ranked <- results %>%

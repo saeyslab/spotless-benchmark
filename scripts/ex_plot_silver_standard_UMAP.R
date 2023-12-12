@@ -87,10 +87,30 @@ ggsave("~/Pictures/benchmark_paper/synthvisium_UMAP.png",
         width=300, height=300, units="mm", dpi=300)
 
 #### 2. PLOT SINGLE-CELL CHARACTERISTICS ####
+library(shadowtext)
 
-proper_dataset_names[2:3] <- c("Cerebellum (single-cell)", "Cerebellum (single-nucleus)")
+proper_dataset_names[2:3] <- c("Single-cell cerebellum", "Single-nucleus cerebellum")
+
+save_plot <- TRUE
+theme_base_size <- ifelse(save_plot, 8, 11)
+boxplot_size <- ifelse(save_plot, 0.25, 1)
+legend_text_size <- ifelse(save_plot, 7, 9)
+dot_size <- ifelse(save_plot, 0.01, 0.25)
+label_size <- ifelse(save_plot, 2.5, 1.5)
+#stroke_size <- ifelse(save_plot, 0.75, 1)
+linewidth_size <- ifelse(save_plot, 0.25, 0.5)
+title_size <- ifelse(save_plot, 9, 14)
+subtitle_size <- ifelse(save_plot, 9, 10)
+
+# manual changing
+
+# CD.IC + 2
+# NK -1 (mid1)
+# novel2 + 2
+# B +1 (mid1)
 
 ps <- lapply(1:length(datasets), function(dsi){
+#ps <- lapply(7, function(dsi){
   gc()
   
   # Read in single-cell data
@@ -99,47 +119,145 @@ ps <- lapply(1:length(datasets), function(dsi){
   
   celltypes <- unique(seurat_obj_scRNA$celltype)
   
-  # UMAP
-  p1 <- DimPlot(seurat_obj_scRNA, reduction = "umap",
-                group.by = "celltype", pt.size = 0.25,
-                label = TRUE, label.box = TRUE, label.size = 1.5,
-                cols = col_vector, repel=TRUE) +
-    ggtitle(proper_dataset_names[datasets[dsi]]) +
-    labs(subtitle = paste(length(celltypes), "cell types")) +
+  umap_df <- data.frame(seurat_obj_scRNA@reductions$umap@cell.embeddings) %>%
+    merge(seurat_obj_scRNA[["celltype"]], by = 'row.names')
+  
+  y_add <- ifelse(dsi == 4, 2, 1)
+  
+  midpoint <- umap_df %>%  group_by(celltype) %>%
+    summarise(mid_1 = median(UMAP_1), mid_2 = median(UMAP_2)) %>%
+    inner_join(table(umap_df$celltype) %>% stack %>% setNames(c("count", "celltype")), by = "celltype") %>% 
+    mutate(mid_2 = ifelse(count < 200, mid_2 + y_add, mid_2))
+  
+  if (dsi == 5){
+    midpoint <- midpoint %>% mutate(
+      mid_2 = case_when(
+        celltype == "CD.IC" ~ mid_2 + 2,
+        celltype == "novel2" ~ mid_2 + 2,
+        TRUE ~ mid_2
+      ),
+      mid_1 = case_when(
+        celltype == "B" ~ mid_1 + 1,
+        celltype == "NK" ~ mid_1 - 1,
+        TRUE ~ mid_1
+      )
+    )
+  } else if (dsi == 6) {
+    midpoint <- midpoint %>% mutate(
+      mid_2 = case_when(
+        celltype == "CD1C1" ~ mid_2 + 1,
+        TRUE ~ mid_2
+      ),
+      mid_1 = case_when(
+        celltype == "CD1C1" ~ mid_1 + 1,
+        celltype == "MDSC7" ~ mid_1 - 1,
+        TRUE ~ mid_1  
+      )
+    )
+  } else if (dsi == 7){
+    midpoint <- midpoint %>% mutate(
+      mid_2 = case_when(
+        celltype == "melanocytic.oxphos" ~ mid_2 + 3,
+        celltype == "stem.like" ~ mid_2 - 2,
+        celltype == "neural.like" ~ mid_2 + 2,
+        celltype == "stress.like..hypoxia.UPR." ~ mid_2 - 2,
+        celltype == "mesenchymal" ~ mid_2 + 1,
+        TRUE ~ mid_2
+      ),
+      mid_1 = case_when(
+        celltype == "neural.like" ~ mid_1 + 2,
+        celltype == "immune.like" ~ mid_1 + 3,
+        celltype == "RNA.processing" ~ mid_1 - 1,
+        TRUE ~ mid_1
+      )
+    )
+  }
+
+  p1 <- ggplot(umap_df, aes(x=UMAP_1, y=UMAP_2, color=celltype)) +
+    geom_point(size=0.1) +
+    geom_shadowtext(data=midpoint, aes(x=mid_1, y=mid_2, label=celltype),
+                    color = "black", bg.color = "white", inherit.aes = FALSE, size = label_size) +
+    scale_color_manual(values = col_vector) +
+    labs(subtitle = "UMAP",
+         title = paste0(proper_dataset_names[datasets[dsi]], " (", length(celltypes), " cell types)" )) +
+    theme_classic(base_size = theme_base_size) +
     theme(legend.position = "none",
+          axis.line = element_line(linewidth=linewidth_size),
+          axis.ticks = element_blank(),
           axis.title = element_blank(),
           axis.text = element_blank(),
-          plot.title = element_text(size=14, hjust=0))
+          plot.title = element_text(size=title_size, hjust=0, face = "bold"),
+          plot.subtitle = element_text(size=subtitle_size))
+  
+  # p1 <- DimPlot(seurat_obj_scRNA, reduction = "umap",
+  #               group.by = "celltype", pt.size = dot_size,
+  #               label = TRUE, label.box = TRUE,
+  #               label.size = label_size,
+  #               cols = col_vector, repel=TRUE) +
   
   df <- seurat_obj_scRNA@meta.data %>% select(nCount_RNA, nFeature_RNA, celltype)
   
   # Counts
-  p2 <- ggplot(df, aes(y=celltype, x=nCount_RNA, fill=celltype)) + geom_violin(color="black") +
-    stat_summary(geom = "point", fun = "median", color="black") +
+  p2 <- ggplot(df, aes(y=celltype, x=nCount_RNA, fill=celltype)) +
+    geom_violin(color="black", linewidth=linewidth_size) +
+    stat_summary(geom = "point", fun = "median", color="black", size=boxplot_size) +
     scale_fill_manual(values=col_vector) +
     scale_y_discrete(limits=rev(sort(celltypes))) +
-    theme_classic() +
-    theme(legend.position = "none", axis.title = element_blank()) +
+    theme_classic(base_size = theme_base_size) +
+    theme(legend.position = "none",
+          plot.subtitle = element_text(size=subtitle_size),
+          axis.line = element_line(linewidth=linewidth_size),
+          axis.ticks = element_line(linewidth=linewidth_size),
+          axis.text = element_text(size=legend_text_size),
+          axis.title = element_blank()) +
     labs(subtitle = "Counts")
   
   # Features
-  p3 <- ggplot(df, aes(y=celltype, x=nFeature_RNA, fill=celltype)) + geom_violin(color="black") +
-    stat_summary(geom = "point", fun = "median") +
+  p3 <- ggplot(df, aes(y=celltype, x=nFeature_RNA, fill=celltype)) +
+    geom_violin(color="black", linewidth=linewidth_size) +
+    stat_summary(geom = "point", fun = "median", size=boxplot_size) +
     scale_fill_manual(values=col_vector) +
     scale_y_discrete(limits=rev(sort(celltypes))) +
-    theme_classic() +
-    theme(legend.position = "none", axis.title = element_blank(),
-          axis.ticks.y = element_blank(), axis.text.y = element_blank()) +
+    theme_classic(base_size = theme_base_size) +
+    theme(legend.position = "none",
+          plot.subtitle = element_text(size=subtitle_size),
+          axis.title = element_blank(),
+          axis.line = element_line(linewidth=linewidth_size),
+          axis.ticks.x = element_line(linewidth=linewidth_size),
+          axis.text = element_text(size=legend_text_size),
+          axis.ticks.y = element_blank(),
+          axis.text.y = element_blank()) +
     labs(subtitle = "Features")
   
   p1 + p2 + p3
   }
 )
 
-wrap_plots(ps[1:3], nrow=3)
-ggsave("~/Pictures/benchmark_paper/scRNA_info1.png",
-       width=300, height=300, units="mm", dpi=300)
+if (save_plot){
+  svg("~/Pictures/benchmark_paper/fig_s9_scRNA_info1.svg",
+      width = 8.5, height = 9)
+  print(wrap_plots(ps[1:3], nrow=3))
+  dev.off()
+  
+  svg("~/Pictures/benchmark_paper/fig_s9_scRNA_info2.svg",
+      width = 8.5, height = 9)
+  print(wrap_plots(ps[4:6], nrow=3))
+  dev.off()
+  
+  svg("~/Pictures/benchmark_paper/fig_s9_scRNA_info3.svg",
+      width = 8.5, height = 3)
+  print(wrap_plots(ps[[7]], nrow=1))
+  dev.off()
+}
 
-wrap_plots(ps[4:6], nrow=3)
-ggsave("~/Pictures/benchmark_paper/scRNA_info2.png",
-       width=300, height=300, units="mm", dpi=300)
+
+
+# wrap_plots(ps[1:3], nrow=3)
+# ggsave("~/Pictures/benchmark_paper/scRNA_info1.png",
+#        width=300, height=300, units="mm", dpi=300)
+# 
+# wrap_plots(ps[4:6], nrow=3)
+# ggsave("~/Pictures/benchmark_paper/scRNA_info2.png",
+#        width=300, height=300, units="mm", dpi=300)
+
+

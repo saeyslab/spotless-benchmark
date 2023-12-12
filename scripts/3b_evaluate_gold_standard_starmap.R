@@ -4,12 +4,10 @@
 # 3. Proportions plot
 
 source("scripts/0_init.R")
-library(ungeviz) # geom_hpline
 library(ggtext) # Bold ground truth label
+library(glue)
 library(precrec)
 library(philentropy)
-path <- "results/"
-
 
 qual_col_pals <- brewer.pal.info %>% filter(rownames(.) %in% c("Dark2", "Paired"))
 
@@ -19,7 +17,7 @@ types <- c("_12celltypes", "_19celltypes")
 results <- lapply(methods, function (method) {
     lapply(types, function(type){
       #print(paste(method, type))
-      read.table(paste0(path, "Wang2018_visp/metrics_", method,
+      read.table(paste0("results/Wang2018_visp/metrics_", method,
                         "_Wang2018_visp_rep0410", type),
                  header = TRUE, sep= " ")}) %>%
       setNames(types) %>% melt(id.vars=NULL) %>%
@@ -60,6 +58,7 @@ results_recalc <- lapply(methods, function (method) {
   mutate(type = "_19celltypes_recalc")
 
 #### 2. PLOT PERFORMANCE METRICS ####
+## These plots aren't used in the final paper, just for demonstration ##
 ## GET RANKINGS
 df_ranked <- results %>%
   # Calculate mean of metrics
@@ -68,6 +67,8 @@ df_ranked <- results %>%
   group_by(metric, type) %>%
   mutate(rank = case_when(metric %in% c("RMSE", "jsd") ~ dense_rank(mean_val),
                           T ~ dense_rank(desc(mean_val))))
+
+# saveRDS(df_ranked, "data/metrics/starmap_rankings.rds")
 
 df_ranked %>% group_by(method, metric) %>% summarise(summed_rank= sum(rank)) %>%
   group_by(metric) %>% arrange(summed_rank, .by_group = TRUE) %>%
@@ -185,5 +186,5 @@ ggplot(combined_summ %>% filter(type == "_12celltypes", mean_props > 0) %>%
         legend.text = element_text(size=8),
         legend.key.size=unit(3, 'mm'))
 
-ggsave("~/Pictures/benchmark_paper/starmap_abundance_barplot.png",
-       width=120, height=75, units="mm", dpi=200)
+# ggsave("~/Pictures/benchmark_paper/starmap_abundance_barplot.png",
+#        width=120, height=75, units="mm", dpi=200)

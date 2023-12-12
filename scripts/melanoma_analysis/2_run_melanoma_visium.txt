@@ -1,0 +1,7 @@
+nextflow run main.nf -profile hpc \
+--methods $method \
+-c conf/melanoma_visium.config \
+--file_type rds    # options: rds, h5ad \
+#--gpu
+
+
