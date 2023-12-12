@@ -1,6 +1,7 @@
 process runSTRIDE {
     tag "stride_${sp_file_basename}"
     label "retry"
+    label "longer_time"
     container 'csangara/sp_stride:latest'
     echo true
 
@@ -52,6 +53,7 @@ process runSTRIDE {
 process buildSTRIDEModel {
     tag "stride_build_$tag_suffix"
     label "retry"
+    label "longer_time"
     container 'csangara/sp_stride:latest'
     echo true
 
