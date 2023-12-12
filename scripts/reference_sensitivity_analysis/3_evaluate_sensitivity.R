@@ -148,7 +148,7 @@ p_liver <- ggplot(liver_metrics %>% mutate(method = factor(method, levels = best
 
 
 if (save_plot) {
-  svg("~/Pictures/benchmark_paper/fig_s14_stability_liver.svg",
+  svg("~/Pictures/benchmark_paper/fig_s15_stability_liver.svg",
       width=5.5, height=4.25)
   print(p_liver & theme(plot.title = element_text(size=12),
                         axis.line = element_line(linewidth = boxplot_size),

@@ -128,7 +128,7 @@ props_summ2 <- props_summ %>% mutate(celltype = ifelse(celltype %in% cts_keep, c
 ))
 
 
-sorting_scheme <- c("stability", "jsd", "aupr", "none")[4]
+sorting_scheme <- c("stability", "jsd", "aupr", "none")[2]
 if (sorting_scheme == "stability") {
   # If you want to sort the methods - prerequisites: evaluate_stability
   liver_metrics <- readRDS("data/metrics/liver_metrics_ref_sensitivity.rds")
@@ -142,6 +142,7 @@ if (sorting_scheme == "stability") {
     arrange(rank, .by_group = TRUE) %>% pull(method)
 } else if (sorting_scheme == "jsd" || sorting_scheme == "aupr") {
   # Prerequisite: run 3. for AUPR and 4. for JSD
+  all_rankings <- readRDS("data/metrics/liver_all_rankings.rds")
   best_performers <- all_rankings[[sorting_scheme]] %>% pull(method)
 } else if (sorting_scheme == "none"){
   best_performers <- methods
@@ -164,7 +165,8 @@ p_pred <- ggplot(props_summ2 %>% group_by(method, celltype, digest) %>%
   facet_wrap(~method, labeller = labeller(method=proper_method_names)) +
   coord_flip() + 
   ylab("Sum of proportions across all spots in a slice") +
-  labs(fill="Cell type") + theme_bw() +
+  labs(fill="Cell type") +
+  theme_bw() +
   theme(axis.ticks = element_blank(), axis.text.x = element_blank(),
         axis.title = element_blank(), panel.grid = element_blank(),
         strip.background = element_rect(fill = "white", color="white"),
@@ -277,6 +279,7 @@ aupr_rankings <- auprs %>% filter(metric == "prc") %>%
 
 #### 4. CALCULATE JSD & EMD ####
 liver_nuc_9cts <- readRDS("data/rds/liver_mouseStSt_nuclei_9celltypes_annot_cd45.rds")
+ct <- liver_nuc_9cts$annot_cd45 %>% unique %>% sort
 samples_to_keep <- c("ABU11", "ABU13", "ABU17", "ABU20")
 
 # # Get samples which have all cell types (5 in total)
@@ -319,7 +322,6 @@ props_split <- props_common %>% select(-mean_props) %>% group_by(method, digest,
   setNames(paste0(unique(props_common$method), "_", rep(unique(props_common$digest),
                                                         each=length(unique(props_common$method)))))
 
-ct <- ground_truth$annot_cd45 %>% unique %>% sort
 set.seed(10)
 metrics <- lapply(props_split, function(temp) {
   get_jsd_emd(ground_truth, temp, temp_sample_column = "slice")
@@ -394,6 +396,8 @@ if ("bioreps" %in% c(references[[2]], references[[3]])) {
 refs <- list("jsd" = list(mean(ref_bioreps["jsd",]), mean(ref_dirichlet["jsd",])) %>% setNames(possible_references),
              "emd" = list(mean(ref_bioreps["emd",]), mean(ref_dirichlet["emd",])) %>% setNames(possible_references),
              "aupr" = list(NA, mean(dir_auprs)) %>% setNames(possible_references))
+
+# saveRDS(refs, "data/metrics/liver_refs.rds")
 
 # We will only plot AUPR and JSD (for Earthmover's, do 1:3)
 save_plot <- FALSE
@@ -524,7 +528,7 @@ p_boxplot <- ggplot(preds_df %>% mutate(method = factor(method, levels=rev(best_
         axis.title.x = element_text(margin = margin(10, 0, 0,0)))
 
 if (save_plot) {
-  svg("~/Pictures/benchmark_paper/fig_s13_liver_ECs_boxplot.svg",
+  svg("~/Pictures/benchmark_paper/fig_s14_liver_ECs_boxplot.svg",
        width=5, height=3.5)
   print(p_boxplot + theme(axis.title.x = element_text(size=7, margin=margin(t=5)),
                           legend.key.size = unit(3, "mm"),
