@@ -2,7 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8211492.svg)](https://doi.org/10.5281/zenodo.8211492)
 
-This is a repository for running spatial deconvolution tools through a Nextflow pipeline, as described in [Sang-aram et al. (2023)](https://elifesciences.org/reviewed-preprints/88431). <br> Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SpatialDWLS, SPOTlight, stereoscope, STRIDE, Seurat, and Tangram have been implemented. To add your own method, see [Guideline_for_adding_deconvolution_tools.md](Guideline_for_adding_deconvolution_tools.md).
+This is a repository for running spatial deconvolution tools through a Nextflow pipeline, as described in [Sang-aram et al. (2023)](https://elifesciences.org/articles/88431). <br> Currently, cell2location, DestVI, DSTG, MuSiC, NNLS, RCTD, SpatialDWLS, SPOTlight, stereoscope, STRIDE, Seurat, and Tangram have been implemented. To add your own method, see [Guideline_for_adding_deconvolution_tools.md](Guideline_for_adding_deconvolution_tools.md).
 
 **Quickstart guide**
 1. [Install NextFlow](https://www.nextflow.io/docs/latest/getstarted.html) and either [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/guides/3.0/user-guide/installation.html).
@@ -207,3 +207,7 @@ The workflow has been tested on the following platforms:
 - SGE cluster: NextFlow 20.10.3 on CentOS 7, with Singularity 3.8.1 
 - Slurm cluster: NextFlow 21.03.0 on CentOS 7, with Singularity 3.8.5 (and NVIDIA Volta V100 GPUs)
 
+## Citation
+If you used our pipeline in your publication, please cite:
+
+Sang-Aram, C., Browaeys, R., Seurinck, R., & Saeys, Y. (2024). Spotless, a reproducible pipeline for benchmarking cell type deconvolution in spatial transcriptomics. Elife, 12, RP88431. https://doi.org/10.7554/eLife.88431.3
