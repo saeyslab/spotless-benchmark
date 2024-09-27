@@ -3,6 +3,7 @@
 - [cell2location](#cell2location)
 - [DestVI](#destvi)
 - [MuSiC](#music)
+- [RCTD](#rctd)
 - [Seurat](#seurat)
 - [spatialDWLS](#spatialdwls)
 - [SPOTlight](#spotlight)
@@ -10,7 +11,7 @@
 - [STRIDE](#stride)
 - [Tangram](#tangram)
 
-(RCTD and DSTG have no adjustable parameters.)
+(DSTG has no adjustable parameters.)
 
 ### Usage 
 Parameters for each method can be provided in a *yaml* or *config* file containing a dictionary called `deconv_args`, with the keys being the method name **in lowercase**.
@@ -72,6 +73,10 @@ Model fitting (`params.deconv_args.destvi.fit`)
 - `--pct`: for the gene downsampling process, the fraction of cells per cell type in which genes have to be expressed in order to be kept (default: 0.1)
 - `--assay_oi`: expression matrix to look for when downsampling genes (default: RNA)
 - `--filter_spots`: minimum UMI count per spatial spot needed, otherwise it will be filtered out (default: none)
+
+#### RCTD
+- `--cell_min`: minimum number of cells required per cell type. This value is set to 5 in our pipeline, but RCTD's default is 25.
+- `--doublet_mode`: the mode to run RCTD, either "doublet", "multi", or "full" (default). The doublet mode fits at most two cell types per spot and classifies each pixel as 'singlet' or 'doublet'. The multi mode predicts up to 4 cell types per spot using a greedy algorithm. The full mode can fit any number of cell types on each spot. When using the doublet and multi mode, a separate *_info* file containing confidence values is saved to the process work directory.
 
 #### Seurat
 - `--tech`: split the reference object based on this metadata column and integrate them, use only if the reference comes from different technologies (default: none)

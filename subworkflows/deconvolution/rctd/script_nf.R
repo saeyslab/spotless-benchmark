@@ -3,16 +3,22 @@ Sys.setenv(RETICULATE_MINICONDA_ENABLED = "FALSE")
 library(RCTD)
 library(Matrix)
 library(Seurat)
-
+library(dplyr)
 
 par <- list(
-    cell_min = 5
+    cell_min = 5,
+    doublet_mode = "full"
 )
 
 # Replace default values by user input
 args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
 par[names(args)] <- args
 print(par)
+
+# If doublet_mode is not full, multi, or doublet, throw an error
+if (!(par$doublet_mode %in% c("full", "multi", "doublet"))){
+  stop("Invalid doublet_mode. Must be one of 'full', 'multi', or 'doublet'.")
+}
 
 ## START ##
 cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
@@ -35,6 +41,7 @@ cat("Converting spatial data to SpatialRNA object...\n")
 if (class(spatial_data) != "Seurat"){
   spatialRNA_obj_visium <- RCTD:::SpatialRNA(counts = spatial_data$counts,
                                            use_fake_coords = TRUE)
+  spatial_data <- spatial_data$counts
 } else { # If it is Seurat object, check if there is images slot
     use_fake_coords <- length(spatial_data@images) == 0
     coords <- NULL
@@ -52,13 +59,75 @@ cat("Running RCTD with", par$num_cores, "cores...\n")
 start_time <- Sys.time()
 RCTD_deconv <- create.RCTD(spatialRNA_obj_visium, reference_obj, max_cores = as.numeric(par$num_cores),
                             CELL_MIN_INSTANCE = as.numeric(par$cell_min))
-RCTD_deconv <- run.RCTD(RCTD_deconv, doublet_mode = "full")
+RCTD_deconv <- run.RCTD(RCTD_deconv, doublet_mode = par$doublet_mode)
 end_time <- Sys.time()
 cat("Runtime: ", round((end_time-start_time)[[1]], 2), "s\n", sep="")
 
-cat("Printing results...\n")
-deconv_matrix <- as.matrix(sweep(RCTD_deconv@results$weights, 1, rowSums(RCTD_deconv@results$weights), '/'))
+if (par$doublet_mode == "full"){
+  
+  deconv_matrix <- as.matrix(sweep(RCTD_deconv@results$weights, 1, rowSums(RCTD_deconv@results$weights), '/'))
+  
+} else if (par$doublet_mode == "doublet"){
+  
+  # Get doublet proportions
+  weights_doublet <- RCTD_deconv@results$weights_doublet %>% 
+    data.frame(., row.names = rownames(.)) %>% tibble::rownames_to_column("spot") %>%
+    tidyr::pivot_longer(cols =-spot, names_to="type", values_to="proportion")
+  
+  # Get doublet labels
+  labels_df <- RCTD_deconv@results$results_df %>%
+    select(spot_class, first_type, second_type) %>% 
+    tibble::rownames_to_column("spot") %>% 
+    tidyr::pivot_longer(-c(spot, spot_class), names_to="type", values_to="label")
+  
+  deconv_matrix <- dplyr::left_join(weights_doublet, labels_df, by=c("spot", "type")) %>% 
+    # Filter out second_type if the spot is classified as a singlet
+    dplyr::filter(!(type == "second_type" & spot_class == "singlet")) %>% 
+    # Replace proportions with 1 if singlet
+    dplyr::mutate(proportion = replace(proportion, spot_class == "singlet", 1)) %>% 
+    tidyr::pivot_wider(id_cols = spot, names_from="label", values_from="proportion", values_fill = 0) %>% 
+    tibble::column_to_rownames("spot")
+  
+  # Save the doublet labels
+  write.table(RCTD_deconv@results$results_df %>%  tibble::rownames_to_column("spot"),
+              file=paste0(par$output, "_doublet_info.tsv"), sep="\t", quote=FALSE, row.names=FALSE)
+  
+} else if (par$doublet_mode == "multi"){
+  
+  res <- RCTD_deconv@results
+  
+  # Code adapted from lima1: https://github.com/dmcable/spacexr/issues/154
+  # But get celltype names from conf_list instead in case of singlets 
+  weights_multi <- data.table::rbindlist(lapply(seq_along(res), function(i)
+    data.table::data.table(
+      barcode = colnames(RCTD_deconv@spatialRNA@counts)[i],
+      cell_type = names(res[[i]]$conf_list),
+      weight = res[[i]]$sub_weights
+    )), fill = TRUE)
+  
+  deconv_matrix <- data.table::dcast(weights_multi, barcode ~ cell_type,
+                                     value.var = "weight", fill = 0) %>% 
+    tibble::column_to_rownames("barcode")
+  
+  # Save the results in case users want to check confidence levels
+  saveRDS(res, paste0(par$output, "_multi_info.rds"))
+  
+}
 
+# Check for missing cell types (doublet and multi mode only)
+if (par$doublet_mode %in% c("doublet", "multi")){
+  celltypes <- RCTD_deconv@cell_type_info$info[[2]]
+  if (!all(celltypes %in% colnames(deconv_matrix))){
+    missing <- celltypes[which(!celltypes %in% colnames(deconv_matrix))]
+    cat("Cell types with zero abundance in all spots:", paste(missing, collapse=", "), "\n")
+    
+    # Add columns of missing cell types
+    deconv_matrix[, missing] <- 0
+    deconv_matrix <- as.matrix(deconv_matrix)
+  }
+}
+
+cat("Printing results...\n")
 # Remove all spaces and dots from cell names, sort them
 colnames(deconv_matrix) <- stringr::str_replace_all(colnames(deconv_matrix), "[/ .&-]", "")
 deconv_matrix <- deconv_matrix[,sort(colnames(deconv_matrix), method="shell")]
@@ -69,4 +138,3 @@ if (nrow(deconv_matrix) != ncol(spatial_data)){
 }
 
 write.table(deconv_matrix, file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
-# write.table(matrix("hello world, this is rctd"), file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
