@@ -10,7 +10,9 @@ par <- list(
   n_spots_max = 500,         # maximum number of spots allowed per region
   n_spots = 250,             # number of spots generated (only in the "prior_from_data" dataset type)
   visium_mean = 20000,       # mean of normal dist. used for downsampling each spot
-  visium_sd = 7000           # sd of normal dist. used for downsampling each spot
+  visium_sd = 7000,          # sd of normal dist. used for downsampling each spot
+  n_cells_min = 2,           # minimum number of cells per spot
+  n_cells_max = 10           # maximum number of cells per spot
 )
 
 # Replace default values by user input
@@ -29,16 +31,20 @@ if (!is.null(par$seed)) { set.seed(as.numeric(par$seed)) }
 if (par$dataset_type == "prior_from_data"){
     cat("Generating synthetic visium data from", par$sc_input, "with input composition as cell type priors...\n")
     cat(par$n_spots, "spots will be generated, with mean =", par$visium_mean, "and SD =", par$visium_sd, "per spot.\n")
+    cat("There will be a minimum of", par$n_cells_min, "cells and a maximum of", par$n_cells_max, "per spot.\n")
     synthetic_visium_data <- generate_synthetic_visium_lite(
                               seurat_obj = seurat_obj_scRNA,
                               clust_var = par$clust_var,
                               n_spots = as.numeric(par$n_spots),
                               visium_mean = as.numeric(par$visium_mean),
-                              visium_sd = as.numeric(par$visium_sd))
+                              visium_sd = as.numeric(par$visium_sd),
+                              n_cells_min = as.numeric(par$n_cells_min),
+                              n_cells_max = as.numeric(par$n_cells_max))
 } else {
     cat("Generating synthetic visium data from", par$sc_input, "with dataset type", par$dataset_type, "...\n")
     cat(par$n_regions, "regions will be generated with", par$n_spots_min, "to", par$n_spots_max,
         "spots per region, and mean =", par$visium_mean, "and SD =", par$visium_sd, "per spot.\n")
+    cat("There will be a minimum of", par$n_cells_min, "cells and a maximum of", par$n_cells_max, "per spot.\n")
     synthetic_visium_data <- generate_synthetic_visium(
                               seurat_obj = seurat_obj_scRNA,
                               dataset_type = par$dataset_type,
@@ -48,7 +54,9 @@ if (par$dataset_type == "prior_from_data"){
                               n_spots_min = as.numeric(par$n_spots_min),
                               n_spots_max = as.numeric(par$n_spots_max),
                               visium_mean = as.numeric(par$visium_mean),
-                              visium_sd = as.numeric(par$visium_sd))
+                              visium_sd = as.numeric(par$visium_sd),
+                              n_cells_min = as.numeric(par$n_cells_min),
+                              n_cells_max = as.numeric(par$n_cells_max))
 }
 
 inputscRNA_name <- stringr::str_split(basename(par$sc_input), "\\.")[[1]][1]

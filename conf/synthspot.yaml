@@ -8,9 +8,11 @@
 # n_spots:     number of spots generated (only in the "prior_from_data" dataset type)
 # visium_mean: mean of normal dist. used for downsampling each spot
 # visium_sd:   sd of normal dist. used for downsampling each spot
+# n_cells_min: minimum number of cells per spot
+# n_cells_max: maximum number of cells per spot
 
 synthspot:
-  sc_input: /home/chananchidas/spotless-benchmark/data/raw_data/sc_datasets/brain_cortex_generation.rds
+  sc_input: /home/chananchidas/spotless-benchmark/data/sc_datasets/brain_cortex_generation.rds
   clust_var: celltype
   region_var: brain_subregion
   type: real
@@ -22,4 +24,8 @@ synthspot:
   n_spots: 1000
   visium_mean: 20000
   visium_sd: 5000
+  n_cells_min: 2
+  n_cells_max: 10
 
+outdir:
+  synthspot: /home/chananchidas/synthetic_data/
