@@ -14,7 +14,7 @@
 (DSTG has no adjustable parameters.)
 
 ### Usage 
-Parameters for each method can be provided in a *yaml* or *config* file containing a dictionary called `deconv_args`, with the keys being the method name **in lowercase**.
+Parameters for each method can be provided in a *yaml* or *config* file containing a dictionary called `deconv_args`, with the keys being the method name **in lowercase**. For numerical arguments, please refrain from using scientific notation (i.e., write 10000 instead of 1e4).
 
 ```
 # example.yaml
@@ -75,7 +75,7 @@ Model fitting (`params.deconv_args.destvi.fit`)
 - `--filter_spots`: minimum UMI count per spatial spot needed, otherwise it will be filtered out (default: none)
 
 #### RCTD
-- `--cell_min`: minimum number of cells required per cell type. This value is set to 5 in our pipeline, but RCTD's default is 25.
+- All parameters in `create.RCTD` can be passed, including `gene_cutoff`, `fc_cutoff`, `gene_cutoff_reg`, `UMI_min`, `UMI_max`, `UMI_min_sigma`, `CELL_MIN_INSTANCE`. We have set the minimum of cells required per cell type (`CELL_MIN_INSTANCE`) as 5 in our pipeline, but RCTD's default is 25.
 - `--doublet_mode`: the mode to run RCTD, either "doublet", "multi", or "full" (default). The doublet mode fits at most two cell types per spot and classifies each pixel as 'singlet' or 'doublet'. The multi mode predicts up to 4 cell types per spot using a greedy algorithm. The full mode can fit any number of cell types on each spot. When using the doublet and multi mode, a separate *_info* file containing confidence values is saved to the process work directory.
 
 #### Seurat

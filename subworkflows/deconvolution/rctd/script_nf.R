@@ -11,37 +11,55 @@ library(Matrix)
 library(Seurat)
 library(dplyr)
 
-par <- list(
-    cell_min = 5,
-    doublet_mode = "full"
-)
+# Get default parameters of create.RCTD
+create.RCTD_args <- formals(create.RCTD)
+create.RCTD_args$CELL_MIN_INSTANCE <- 5
 
-# Replace default values by user input
-args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
-par[names(args)] <- args
-print(par)
+# Get user arguments
+user_args <- R.utils::commandArgs(trailingOnly=TRUE, asValues=TRUE)
+# Convert numbers to numeric type
+user_args[grepl("^[0-9\\.]+$", user_args)] <- as.numeric(user_args[grepl("^[0-9\\.]+$", user_args)]) 
+
+# Subset user arguments to ones in create.RCTD
+user_args_create.RCTD <- user_args[names(user_args) %in% names(create.RCTD_args)]
+
+# Replace default parameters with the ones from user
+create.RCTD_args[names(user_args_create.RCTD)] <- user_args_create.RCTD
+create.RCTD_args$max_cores <- user_args$num_cores
+
+cat("User arguments:\n")
+print(user_args)
+
+cat("create.RCTD arguments:\n")
+print(create.RCTD_args)
+
+if (!"doublet_mode" %in% names(user_args)) {
+  user_args$doublet_mode <- "full"
+}
+
+cat("run.RCTD on", user_args$doublet_mode, "mode\n")
 
 # If doublet_mode is not full, multi, or doublet, throw an error
-if (!(par$doublet_mode %in% c("full", "multi", "doublet"))){
+if (!(user_args$doublet_mode %in% c("full", "multi", "doublet"))){
   stop("Invalid doublet_mode. Must be one of 'full', 'multi', or 'doublet'.")
 }
 
 ## START ##
-cat("Reading input scRNA-seq reference from", par$sc_input, "\n")
-seurat_obj_scRNA <- readRDS(par$sc_input)
-ncelltypes <- length(unique(seurat_obj_scRNA[[par$annot, drop=TRUE]]))
+cat("Reading input scRNA-seq reference from", user_args$sc_input, "\n")
+seurat_obj_scRNA <- readRDS(user_args$sc_input)
+ncelltypes <- length(unique(seurat_obj_scRNA[[user_args$annot, drop=TRUE]]))
 cat("Found ", ncelltypes, "cell types in the reference.\n")
 
 cat("Converting to Reference object...\n")
-cell_types <- stringr::str_replace_all(seurat_obj_scRNA[[par$annot, drop=TRUE]],
+cell_types <- stringr::str_replace_all(seurat_obj_scRNA[[user_args$annot, drop=TRUE]],
                                        "[/ .]", "") # Replace prohibited characters
 names(cell_types) <- colnames(seurat_obj_scRNA)
 DefaultAssay(seurat_obj_scRNA) <- "RNA"
 reference_obj <- Reference(counts = GetAssayData(seurat_obj_scRNA, slot="counts"),
                            cell_types = as.factor(cell_types))
 
-cat("Reading input spatial data from", par$sp_input, "\n")
-spatial_data <- readRDS(par$sp_input)
+cat("Reading input spatial data from", user_args$sp_input, "\n")
+spatial_data <- readRDS(user_args$sp_input)
 
 cat("Converting spatial data to SpatialRNA object...\n")
 if (class(spatial_data) != "Seurat"){
@@ -60,20 +78,21 @@ if (class(spatial_data) != "Seurat"){
                                         use_fake_coords = use_fake_coords)
 }
 
+create.RCTD_args$spatialRNA <- spatialRNA_obj_visium
+create.RCTD_args$reference <- reference_obj
 
-cat("Running RCTD with", par$num_cores, "cores...\n")
+cat("Running RCTD with", create.RCTD_args$max_cores, "cores...\n")
 start_time <- Sys.time()
-RCTD_deconv <- create.RCTD(spatialRNA_obj_visium, reference_obj, max_cores = as.numeric(par$num_cores),
-                            CELL_MIN_INSTANCE = as.numeric(par$cell_min))
-RCTD_deconv <- run.RCTD(RCTD_deconv, doublet_mode = par$doublet_mode)
+RCTD_deconv <- do.call(create.RCTD, create.RCTD_args)
+RCTD_deconv <- run.RCTD(RCTD_deconv, doublet_mode = user_args$doublet_mode)
 end_time <- Sys.time()
 cat("Runtime: ", round((end_time-start_time)[[1]], 2), "s\n", sep="")
 
-if (par$doublet_mode == "full"){
+if (user_args$doublet_mode == "full"){
   
   deconv_matrix <- as.matrix(sweep(RCTD_deconv@results$weights, 1, rowSums(RCTD_deconv@results$weights), '/'))
   
-} else if (par$doublet_mode == "doublet"){
+} else if (user_args$doublet_mode == "doublet"){
   
   # Get doublet proportions
   weights_doublet <- RCTD_deconv@results$weights_doublet %>% 
@@ -96,9 +115,9 @@ if (par$doublet_mode == "full"){
   
   # Save the doublet labels
   write.table(RCTD_deconv@results$results_df %>%  tibble::rownames_to_column("spot"),
-              file=paste0(par$output, "_doublet_info.tsv"), sep="\t", quote=FALSE, row.names=FALSE)
+              file=paste0(user_args$output, "_doublet_info.tsv"), sep="\t", quote=FALSE, row.names=FALSE)
   
-} else if (par$doublet_mode == "multi"){
+} else if (user_args$doublet_mode == "multi"){
   
   res <- RCTD_deconv@results
   
@@ -116,12 +135,12 @@ if (par$doublet_mode == "full"){
     tibble::column_to_rownames("barcode")
   
   # Save the results in case users want to check confidence levels
-  saveRDS(res, paste0(par$output, "_multi_info.rds"))
+  saveRDS(res, paste0(user_args$output, "_multi_info.rds"))
   
 }
 
 # Check for missing cell types (doublet and multi mode only)
-if (par$doublet_mode %in% c("doublet", "multi")){
+if (user_args$doublet_mode %in% c("doublet", "multi")){
   celltypes <- RCTD_deconv@cell_type_info$info[[2]]
   if (!all(celltypes %in% colnames(deconv_matrix))){
     missing <- celltypes[which(!celltypes %in% colnames(deconv_matrix))]
@@ -143,4 +162,4 @@ if (nrow(deconv_matrix) != ncol(spatial_data)){
           paste0("'", colnames(spatial_data)[!colnames(spatial_data) %in% rownames(deconv_matrix)], "'", collapse=", "))
 }
 
-write.table(deconv_matrix, file=par$output, sep="\t", quote=FALSE, row.names=FALSE)
+write.table(deconv_matrix, file=user_args$output, sep="\t", quote=FALSE, row.names=FALSE)
