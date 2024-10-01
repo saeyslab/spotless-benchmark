@@ -1,0 +1,4 @@
+# Build minimal R with Seurat version 5.1.0
+FROM rocker/r-ver:4.4.0
+RUN apt-get update -y && apt-get install -y libcurl4-gnutls-dev libssl-dev libssh2-1-dev libxml2-dev libhdf5-dev libgmp-dev libpng-dev libgsl-dev libxt-dev libcairo2-dev libtiff-dev fftw-dev libfftw3-dev libglpk-dev
+RUN R -e "options(repos = c(CRAN = 'https://p3m.dev/cran/__linux__/jammy/2024-09-20')); install.packages(c('ellipsis', 'spatstat.utils', 'spatstat.data', 'Seurat', 'R.utils', 'remotes'))"
