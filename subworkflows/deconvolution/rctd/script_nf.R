@@ -1,6 +1,12 @@
 #!/usr/bin/env Rscript
 Sys.setenv(RETICULATE_MINICONDA_ENABLED = "FALSE")
-library(RCTD)
+
+if (requireNamespace("RCTD", quietly = TRUE)){
+  library(RCTD)
+  SpatialRNA <- RCTD:::SpatialRNA
+} else if (requireNamespace("spacexr", quietly = TRUE)){
+  library(spacexr)
+}
 library(Matrix)
 library(Seurat)
 library(dplyr)
@@ -39,8 +45,8 @@ spatial_data <- readRDS(par$sp_input)
 
 cat("Converting spatial data to SpatialRNA object...\n")
 if (class(spatial_data) != "Seurat"){
-  spatialRNA_obj_visium <- RCTD:::SpatialRNA(counts = spatial_data$counts,
-                                           use_fake_coords = TRUE)
+  spatialRNA_obj_visium <- SpatialRNA(counts = spatial_data$counts,
+                                      use_fake_coords = TRUE)
   spatial_data <- spatial_data$counts
 } else { # If it is Seurat object, check if there is images slot
     use_fake_coords <- length(spatial_data@images) == 0
@@ -49,9 +55,9 @@ if (class(spatial_data) != "Seurat"){
         coords <- GetTissueCoordinates(spatial_data)
     }
     DefaultAssay(spatial_data) <- names(spatial_data@assays)[grep("RNA|Spatial",names(spatial_data@assays))[1]]
-    spatialRNA_obj_visium <- RCTD:::SpatialRNA(coords = coords,
-                                    counts = GetAssayData(spatial_data, slot="counts"),
-                                    use_fake_coords = use_fake_coords)
+    spatialRNA_obj_visium <- SpatialRNA(coords = coords,
+                                        counts = GetAssayData(spatial_data, slot="counts"),
+                                        use_fake_coords = use_fake_coords)
 }
 
 
