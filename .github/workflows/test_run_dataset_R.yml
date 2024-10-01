@@ -34,9 +34,11 @@ jobs:
           nextflow self-update
 
       - name: Run pipeline with test data
+        shell: bash
         run: |
           nextflow run main.nf -profile test,docker --mode run_dataset \
           --methods rctd,music,spatialdwls,nnls,seurat
+          echo $(ls)
 
       - name: Upload proportions and metrics
         uses: actions/upload-artifact@v3
