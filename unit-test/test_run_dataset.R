@@ -1,7 +1,8 @@
 library(testthat)
 
 methods_all <- c("cell2location", "destvi", "music", "rctd",
-                 "spatialdwls", "spotlight", "stereoscope")
+                 "spatialdwls", "spotlight", "stereoscope",
+                 "nnls", "dstg", "stride", "tangram", "seurat")
 methods <- strsplit(commandArgs(trailingOnly=TRUE), ",")[[1]]
 
 if (methods[1] == "all"){ methods <- methods_all }
@@ -39,8 +40,9 @@ for (method in methods){
   output_metrics <- read.table(paste0("results/test_sp_data/metrics_", method, "_test_sp_data"),
                                sep=" ", header=TRUE)
   metric_names <- c("corr", "RMSE", "accuracy", "balanced_accuracy",
-                    "sensitivity", "specificity", "precision", "F1", "F2", "prc")
-  expect_equal(ncol(output_metrics), 10)
+                    "sensitivity", "specificity", "precision",
+                    "F1", "F2", "prc", "roc", "jsd")
+  expect_equal(ncol(output_metrics), 12)
   expect_equal(nrow(output_metrics), 1)
   expect_equal(colnames(output_metrics), metric_names)
   
