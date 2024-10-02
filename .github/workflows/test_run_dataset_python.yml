@@ -1,4 +1,4 @@
-name: test run_dataset mode
+name: test run_dataset mode for Python tools
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
 on: [ pull_request, workflow_dispatch ]
 
@@ -36,7 +36,7 @@ jobs:
       - name: Run pipeline with test data
         run: |
           nextflow run main.nf -profile test,docker --mode run_dataset \
-          --methods cell2location,stereoscope,destvi
+          --methods cell2location,stereoscope,destvi,tangram,stride
 
       - name: Upload proportions and metrics
         uses: actions/upload-artifact@v3
@@ -66,4 +66,4 @@ jobs:
         run: |
           echo $(ls)
           Rscript unit-test/test_run_dataset.R \
-          cell2location,stereoscope,destvi
+          cell2location,stereoscope,destvi,tangram,stride

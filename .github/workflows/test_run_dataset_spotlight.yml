@@ -1,4 +1,4 @@
-name: test run_dataset mode
+name: test run_dataset mode - spotlight
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
 on: [pull_request, workflow_dispatch ]
 
