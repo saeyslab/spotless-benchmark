@@ -1,4 +1,4 @@
-name: test run_dataset mode for Python tools
+name: test run_dataset mode for cell2location
 # This workflow runs the pipeline with the minimal test dataset to check that it completes without any syntax errors
 on: [ pull_request, workflow_dispatch ]
 
@@ -13,7 +13,7 @@ jobs:
           - 'NXF_VER=21.04.3'
     steps:
       - name: Check out pipeline code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         # with
         #   lfs: true
 
@@ -39,7 +39,7 @@ jobs:
           --methods cell2location
 
       - name: Upload proportions and metrics
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deconv-proportions-and-metrics
           path: |
@@ -54,10 +54,10 @@ jobs:
     container: rocker/tidyverse:3.6.3
     steps:
       - name: Check out pipeline code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download proportions from test run
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: deconv-proportions-and-metrics
 

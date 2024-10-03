@@ -13,7 +13,7 @@ jobs:
           - 'NXF_VER=21.04.3'
     steps:
       - name: Check out pipeline code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         # with:
         #   lfs: true
 
@@ -41,7 +41,7 @@ jobs:
           echo $(ls)
 
       - name: Upload proportions and metrics
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deconv-proportions-and-metrics
           path: |
@@ -56,10 +56,10 @@ jobs:
     container: rocker/tidyverse:3.6.3
     steps:
       - name: Check out pipeline code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download proportions from test run
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: deconv-proportions-and-metrics
 
