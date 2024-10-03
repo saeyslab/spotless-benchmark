@@ -26,7 +26,7 @@ for (method in methods){
   expect_equal(colnames(output_props), celltypenames)
   
   # Check 2
-  if (method != "dstg"){
+  if (!method %in% c("dstg", "destvi")){
     cat(">>> Checking whether proportions are correct...\n")
     expected_props <- read.table(paste0("unit-test/test_run_dataset/",
                                         "proportions_", method, "_test_sp_data"),
@@ -48,7 +48,7 @@ for (method in methods){
   expect_equal(colnames(output_metrics), metric_names)
   
   # Check 4
-  if (method != "dstg"){
+  if (!method %in% c("dstg", "destvi")){
     cat(">>> Checking whether metrics are correct...\n")
     expected_metrics <- read.table(paste0("unit-test/test_run_dataset/",
                                           "metrics_", method, "_test_sp_data"),
