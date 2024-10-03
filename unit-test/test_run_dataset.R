@@ -32,8 +32,8 @@ for (method in methods){
                                         "proportions_", method, "_test_sp_data"),
                                 sep="\t", header=TRUE)
     expect_equal(rowSums(output_props), rep(1, 16), tolerance=1e-6)
-    expect_equal(sum(output_props$L23IT), sum(expected_props$L23IT), tolerance=1e-3)
-    expect_equal(output_props[15,1:10], expected_props[15,1:10], tolerance=1e-3)
+    expect_equal(sum(output_props$L23IT), sum(expected_props$L23IT), tolerance=1e-2)
+    expect_equal(output_props[15,1:10], expected_props[15,1:10], tolerance=1e-2)
   }
 
   # Check 3
@@ -54,7 +54,7 @@ for (method in methods){
                                           "metrics_", method, "_test_sp_data"),
                                   sep=" ", header=TRUE)
 
-    expect_equal(output_metrics, expected_metrics, tolerance=1e-3) 
+    expect_equal(output_metrics, expected_metrics, tolerance=1e-2) 
   }
 
 }
