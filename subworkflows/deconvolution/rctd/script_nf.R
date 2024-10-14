@@ -70,7 +70,9 @@ if (class(spatial_data) != "Seurat"){
     use_fake_coords <- length(spatial_data@images) == 0
     coords <- NULL
     if (length(spatial_data@images)){
-        coords <- GetTissueCoordinates(spatial_data)
+        coords <- GetTissueCoordinates(spatial_data) %>% 
+          # Only get numeric columns
+          dplyr::select(where(is.numeric))
     }
     DefaultAssay(spatial_data) <- names(spatial_data@assays)[grep("RNA|Spatial",names(spatial_data@assays))[1]]
     spatialRNA_obj_visium <- SpatialRNA(coords = coords,
