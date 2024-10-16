@@ -50,6 +50,21 @@ seurat_obj_scRNA <- readRDS(user_args$sc_input)
 ncelltypes <- length(unique(seurat_obj_scRNA[[user_args$annot, drop=TRUE]]))
 cat("Found ", ncelltypes, "cell types in the reference.\n")
 
+# Filter out cell types with less than CELL_MIN_INSTANCE cells (if any)
+celltypes_to_remove <- table(seurat_obj_scRNA[[user_args$annot, drop=TRUE]]) %>% 
+  .[. < create.RCTD_args$CELL_MIN_INSTANCE] %>% names()
+
+if (length(celltypes_to_remove) > 0){
+  cat("Removing cell types with less than", create.RCTD_args$CELL_MIN_INSTANCE, "cells:\n")
+  cat(paste(celltypes_to_remove, collapse=", "), "\n")
+  seurat_obj_scRNA <- seurat_obj_scRNA[, !seurat_obj_scRNA[[user_args$annot, drop=TRUE]] %in% celltypes_to_remove]
+  gc()
+  
+  # Print number of remaining cell types
+  ncelltypes <- length(unique(seurat_obj_scRNA[[user_args$annot, drop=TRUE]]))
+  cat(ncelltypes, "cell types remain in the reference after filtering.\n")
+}
+
 cat("Converting to Reference object...\n")
 cell_types <- stringr::str_replace_all(seurat_obj_scRNA[[user_args$annot, drop=TRUE]],
                                        "[/ .]", "") # Replace prohibited characters
